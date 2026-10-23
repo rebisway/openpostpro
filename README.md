@@ -18,6 +18,13 @@ OpenPostPro includes tools to create and edit 2D geometry directly:
 - Boolean operations to combine, subtract, or intersect supported shapes
 - DXF import for supported drawing entities, including lines, points, circles, arcs, ellipses, polylines, splines, and text
 
+## 🐍 Python scripting for CAD
+OpenPostPro also supports Python scripts at the CAD level. Scripts can create geometry directly inside the application, making it possible to automate repetitive work or generate complex shapes parametrically instead of drawing every element by hand.
+
+For example, the project includes a demo script that generates oblong holes (slots). Scripts can be adapted or written to create the specific elements your design requires.
+
+This CAD scripting capability is separate from Python post-processors: CAD scripts generate drawing geometry, while post-processors translate CAM operations into machine-specific output.
+
 ## ⚙️ CAM operations
 
 Create toolpath operations from your drawing, including:
