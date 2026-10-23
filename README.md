@@ -85,6 +85,10 @@ When compiling, the `copy_libs_output.bat` script copies the required runtime re
 
 The source contains relatively few Windows-specific parts, and Linux or macOS builds may be possible, but **neither has been tested yet**.
 
+## 🐧 Linux and macOS
+
+OpenPostPro is designed with cross-platform compatibility in mind, with very few dependencies on Windows-specific features. The application was successfully compiled and run on **Ubuntu 21.04** in the past, using Visual Studio Code. This demonstrates that building and running OpenPostPro on Linux is feasible, although the exact build setup has not yet been documented and may need to be recreated. macOS should also be a possible target, but has not yet been tested. Contributions to restore, document, and validate builds on these platforms are welcome.
+
 ## 🚧 Project status
 
 OpenPostPro is an early release built as an independent open-source project. The main priority for future improvement is the robustness and precision of geometry and outline calculations. Some algorithms currently use floating-point precision and need further work.
