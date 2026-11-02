@@ -24,23 +24,12 @@
 #define _LOGGER_H
 
 #include <string>
-#include <iostream>
-#include <thread>
-#include <queue>
-#include <mutex>
-#include <fstream>
 
 class Logger
 {
 private:
 	static std::string _path;
-	static std::queue<std::string> _queue;
-	static std::mutex _mutex;
-	static std::filebuf _file;
-	static std::thread* _thread;
 	static std::string _trace;
-	static bool _exit;
-	static bool _always_flush;
 
 private:
 	/// <summary>

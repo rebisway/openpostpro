@@ -16,6 +16,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "inifile.h"
+#include <fstream>
+#include <iostream>
 
 
 #include "environment.h"

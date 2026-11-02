@@ -118,6 +118,10 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir)src\third\IMGUI_third\ImGuiColortextEdit;$(ProjectDir)src\test;$(ProjectDir)src\ui;$(ProjectDir)src\common;$(ProjectDir)src\third\;$(ProjectDir)src\third\IMGUI;$(ProjectDir)src\third\IMGUI\backends;$(ProjectDir)src\cad;$(ProjectDir)src\postpro;$(ProjectDir)src\script;$(ProjectDir)src\cam;$(ProjectDir)src\python;$(ProjectDir)src\third\GLM\;$(ProjectDir)src\third\gl3w\;$(ProjectDir)src\third\stb\;$(ProjectDir)src\third\freetype;$(ProjectDir)src\third\siglot;$(ProjectDir)src\third\python\313;$(ProjectDir)postcallback;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -148,6 +152,10 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)src\third\IMGUI_third\ImGuiColortextEdit;$(ProjectDir)src\test;$(ProjectDir)src\ui;$(ProjectDir)src\common;$(ProjectDir)src\third\;$(ProjectDir)src\third\IMGUI;$(ProjectDir)src\third\IMGUI\backends;$(ProjectDir)src\cad;$(ProjectDir)src\postpro;$(ProjectDir)src\script;$(ProjectDir)src\cam;$(ProjectDir)src\python;$(ProjectDir)src\third\GLM\;$(ProjectDir)src\third\gl3w\;$(ProjectDir)src\third\stb\;$(ProjectDir)src\third\freetype;$(ProjectDir)src\third\siglot;$(ProjectDir)src\third\python\313;$(ProjectDir)postcallback;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -173,6 +181,10 @@
     <None Include="postpro\generic_plasma.py_">
       <FileType>Document</FileType>
     </None>
+    <ClCompile Include="src\common\pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="src\cad\arc.cpp" />
     <ClCompile Include="src\cad\cad.cpp" />
     <ClCompile Include="src\cad\circle.cpp" />
@@ -214,14 +226,38 @@
     <ClCompile Include="src\python\script.cpp" />
     <ClCompile Include="src\script\cad_script.cpp" />
     <ClCompile Include="src\test\test_cad.cpp" />
-    <ClCompile Include="src\third\gl3w\GL\gl3w.c" />
-    <ClCompile Include="src\third\IMGUI\backends\imgui_impl_glfw.cpp" />
-    <ClCompile Include="src\third\IMGUI\backends\imgui_impl_opengl3.cpp" />
-    <ClCompile Include="src\third\IMGUI\imgui.cpp" />
-    <ClCompile Include="src\third\IMGUI\imgui_draw.cpp" />
-    <ClCompile Include="src\third\IMGUI\imgui_tables.cpp" />
-    <ClCompile Include="src\third\IMGUI\imgui_widgets.cpp" />
-    <ClCompile Include="src\third\IMGUI_third\ImGuiColorTextEdit\TextEditor.cpp" />
+    <ClCompile Include="src\third\gl3w\GL\gl3w.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="src\third\IMGUI\backends\imgui_impl_glfw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="src\third\IMGUI\backends\imgui_impl_opengl3.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="src\third\IMGUI\imgui.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="src\third\IMGUI\imgui_draw.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="src\third\IMGUI\imgui_tables.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="src\third\IMGUI\imgui_widgets.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
+    <ClCompile Include="src\third\IMGUI_third\ImGuiColorTextEdit\TextEditor.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ForcedIncludeFiles></ForcedIncludeFiles>
+    </ClCompile>
     <ClCompile Include="src\ui\application.cpp" />
     <ClCompile Include="src\ui\camera.cpp" />
     <ClCompile Include="src\ui\config.cpp" />
@@ -261,6 +297,7 @@
     <ClInclude Include="src\cam\spiral.h" />
     <ClInclude Include="src\cam\toolpath.h" />
     <ClInclude Include="src\cam\group.h" />
+    <ClInclude Include="src\common\pch.h" />
     <ClInclude Include="src\common\clipboard.h" />
     <ClInclude Include="src\common\curve.h" />
     <ClInclude Include="src\common\date.h" />

@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "ortho_cam.h"
-#include <glm/ext.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 
 OrthoCamera::OrthoCamera()

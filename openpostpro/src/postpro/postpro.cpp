@@ -20,7 +20,7 @@
 #include <filesystem>
 #include <algorithm>
 
-#include <python.h>
+#include <python_api.h>
 
 #include <script.h>
 #include <strings.h>

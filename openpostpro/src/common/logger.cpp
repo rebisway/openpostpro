@@ -19,15 +19,21 @@
 #include "date.h"
 #include "environment.h"
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <thread>
+#include <queue>
+#include <mutex>
+#include <chrono>
 
 std::string Logger::_path;
-std::queue<std::string> Logger::_queue;
-std::mutex Logger::_mutex;
-std::filebuf Logger::_file;
-bool Logger::_exit;
-std::thread* Logger::_thread;
+static std::queue<std::string> _queue;
+static std::mutex _mutex;
+static std::filebuf _file;
+static bool _stop_requested;
+static std::thread* _thread;
 std::string Logger::_trace;
-bool Logger::_always_flush = false;
+static bool _always_flush = false;
 
 void Logger::log(std::string data)
 {
@@ -77,7 +83,7 @@ void Logger::loop()
 	std::ostream os(&_file);
 	os << date::format("%F %T", std::chrono::system_clock::now()) << ": " << "--------------- START ----------------\n";
 
-	while (!_exit)
+	while (!_stop_requested)
 	{
 		try {
 			while (!_queue.empty())
@@ -125,7 +131,7 @@ void Logger::start(std::string path, bool always_flush)
 {
 	_always_flush = always_flush;
 
-	_exit = false;
+	_stop_requested = false;
 	if (path == "")
 	{
 		path = "log.txt";
@@ -147,6 +153,6 @@ void Logger::start(std::string path, bool always_flush)
 
 void Logger::stop()
 {
-	_exit = true;
+	_stop_requested = true;
 	_thread->join();
 }

@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "script.h"
-#include <Python.h>
+#include <python_api.h>
 #include <strings.h>
 #include <stdexcept>
 #include <filesystem>

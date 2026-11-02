@@ -21,7 +21,7 @@
 
 #include <shape.h>
 #include <curve.h>
-#include <Spline.h>
+#include <spline.h>
 
 namespace cad
 {

@@ -19,7 +19,7 @@
 
 #include <filesystem>
 
-#include <script.h>
+#include <python_api.h>
 #include <inifile.h>
 #include <strings.h>
 #include <cstdarg>

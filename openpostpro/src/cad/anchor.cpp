@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "anchor.h"
-#include <glm/ext.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "config.h"
 #include <geometry.h>
 
