@@ -34,7 +34,7 @@ void Script::initialize_python()
 			code += "\nsys.path.append('" + p + "'";
 		}
 
-		PyRun_SimpleString(code.c_str());
+		py_run_string(code.c_str());
 	}
 	else
 	{
@@ -65,7 +65,7 @@ std::string Script::python_error()
 				{
 					if (!error.empty())
 						error += ". ";
-					error += PyUnicode_AsUTF8(v);
+					error += py_utf8(v);
 				}
 			}
 		}
@@ -85,12 +85,12 @@ std::string Script::error(std::string method)
 void Script::add_module_path(std::string path)
 {
 	std::string py_path = std::string("sys.path.append('") + stringex::replace_string_all(path, "\\", "/") + "')";
-	PyRun_SimpleString(py_path.c_str()); // add to python module path the postpro path
+	py_run_string(py_path.c_str()); // add to python module path the postpro path
 }
 
 void Script::run_python(std::string code)
 {
-	PyRun_SimpleString(code.c_str());
+	py_run_string(code.c_str());
 }
 
 std::vector<std::string> Script::sys_path()
@@ -105,7 +105,7 @@ std::vector<std::string> Script::sys_path()
 			PyObject* v = PyList_GetItem(p_object, i);
 			if (PyUnicode_Check(v))
 			{
-				result.push_back(PyUnicode_AsUTF8(v));
+				result.push_back(py_utf8(v));
 			}
 		}
 	}
@@ -178,7 +178,7 @@ std::string Script::get_string(std::string method, const char* format, ...)
 	std::string answer = "";
 	if (result && PyUnicode_Check(result))
 	{
-		answer = PyUnicode_AsUTF8(result);
+		answer = py_utf8(result);
 		Py_CLEAR(result);
 	}
 	else

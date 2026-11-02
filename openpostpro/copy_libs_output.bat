@@ -11,4 +11,4 @@ xcopy /y .\lib\freetype\*.dll .\x64\Release\
 xcopy /y .\postpro\*.py .\x64\Debug\postpro\
 xcopy /y .\postpro\*.py .\x64\Release\postpro\
 xcopy /y .\script\*.py .\x64\Debug\script\
-xcopy /y .\script\*.py .\x64\Release\script\
+xcopy /y .\script\*.py .\x64\Release\script\

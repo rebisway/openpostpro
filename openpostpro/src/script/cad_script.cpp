@@ -144,7 +144,7 @@ bool CadScript::initialize(std::string module_path, std::string lang)
 				}
 				else if (PyUnicode_Check(p))
 				{
-					_properties.push_back(std::string(PyUnicode_AsUTF8(p)));
+					_properties.push_back(std::string(py_utf8(p)));
 					_properties[i] = ini.get_string(_module, std::to_string(i), std::get<std::string>(_properties[i]));
 					set("set_property", "is", i, (std::get<std::string>(_properties[i])).c_str());
 				}
@@ -154,7 +154,7 @@ bool CadScript::initialize(std::string module_path, std::string lang)
 					for (int i = 0; i < PyList_Size(p); i++)
 					{
 						if (PyUnicode_Check(PyList_GetItem(p, i)))
-							values.push_back(PyUnicode_AsUTF8(PyList_GetItem(p, i)));
+							values.push_back(py_utf8(PyList_GetItem(p, i)));
 					}
 
 					values[0] = ini.get_string(_module, std::to_string(i), values[0]);

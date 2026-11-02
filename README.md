@@ -62,14 +62,14 @@ OpenPostPro is written in **C++20** and uses:
 - **GLFW** for window and input handling
 - **GLM** for mathematics
 - **FreeType** for font rendering
-- **Python 3.13** embedded for post-processors and scripts
+- **Python 3.12 or later** embedded for post-processors and scripts (stable ABI, no recompilation needed when Python is updated)
 
 ## 🖥️ Running on Windows
 
 The current project files and bundled runtime libraries target Windows.
 
 You need:
-- The **Python 3.13 runtime**
+- **Python 3.12 or later**, installed with **"Add Python to PATH"** checked. OpenPostPro does not ship Python: `python3.dll` is found through the PATH, and without it Windows reports "python3.dll was not found" at startup. The same installation provides the standard library and tkinter (used by some CAD scripts).
 - The **Microsoft Visual C++ x64 Redistributable**
 
 Download or clone the repository, then run the application using a compatible build. The project includes a Visual Studio solution at `openpostpro/openpostpro.sln`.
@@ -78,7 +78,7 @@ When compiling, the `copy_libs_output.bat` script copies the required runtime re
 
 ## 🛠️ Building from source
 
-1. Install Visual Studio 2022 with C++ desktop development tools.
+1. Install Visual Studio with C++ desktop development tools, and Python 3.12 or later (with "Add Python to PATH"). The Python headers and `python3.lib` are taken from the repository (`src/third/python`, `lib/python`).
 2. Open `openpostpro/openpostpro.sln`.
 3. Build the solution for the appropriate x64 configuration.
 4. Ensure the required resource folders and runtime libraries are present beside the executable. The included `copy_libs_output.bat` handles copying the project resources as configured by the solution.

@@ -26,11 +26,44 @@
 #		undef _DEBUG
 #endif
 
+// Use the stable ABI so one build works with any Python >= 3.12
+#ifndef Py_LIMITED_API
+#	define Py_LIMITED_API 0x030C0000
+#endif
+
 #include <python.h>
 
 #ifdef _NEEDS_REDEFINED_DEBUG
 #	define _DEBUG
 #endif
+
+// Stable ABI replacements of PyUnicode_AsUTF8 and PyRun_SimpleString
+inline const char* py_utf8(PyObject* object)
+{
+	return PyUnicode_AsUTF8AndSize(object, NULL);
+}
+
+// Run python code in the __main__ module. Returns 0 on success, -1 on error (printed like PyRun_SimpleString)
+inline int py_run_string(const char* code)
+{
+	PyObject* main_module = PyImport_AddModule("__main__"); // borrowed reference
+	PyObject* builtins = PyImport_ImportModule("builtins");
+	PyObject* result = NULL;
+
+	if (main_module != NULL && builtins != NULL)
+		result = PyObject_CallMethod(builtins, "exec", "sO", code, PyModule_GetDict(main_module));
+
+	Py_XDECREF(builtins);
+
+	if (result == NULL)
+	{
+		PyErr_Print();
+		return -1;
+	}
+
+	Py_DECREF(result);
+	return 0;
+}
 
 //////////////////////////////////////////////////////////////////////////////////
 // This is the main class to run python scripts within the main application		//

@@ -24,6 +24,14 @@
 #include "src/ui/application.h"
 #include <strings.h>
 
+// Python requirement (Windows):
+// This executable is built against the Python stable ABI (Py_LIMITED_API, Python >= 3.12)
+// and imports python3.dll, which is NOT shipped with the application. Windows resolves it
+// at startup through the PATH, before main() runs. Python 3.12 or later must therefore be
+// installed with "Add Python to PATH" checked. Without it, Windows reports
+// "python3.dll was not found" and the program cannot start; this cannot be checked from
+// the code (python3.dll cannot be delay loaded because of the data symbols imported by the
+// PyXxx_Check macros). The same Python installation provides the standard library and tkinter.
 int main()
 {
 	// needs to be initialized first

@@ -15,8 +15,19 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Python 313 tkinter not loading bug
-# Copy folders Python313\tcl\tcl8.6 and Python313\tcl\tk8.6 folder to Python313\lib
+import os
+import sys
+import importlib.util
+
+# Embedded Python does not find the Tcl/Tk libraries (init.tcl): locate them from the _tkinter module.
+# Cadcore is imported before any user script, so scripts can import tkinter directly.
+_spec = importlib.util.find_spec('_tkinter')
+if _spec is not None and _spec.origin:
+    _root = os.path.dirname(os.path.dirname(_spec.origin))
+    for _var, _dir in (('TCL_LIBRARY', 'tcl8.6'), ('TK_LIBRARY', 'tk8.6')):
+        _path = os.path.join(_root, 'tcl', _dir)
+        if os.path.isdir(_path):
+            os.environ[_var] = _path
 
 
 class Cadcore:
