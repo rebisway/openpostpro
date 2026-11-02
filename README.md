@@ -99,7 +99,9 @@ Bug reports, feedback, and contributions are welcome.
 
 ## 📜 License
 
-OpenPostPro is released under the **GNU General Public License v3.0 (GPL-3.0)**. See [`LICENSE`](LICENSE) for the full license text.
+OpenPostPro is released under the **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**. See [`LICENSE`](LICENSE) for the full license text.
+
+Third-party components keep their own licenses, all compatible with the AGPL; see [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
 
 ## 🔗 Links
 
