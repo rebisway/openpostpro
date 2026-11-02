@@ -113,13 +113,15 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 							merged_curves = (*it1).boolean_union((*it2));
 
 
+						// the result keeps the lower level (the outer contour), whatever the order of the two curves
+						int merged_level = glm::min((*it1).level(), (*it2).level());
 						if (merged = merged_curves.size() > 0)
 						{
 							for (Curve& m : merged_curves)
 							{
 								m.close();
 								//m.cw(cw1);
-								m.level((*it1).level());
+								m.level(merged_level);
 							}
 							temp.erase(it2);
 							temp.erase(it1);
@@ -230,13 +232,15 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 							merged_curves = (*it1).boolean_union((*it2));
 
 
+						// the result keeps the lower level (the outer contour), whatever the order of the two curves
+						int merged_level = glm::min((*it1).level(), (*it2).level());
 						if (merged = merged_curves.size() > 0)
 						{
 							for (Curve& m : merged_curves)
 							{
 								m.close();
 								//m.cw(cw1);
-								m.level((*it1).level());
+								m.level(merged_level);
 							}
 							temp.erase(it2);
 							temp.erase(it1);
@@ -345,12 +349,14 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 							merged_curves = (*it1).boolean_union((*it2));
 
 
+						// the result keeps the lower level (the outer contour), whatever the order of the two curves
+						int merged_level = glm::min((*it1).level(), (*it2).level());
 						if (merged = merged_curves.size() > 0)
 						{
 							for (Curve& m : merged_curves)
 							{
 								m.close();
-								m.level((*it1).level());
+								m.level(merged_level);
 							}
 							temp.erase(it2);
 							temp.erase(it1);
