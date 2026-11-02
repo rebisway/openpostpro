@@ -1,4 +1,4 @@
-# OpenPostPro - www.openpostpro.org
+# OpenPostPro - www.rebisway.com - contact@rebisway.com
 # Copyright (C) 2024-2026 Thomas Gourgnier
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
