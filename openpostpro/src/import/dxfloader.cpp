@@ -179,8 +179,8 @@ std::vector<Shape*> DxfLoader::add_polyline(DxfEntity* e, Renderer* r, std::stri
 			add_last = true;
 		}
 		else {
-			if (pcount > 1) { // si arc alors on regarde si le polygon construit à au moins 2 points
-				// si oui en ajoute le polygone
+			if (pcount > 1) { // if arc, check whether the polygon built so far has at least 2 points
+				// if so, add the polygon
 				if (points.size() > 2)
 				{
 					s = new Polyline(r);
@@ -194,9 +194,9 @@ std::vector<Shape*> DxfLoader::add_polyline(DxfEntity* e, Renderer* r, std::stri
 				}
 				s->name(name + '_' + std::to_string(_count++));
 				shapes.push_back(s);
-				// on crée un nouveau polygone temporaire
+				// create a new temporary polygon
 			}
-			// on ajoute l'arc
+			// add the arc
 			shapes.push_back(add_arc(p1, p2, bulge, e, r, name + '_' + std::to_string(_count++)));
 			add_last = false;
 
@@ -219,8 +219,8 @@ std::vector<Shape*> DxfLoader::add_polyline(DxfEntity* e, Renderer* r, std::stri
 			add_last = true;
 		}
 		else {
-			if (pcount > 1) { // si arc alors on regarde si le polygon construit à au moins 2 points
-				// si oui en ajoute le polygone
+			if (pcount > 1) { // if arc, check whether the polygon built so far has at least 2 points
+				// if so, add the polygon
 				if (points.size() > 2)
 				{
 					s = new Polyline(r);
@@ -234,9 +234,9 @@ std::vector<Shape*> DxfLoader::add_polyline(DxfEntity* e, Renderer* r, std::stri
 				}
 				s->name(name + '_' + std::to_string(_count++));
 				shapes.push_back(s);
-				// on crée un nouveau polygone temporaire
+				// create a new temporary polygon
 			}
-			// on ajoute l'arc
+			// add the arc
 			shapes.push_back(add_arc(p1, p2, bulge, e, r, name + '_' + std::to_string(_count++)));
 			add_last = false;
 
@@ -271,11 +271,11 @@ Shape* DxfLoader::add_arc(glm::vec2 p1, glm::vec2 p2, float bulge, DxfEntity* e,
 {
 	Arc* a = new Arc(r);
 
-	float C;            // longueur de la corde
-	float H;            // hauteur du triangle
+	float C;            // chord length
+	float H;            // triangle height
 	float R;            // rayon
-	float alpha2;       // quart de l'angle de l'arc
-	float beta;         // Orientation du segment
+	float alpha2;       // quarter of the arc angle
+	float beta;         // segment orientation
 	float i, j;
 
 	// The bulge is the tangent of one fourth the
@@ -284,7 +284,7 @@ Shape* DxfLoader::add_arc(glm::vec2 p1, glm::vec2 p2, float bulge, DxfEntity* e,
 	// A bulge of 0 indicates a straight segment,
 	// and a bulge of 1 is a semicircle
 
-	// abbiamo la corda e la tangente dell'angolo della corda (0=Nord)
+	// we have the chord and the tangent of the chord angle (0=North)
 	// We have the cord and the tangent of the arc radius
 	// C=2R sin (Alpha/2)
 	C = glm::sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
@@ -727,7 +727,7 @@ void add_entity(Entity e, Layer l) {
 				Point3D pp = new Point3D(All.Double(e.Properties["p" + pi.ToString() + ".x"], 0), All.Double(e.Properties.Get("p" + pi.ToString() + ".y")), All.Double(e.Properties.Get("p" + pi.ToString() + ".z")));
 				s.AddPoint(pp);
 			}
-			if ((flag & 1) == 1) { // fermée
+			if ((flag & 1) == 1) { // closed
 				((SplineShape)s).IsClosed = true;
 			}
 
@@ -765,18 +765,18 @@ private void add_polyline(Entity e, Layer l) {
 		double bulge = 0;
 		for (int i = 1; i < e.Vertexes.Count; i++) {
 			v2 = new Point3D((double)e.Vertexes[i].Properties["x"], (double)e.Vertexes[i].Properties["y"], 0);
-			bulge = (double)e.Vertexes[i - 1].Properties["bulge"]; // attention, le bulge est à prendre sur le vertex précédent
-			if (bulge == 0) { // ce n'est pas un arc
-				s.AddPoint(v2); // on incrémente les points du polygone
+			bulge = (double)e.Vertexes[i - 1].Properties["bulge"]; // warning: the bulge must be taken from the previous vertex
+			if (bulge == 0) { // not an arc
+				s.AddPoint(v2); // add the point to the polygon
 				pcount++;
 				add_last = true;
 			}
 			else {
-				if (pcount > 1) { // si arc alors on regarde si le polygon construit à au moins 2 points
-					// si oui en ajoute le polygone
+				if (pcount > 1) { // if arc, check whether the polygon built so far has at least 2 points
+					// if so, add the polygon
 					add_shape(l, s);
 
-					// on crée un nouveau polygone temporaire
+					// create a new temporary polygon
 					name = (string)e.Properties.Get("name");
 					if (name == null)
 						name = e.Type + "_" + (count++).ToString();
@@ -786,7 +786,7 @@ private void add_polyline(Entity e, Layer l) {
 				}
 				else
 					s.Points[0] = v2;
-				// on ajoute l'arc
+				// add the arc
 				add_arc(l, v1, v2, bulge, e, (string)e.Vertexes[0].Properties["handle"]);
 				add_last = false;
 			}
@@ -810,7 +810,7 @@ private void add_polyline(Entity e, Layer l) {
 				if (pcount > 1) {
 					add_shape(l, s);
 
-					// on crée un nouveau polygone temporaire
+					// create a new temporary polygon
 					name = (string)e.Properties.Get("name");
 					if (name == null)
 						name = e.Type + "_" + (count++).ToString();
@@ -853,7 +853,7 @@ private void add_lwpolyline(Entity e, Layer l) {
 		//							GG.WPF.Timer.DoEvents();
 		//							
 		//					}
-		//					if ( ((int)e.Properties["flag"] & 1) == 1 ) { // fermée
+		//					if ( ((int)e.Properties["flag"] & 1) == 1 ) { // closed
 		//						((PolygonShape)s).IsClosed = true;
 		//					}
 
@@ -867,18 +867,18 @@ private void add_lwpolyline(Entity e, Layer l) {
 		double bulge = 0;
 		for (int i = 1; i < e.Vertexes.Count; i++) {
 			v2 = new Point3D((double)e.Vertexes[i].Properties["x"], (double)e.Vertexes[i].Properties["y"], 0);
-			bulge = (double)e.Vertexes[i - 1].Properties["bulge"]; // attention, le bulge est à prendre sur le vertex précédent
-			if (bulge == 0) { // ce n'est pas un arc
-				s.AddPoint(v2); // on incrémente les points du polygone
+			bulge = (double)e.Vertexes[i - 1].Properties["bulge"]; // warning: the bulge must be taken from the previous vertex
+			if (bulge == 0) { // not an arc
+				s.AddPoint(v2); // add the point to the polygon
 				pcount++;
 				add_last = true;
 			}
 			else {
-				if (pcount > 1) { // si arc alors on regarde si le polygon construit à au moins 2 points
-					// si oui en ajoute le polygone
+				if (pcount > 1) { // if arc, check whether the polygon built so far has at least 2 points
+					// if so, add the polygon
 					add_shape(l, s);
 
-					// on crée un nouveau polygone temporaire
+					// create a new temporary polygon
 					name = (string)e.Properties.Get("name");
 					if (name == null)
 						name = e.Type + "_" + (count++).ToString();
@@ -888,7 +888,7 @@ private void add_lwpolyline(Entity e, Layer l) {
 				}
 				else
 					s.Points[0] = v2;
-				// on ajoute l'arc
+				// add the arc
 				add_arc(l, v1, v2, bulge, e, (string)e.Vertexes[0].Properties["handle"]);
 				add_last = false;
 			}
@@ -912,7 +912,7 @@ private void add_lwpolyline(Entity e, Layer l) {
 				if (pcount > 1) {
 					add_shape(l, s);
 
-					// on crée un nouveau polygone temporaire
+					// create a new temporary polygon
 					name = (string)e.Properties.Get("name");
 					if (name == null)
 						name = e.Type + "_" + (count++).ToString();
@@ -933,11 +933,11 @@ private void add_lwpolyline(Entity e, Layer l) {
 }
 
 private void add_arc(Layer l, Point3D p1, Point3D p2, double bulge, Entity e, string handle) {
-	double C;            // longueur de la corde
-	double H;            // hauteur du triangle
+	double C;            // chord length
+	double H;            // triangle height
 	double R;            // rayon
-	double alpha2;       // quart de l'angle de l'arc
-	double beta;         // Orientation du segment
+	double alpha2;       // quarter of the arc angle
+	double beta;         // segment orientation
 	double i, j;
 
 	// The bulge is the tangent of one fourth the
@@ -946,7 +946,7 @@ private void add_arc(Layer l, Point3D p1, Point3D p2, double bulge, Entity e, st
 	// A bulge of 0 indicates a straight segment,
 	// and a bulge of 1 is a semicircle
 
-	// abbiamo la corda e la tangente dell'angolo della corda (0=Nord)
+	// we have the chord and the tangent of the chord angle (0=North)
 	// We have the cord and the tangent of the arc radius
 	// C=2R sin (Alpha/2)
 	C = System.Math.Sqrt((p2.X - p1.X) * (p2.X - p1.X) + (p2.Y - p1.Y) * (p2.Y - p1.Y));

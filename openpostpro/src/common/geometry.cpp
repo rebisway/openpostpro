@@ -1358,9 +1358,9 @@ glm::vec2 eq(float t, glm::vec2 p1, glm::vec2 p2, glm::vec2 p3, glm::vec2 p4) {
 float delta_t = 0;
 glm::vec2 catmull(float t, std::vector<glm::vec2>& points)
 {
-	// On recherche l'interval du spline
+	// Find the spline interval
 	int p = (int)(t / delta_t);
-	// On calcule l'indice du ref_point de contrôle local
+	// Compute the index of the local control ref_point
 	int p0 = p - 1;
 	{ if (p0 < 0) p0 = 0; else if (p0 >= (int)points.size() - 1) p0 = (int)points.size() - 1; }
 	int p1 = p;
@@ -1380,7 +1380,7 @@ std::vector<std::vector<float>> natural_cubic(int n, std::vector<float> x) {
 	std::vector<float> gamma(n + 1), delta(n + 1), D(n + 1);
 	int i;
 
-	/* nous résolvons l'équation
+	/* we solve the equation
 	[2 1       ] [D[0]]   [3(x[1] - x[0])  ]
 	|1 4 1     | |D[1]|   |3(x[2] - x[0])  |
 	|  1 4 1   | | .  | = |      .         |
@@ -1461,8 +1461,8 @@ std::vector<glm::vec2> catmull(std::vector<glm::vec2>& points) {
 
 	delta_t = 1.0f / (float)points.size();
 
-	float start = 0.0f; 	// coordonnées x min
-	float end = 0.0f; 	// coordonnées x max
+	float start = 0.0f; 	// min x coordinate
+	float end = 0.0f; 	// max x coordinate
 	glm::vec2 last = points.back();
 	start = end = points.front().x;
 
@@ -1487,8 +1487,8 @@ std::vector<glm::vec2> lagrange(std::vector<glm::vec2>& points) {
 	std::vector<glm::vec2> coords;
 	if (points.size() < 2) return coords;
 
-	float start = 0; 	// coordonnées x min
-	float end = 0; 	// coordonnées x max
+	float start = 0; 	// min x coordinate
+	float end = 0; 	// max x coordinate
 	glm::vec2 first = points.front();
 	glm::vec2 last = points.back();
 	start = end = first.x;

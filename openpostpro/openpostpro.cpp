@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// openpostpro.cpp : Ce fichier contient la fonction 'main'. L'exécution du programme commence et se termine à cet endroit.
+// openpostpro.cpp : this file contains the 'main' function. Program execution begins and ends here.
 //
 
 #include <Logger.h>

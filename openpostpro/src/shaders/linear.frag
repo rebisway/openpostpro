@@ -54,14 +54,14 @@ vec2 orthogonal_projection(vec2 C, vec2 A, vec2 B)
     {
         x = C.x;
         y = A.y;
-        l = abs(x - A.x); // calcul de la distance
+        l = abs(x - A.x); // compute the distance
     }
     else
     if ( A.x == B.x ) // vertical
     {
         x = A.x;
         y = C.y;
-        l = abs(y - A.y); // calcul de la distance
+        l = abs(y - A.y); // compute the distance
     }
     else              // otherwise
     {

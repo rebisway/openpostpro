@@ -597,7 +597,7 @@ bool Curve::inside(glm::vec2 p)
 		}
 		else if ((*this)[0].type == SegmentType::Arc)
 		{
-			// should test following le bulge
+			// should test following the bulge
 			return geometry::distance((*this)[0].center, p) <= (*this)[0].radius;
 		}
 	}

@@ -128,7 +128,7 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 		{
 			// the original closed curve starts at length 0 and end at max_length which the curve length
 			// start point is starting by default at 0
-			// to move the start point along the curve, we just set le start_point_length
+			// to move the start point along the curve, we just set the start_point_length
 			// from this value, we look for the segment along the required length
 			// we can split the targeted segment and reconstruct the new computed curve
 			// it is a simple "rotation" along segments

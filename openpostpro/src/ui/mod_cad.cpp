@@ -717,7 +717,7 @@ void ModCad::scroll(double xdelta, double ydelta)
 {
 	_camera->mouseWheel((float)xdelta, (float)ydelta);
 
-	// we set the new pixel dépendant precision factor for mouse detection
+	// we set the new pixel dependent precision factor for mouse detection
 	Shape::precision = PRECISION / _camera->scale();
 
 	updateAxe();

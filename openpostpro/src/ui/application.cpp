@@ -839,10 +839,10 @@ void Application::render_menu()
 			{
 				//Script::add_module_path(environment::application_path());
 				//int value = get_value();
-				//Logger::log("Valeur lue " + std::to_string(value));
+				//Logger::log("Value read " + std::to_string(value));
 				//set_value(10);
 				//value = get_value();
-				//Logger::log("Valeur lue " + std::to_string(value));
+				//Logger::log("Value read " + std::to_string(value));
 
 				//auto path = stringex::replace(environment::application_path() + "postcallback.dll", "\\", "/");
 
@@ -859,7 +859,7 @@ void Application::render_menu()
 				//s = Script::python_error();
 
 				//value = get_value();
-				//Logger::log("Valeur lue " + std::to_string(value));
+				//Logger::log("Value read " + std::to_string(value));
 			}
 			ImGui::EndMenu();
 		}

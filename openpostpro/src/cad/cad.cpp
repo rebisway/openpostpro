@@ -224,7 +224,7 @@ std::vector<Shape*> cad::split(Shape* shape, std::vector<glm::vec2> points)
 		// we add start and stop angles to the list of angles
 		// we sort the list, here from lower to greater
 		// because oriented angle start from 0 to 2*PI, an arc can pass through the 0 angle
-		// so we will rotate the list to start angle, to be sur to get all arc angles from start
+		// so we will rotate the list to start angle, to be sure to get all arc angles from start
 		// next, start angle is removed from the list, to iterate through it
 		bool reversed;
 		if (reversed = c->cw())

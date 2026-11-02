@@ -1094,7 +1094,7 @@ std::string DxfEntity::read_wpolyline_entity(std::ifstream& input)
 	_vertices.push_back(v);
 
 
-	while (_code != 0) // on ignore le reste
+	while (_code != 0) // ignore the rest
 		read_line(input);
 	return _val;
 }
@@ -1175,7 +1175,7 @@ std::string DxfEntity::read_hatch_entity(std::ifstream& input)
 		} while (twice > 0);
 	}
 
-	while (_code != 0) // on ignore le reste
+	while (_code != 0) // ignore the rest
 		read_line(input);
 	return _val;
 }
@@ -1235,7 +1235,7 @@ std::string DxfEntity::read_leader_entity(std::ifstream& input)
 		} while (twice > 0);
 	}
 
-	while (_code != 0) // on ignore le reste
+	while (_code != 0) // ignore the rest
 		read_line(input);
 	return _val;
 }
