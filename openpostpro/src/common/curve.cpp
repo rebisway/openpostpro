@@ -1292,7 +1292,12 @@ std::vector<SegmentUntrim> Curve::untrim(float o)
 						// if radius computed is negative, then we are sure that we will get a self intersection ref_point
 						// so we add a segment instead of an arc, and we tag it as excluded, which will be used later
 						// to revoke a curve when we will split it at self intersection ref_point, see trim() and split_at_intersections()
-						if (radius > 0) 
+						// an arc that collapses to a point (radius below the tolerance, which is also below what a float
+						// can represent at usual coordinates) becomes a sharp corner, the neighbour segments are linked by trim()
+						if (glm::abs(radius) <= geometry::ERR_FLOAT4)
+						{
+						}
+						else if (radius > 0) 
 						{
 
 							result.push_back(

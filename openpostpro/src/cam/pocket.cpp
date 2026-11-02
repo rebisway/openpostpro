@@ -208,10 +208,12 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 				temp.insert(temp.begin(), o.begin(), o.end());
 			}
 
+			// set when the remaining material lies entirely inside a growing hole
+			bool region_empty = false;
 			if (temp.size() > 1)
 			{
 				std::vector<Curve>::iterator it1 = temp.begin();
-				while (it1 != temp.end() && temp.size() > 1)
+				while (it1 != temp.end() && temp.size() > 1 && !region_empty)
 				{
 					bool merged = false;
 					std::vector<Curve>::iterator it2 = it1 + 1;
@@ -220,6 +222,19 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 						auto cw1 = (*it1).cw();
 						auto cw2 = (*it2).cw();
 						std::vector<Curve> merged_curves;
+
+						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
+						// there is nothing left to machine, and the holes must not keep growing outside of the material
+						if ((*it1).level() != (*it2).level())
+						{
+							Curve& material = (*it1).level() < (*it2).level() ? (*it1) : (*it2);
+							Curve& hole = (*it1).level() < (*it2).level() ? (*it2) : (*it1);
+							if (material.inside(hole))
+							{
+								region_empty = true;
+								break;
+							}
+						}
 
 						if ((*it1).level() != (*it2).level())
 						{
@@ -262,6 +277,9 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 						it1++;
 				}
 			}
+
+			if (region_empty)
+				temp.clear();
 
 			auto s = temp.size();
 
@@ -325,10 +343,12 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 				temp.push_back(c);
 			}
 
+			// set when the remaining material lies entirely inside a growing hole
+			bool region_empty = false;
 			if (temp.size() > 1)
 			{
 				std::vector<Curve>::iterator it1 = temp.begin();
-				while (it1 != temp.end() && temp.size() > 1)
+				while (it1 != temp.end() && temp.size() > 1 && !region_empty)
 				{
 					bool merged = false;
 					std::vector<Curve>::iterator it2 = it1 + 1;
@@ -337,6 +357,19 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 						auto cw1 = (*it1).cw();
 						auto cw2 = (*it2).cw();
 						std::vector<Curve> merged_curves;
+
+						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
+						// there is nothing left to machine, and the holes must not keep growing outside of the material
+						if ((*it1).level() != (*it2).level())
+						{
+							Curve& material = (*it1).level() < (*it2).level() ? (*it1) : (*it2);
+							Curve& hole = (*it1).level() < (*it2).level() ? (*it2) : (*it1);
+							if (material.inside(hole))
+							{
+								region_empty = true;
+								break;
+							}
+						}
 
 						if ((*it1).level() != (*it2).level())
 						{
@@ -378,6 +411,9 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 						it1++;
 				}
 			}
+
+			if (region_empty)
+				temp.clear();
 
 			auto s = temp.size();
 
