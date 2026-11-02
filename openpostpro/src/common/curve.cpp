@@ -1015,7 +1015,8 @@ std::vector<Curve> Curve::offset(float o, float max)
 		if (curve_intersect(c))
 		{
 			cross_found = true;
-			cw_found = !c.cw();
+			// the pieces to keep have the direction of the original curve, the loops created by the trim have the opposite one
+			cw_found = cw();
 		}
 	}
 
