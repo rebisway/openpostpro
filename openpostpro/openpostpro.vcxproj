@@ -48,7 +48,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -151,7 +151,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)src\third\IMGUI_third\ImGuiColortextEdit;$(ProjectDir)src\test;$(ProjectDir)src\ui;$(ProjectDir)src\common;$(ProjectDir)src\third\;$(ProjectDir)src\third\IMGUI;$(ProjectDir)src\third\IMGUI\backends;$(ProjectDir)src\cad;$(ProjectDir)src\postpro;$(ProjectDir)src\script;$(ProjectDir)src\cam;$(ProjectDir)src\python;$(ProjectDir)src\third\GLM\;$(ProjectDir)src\third\gl3w\;$(ProjectDir)src\third\stb\;$(ProjectDir)src\third\freetype;$(ProjectDir)src\third\siglot;$(ProjectDir)src\third\python\313;$(ProjectDir)postcallback;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -183,7 +183,8 @@
     </None>
     <ClCompile Include="src\common\pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\cad\arc.cpp" />
     <ClCompile Include="src\cad\cad.cpp" />
@@ -228,35 +229,43 @@
     <ClCompile Include="src\test\test_cad.cpp" />
     <ClCompile Include="src\third\gl3w\GL\gl3w.c">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\third\IMGUI\backends\imgui_impl_glfw.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\third\IMGUI\backends\imgui_impl_opengl3.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\third\IMGUI\imgui.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\third\IMGUI\imgui_draw.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\third\IMGUI\imgui_tables.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\third\IMGUI\imgui_widgets.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\third\IMGUI_third\ImGuiColorTextEdit\TextEditor.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <ForcedIncludeFiles></ForcedIncludeFiles>
+      <ForcedIncludeFiles>
+      </ForcedIncludeFiles>
     </ClCompile>
     <ClCompile Include="src\ui\application.cpp" />
     <ClCompile Include="src\ui\camera.cpp" />
@@ -353,4 +362,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-</Project>
+</Project>
