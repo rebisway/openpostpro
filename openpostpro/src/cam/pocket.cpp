@@ -41,6 +41,15 @@ void Pocket::stepover(float value)
 	}
 }
 
+void Pocket::contours(bool value)
+{
+	if (value != _contours)
+	{
+		_contours = value;
+		compute();
+	}
+}
+
 void Pocket::angle(float value)
 {
 	if (value != _angle)
@@ -823,13 +832,16 @@ void Pocket::update()
 
 			_computed.insert(_computed.end(), process.begin(), process.end());
 
-			// the last offset is the finishing pass : the first one when there is a finishing value, the only one otherwise
+			// the last offset is the finishing pass : the first one when there is a finishing value, the only one otherwise. The zigzag
+			// can be machined without the contour of its area
+			bool contours = _mode != PocketMode::Zigzag || _contours;
 			if (_finishing > 0)
 			{
-				_computed.insert(_computed.end(), finish.begin(), finish.end());
+				if (contours)
+					_computed.insert(_computed.end(), finish.begin(), finish.end());
 				last.insert(last.end(), inner.begin(), inner.end());
 			}
-			else
+			else if (contours)
 				last.insert(last.end(), finish.begin(), finish.end());
 		}
 
@@ -911,6 +923,15 @@ void Pocket::ui()
 		float an = _angle;
 		if (ImGui::InputFloat("##ANGLE", &an, 0, 0, "%.1f", ImGuiInputTextFlags_EnterReturnsTrue))
 			angle(an);
+
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("CONTOURS"));
+		ImGui::TableSetColumnIndex(1);
+		bool co = _contours;
+		if (ImGui::Checkbox("##CONTOURS", &co))
+			contours(co);
 	}
 
 	ImGui::EndTable();
@@ -930,7 +951,8 @@ std::string Pocket::write()
 		WN(_finishing) +
 		WN(_stepover) +
 		WN(_angle) +
-		WB(_climb);
+		WB(_climb) +
+		WB(_contours);
 
 	auto ref = references();
 	result += WS(std::string("[#REF_IDS#]"));
@@ -972,6 +994,12 @@ void Pocket::read(std::string value, float version)
 	RF(_angle, 9);
 	RB(_climb, 10);
 
+	// the files written before this option have the references block here
+	if (data.size() > 11 && data[11] != "[#REF_IDS#]")
+	{
+		RB(_contours, 11);
+	}
+
 	int ref = -1;
 	for (int i = 0; i < data.size() && ref == -1; i++)
 	{
@@ -1007,7 +1035,7 @@ void Pocket::read(std::string value, float version)
 		for (int i = 0; i < count; i++)
 		{
 			int size = 0;
-			RI(size, ref + i);
+			RI(size, ref);
 			ref++;
 			Curve c;
 			for (int j = 0; j < size; j++)
@@ -1027,6 +1055,8 @@ void Pocket::read(std::string value, float version)
 			tree->sort();
 			tree->cw_alter();
 			_tree = tree;
+
 		}
 	}
+	update();
 }

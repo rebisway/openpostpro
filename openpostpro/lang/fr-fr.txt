@@ -185,3 +185,4 @@ CAM_FOLLOW_COUNTERCW=Sens anti-horaire
 TOOLPATH_START_LENGTH=Position de départ
 FINISHING=Finition
 STEPOVER=Pas
+CONTOURS=Contours

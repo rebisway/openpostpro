@@ -179,7 +179,7 @@ void Follow::read(std::string value, float version)
 		for (int i = 0; i < count; i++)
 		{
 			int size = 0;
-			RI(size, ref + i);
+			RI(size, ref);
 			ref++;
 			Curve c;
 			for (int j = 0; j < size; j++)

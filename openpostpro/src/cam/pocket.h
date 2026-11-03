@@ -36,6 +36,7 @@ private:
 	float _finishing = 0.0f;
 	float _stepover = 0.0f;
 	float _angle = 0.0f;
+	bool _contours = true;
 
 public:
 	GraphicType type() override { return GraphicType::CamPocket; }
@@ -56,6 +57,10 @@ public:
 	// angle of the scan lines of the zigzag, in degrees
 	float angle() { return _angle; }
 	void angle(float value);
+
+	// if false, the zigzag is machined without the contour of the roughing area
+	bool contours() { return _contours; }
+	void contours(bool value);
 
 	bool climb() { return _climb; }
 	void climb(bool value) { _climb = value; }

@@ -27,3 +27,4 @@ WINDOW_OUTPUT=Output
 FINISHING=Finishing
 STEPOVER=Stepover
 ANGLE=Angle
+CONTOURS=Contours

@@ -209,7 +209,7 @@ void Offset::read(std::string value, float version)
 		for (int i = 0; i < count; i++)
 		{
 			int size = 0;
-			RI(size, ref + i);
+			RI(size, ref);
 			ref++;
 			Curve c;
 			for (int j = 0; j < size; j++)
@@ -221,6 +221,7 @@ void Offset::read(std::string value, float version)
 			}
 			_original.push_back(c);
 		}
+
 	}
 
 	ref++;
@@ -228,5 +229,7 @@ void Offset::read(std::string value, float version)
 	RI(stype, ref); _start_point_type = (StartPointType)stype;
 	RF(_start_point_length, ref++);
 	RF(_start_point_offset, ref);
+
+	update();
 }
 

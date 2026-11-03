@@ -27,3 +27,4 @@ WINDOW_OUTPUT=Salida
 FINISHING=Acabado
 STEPOVER=Paso
 ANGLE=Angulo
+CONTOURS=Contornos
