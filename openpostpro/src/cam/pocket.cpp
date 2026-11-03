@@ -44,7 +44,7 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 {
 	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
 	// after this delay, the curves already computed are kept as they are
-	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
 
 	std::vector<Curve> result, temp;
 
@@ -166,6 +166,10 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 
 			auto s = temp.size();
 
+			// without any material left, the holes have nothing to cut and must not keep growing
+			if (std::none_of(temp.begin(), temp.end(), [&](Curve& c) { return c.level() == smaller_level; }))
+				temp.clear();
+
 			result.insert(result.end(), temp.begin(), temp.end());
 			inter = temp;
 		}
@@ -180,7 +184,7 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 {
 	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
 	// after this delay, the curves already computed are kept as they are
-	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
 
 	std::vector<Curve> result, temp;
 
@@ -252,8 +256,6 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 
 			// set when the remaining material lies entirely inside a growing hole
 			bool region_empty = false;
-			// set when a piece of material has been dropped because it lies inside a hole offset
-			bool dropped_material = false;
 			// every merge replaces curves by other curves, the budget guarantees that the loop ends even if a degenerate case would
 			// give the same curves again and again
 			int merge_budget = (int)temp.size() * 2 + 10;
@@ -289,7 +291,6 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 									break;
 								}
 								temp.erase((*it1).level() < (*it2).level() ? it1 : it2);
-								dropped_material = true;
 								merged = true;
 								break;
 							}
@@ -346,17 +347,17 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 			if (region_empty)
 				temp.clear();
 
-			// the holes which are not inside any remaining curve of a lower level have no material left to cut : they must not keep growing
-			if (dropped_material)
-				temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
-				{
-					if (c.level() <= 1)
+			// a hole which neither lies in nor touches a curve of a lower level has no material left around : it is a piece of inner offset
+			// which has to be excluded, otherwise it keeps growing outwards
+			temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
+			{
+				if (c.level() <= 1 || c.cw() == cw)
+					return false;
+				for (Curve& d : temp)
+					if (d.level() < c.level() && (c.inside(d) || c.curve_intersect(d)))
 						return false;
-					for (Curve& d : temp)
-						if (d.level() < c.level() && c.inside(d))
-							return false;
-					return true;
-				}), temp.end());
+				return true;
+			}), temp.end());
 
 			temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
 			{
@@ -366,6 +367,10 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 			}), temp.end());
 
 			auto s = temp.size();
+
+			// without any material left, the holes have nothing to cut and must not keep growing
+			if (std::none_of(temp.begin(), temp.end(), [&](Curve& c) { return c.level() == smaller_level; }))
+				temp.clear();
 
 			result.insert(result.end(), temp.begin(), temp.end());
 			inter = temp;
@@ -382,7 +387,7 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 {
 	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
 	// after this delay, the curves already computed are kept as they are
-	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
 
 	std::vector<Curve> result, temp;
 
@@ -434,8 +439,6 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 
 			// set when the remaining material lies entirely inside a growing hole
 			bool region_empty = false;
-			// set when a piece of material has been dropped because it lies inside a hole offset
-			bool dropped_material = false;
 			// every merge replaces curves by other curves, the budget guarantees that the loop ends even if a degenerate case would
 			// give the same curves again and again
 			int merge_budget = (int)temp.size() * 2 + 10;
@@ -471,7 +474,6 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 									break;
 								}
 								temp.erase((*it1).level() < (*it2).level() ? it1 : it2);
-								dropped_material = true;
 								merged = true;
 								break;
 							}
@@ -527,19 +529,23 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 			if (region_empty)
 				temp.clear();
 
-			// the holes which are not inside any remaining curve of a lower level have no material left to cut : they must not keep growing
-			if (dropped_material)
-				temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
-				{
-					if (c.level() <= 1)
+			// a hole which neither lies in nor touches a curve of a lower level has no material left around : it is a piece of inner offset
+			// which has to be excluded, otherwise it keeps growing outwards
+			temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
+			{
+				if (c.level() <= 1 || c.cw() == cw)
+					return false;
+				for (Curve& d : temp)
+					if (d.level() < c.level() && (c.inside(d) || c.curve_intersect(d)))
 						return false;
-					for (Curve& d : temp)
-						if (d.level() < c.level() && c.inside(d))
-							return false;
-					return true;
-				}), temp.end());
+				return true;
+			}), temp.end());
 
 			auto s = temp.size();
+
+			// without any material left, the holes have nothing to cut and must not keep growing
+			if (std::none_of(temp.begin(), temp.end(), [&](Curve& c) { return c.level() == smaller_level; }))
+				temp.clear();
 
 			result.insert(result.end(), temp.begin(), temp.end());
 			inter = temp;

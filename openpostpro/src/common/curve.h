@@ -429,6 +429,7 @@ private:
 	/// <param name="b">second curve</param>
 	/// <param name="outside">if true start with outside segment for union/sub, false for intersect/xor</param>
 	/// <returns></returns>
+	bool robust_boolean(Curve& other, bool same_direction, bool outside, std::vector<Curve>& result);
 	std::vector<Curve> weiler(Curve& b, bool same_direction, bool outside);
 };
 
