@@ -111,6 +111,13 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 					{
 						auto cw1 = (*it1).cw();
 						auto cw2 = (*it2).cw();
+
+						// curves which bounds do not touch have nothing to merge
+						if ((*it1).bounds().outside((*it2).bounds()))
+						{
+							it2++;
+							continue;
+						}
 						std::vector<Curve> merged_curves;
 
 						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
@@ -270,6 +277,13 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 					{
 						auto cw1 = (*it1).cw();
 						auto cw2 = (*it2).cw();
+
+						// curves which bounds do not touch have nothing to merge
+						if ((*it1).bounds().outside((*it2).bounds()))
+						{
+							it2++;
+							continue;
+						}
 						std::vector<Curve> merged_curves;
 
 						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
@@ -354,7 +368,7 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 				if (c.level() <= 1 || c.cw() == cw)
 					return false;
 				for (Curve& d : temp)
-					if (d.level() < c.level() && (c.inside(d) || c.curve_intersect(d)))
+					if (d.level() < c.level() && !c.bounds().outside(d.bounds()) && (c.inside(d) || c.curve_intersect(d)))
 						return false;
 				return true;
 			}), temp.end());
@@ -453,6 +467,13 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 					{
 						auto cw1 = (*it1).cw();
 						auto cw2 = (*it2).cw();
+
+						// curves which bounds do not touch have nothing to merge
+						if ((*it1).bounds().outside((*it2).bounds()))
+						{
+							it2++;
+							continue;
+						}
 						std::vector<Curve> merged_curves;
 
 						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
@@ -536,7 +557,7 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 				if (c.level() <= 1 || c.cw() == cw)
 					return false;
 				for (Curve& d : temp)
-					if (d.level() < c.level() && (c.inside(d) || c.curve_intersect(d)))
+					if (d.level() < c.level() && !c.bounds().outside(d.bounds()) && (c.inside(d) || c.curve_intersect(d)))
 						return false;
 				return true;
 			}), temp.end());

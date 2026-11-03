@@ -3019,14 +3019,14 @@ bool Curve::robust_boolean(Curve& other, bool same_direction, bool outside, std:
 	}
 
 	// the result has the direction of the first curve, the second one is turned to be in the right direction relatively to it
+	// the bounds of both curves have just been computed, they are copied with them : only a reversed curve needs them again
 	Curve a = *this, b = other;
-	bool a_cw = a.cw();
-	if (same_direction)
-		b.cw(a_cw);
-	else
-		b.cw(!a_cw);
-	a.reset_bounds();
-	b.reset_bounds();
+	const bool a_cw = a.cw();
+	if (b.cw() != (same_direction ? a_cw : !a_cw))
+	{
+		b.reverse();
+		b.reset_bounds();
+	}
 
 	const int orientation = a_cw ? -1 : 1;
 	const int na = (int)a.size(), nb = (int)b.size();
