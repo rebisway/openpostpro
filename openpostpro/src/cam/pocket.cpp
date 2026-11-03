@@ -18,6 +18,7 @@
 #include "pocket.h"
 #include <imgui.h>
 #include <lang.h>
+#include <strings.h>
 #include <algorithm>
 #include <chrono>
 #include <limits>
@@ -31,6 +32,24 @@ void Pocket::mode(PocketMode value)
 	}
 }
 
+void Pocket::stepover(float value)
+{
+	if (value != _stepover)
+	{
+		_stepover = value;
+		compute();
+	}
+}
+
+void Pocket::angle(float value)
+{
+	if (value != _angle)
+	{
+		_angle = value;
+		compute();
+	}
+}
+
 void Pocket::finishing(float value)
 {
 	if (value != _finishing)
@@ -40,13 +59,256 @@ void Pocket::finishing(float value)
 	}
 }
 
+namespace
+{
+	// crossing of a scan line with a curve
+	struct ZigzagCrossing
+	{
+		glm::vec2 point;
+		int curve = 0;			// index of the crossed curve
+		int segment = 0;		// index of the crossed segment
+		float position = 0;		// distance from the start of the segment, to sort the crossings along the curve
+		int row = 0;
+		int interval = -1;		// the interval of the row which has this crossing as one of its ends
+		int rank = 0;			// index among the crossings of the curve, sorted along it
+	};
+
+	// part of a scan line which is inside the material
+	struct ZigzagInterval
+	{
+		int left = -1;			// index of the crossing on the left
+		int right = -1;			// index of the crossing on the right
+		bool used = false;
+	};
+
+	// angle swept from the start of an arc to a point, following the direction of the arc
+	float zigzag_sweep(Segment& s, glm::vec2 p)
+	{
+		float a0 = std::atan2(s.point.y - s.center.y, s.point.x - s.center.x);
+		float a1 = std::atan2(p.y - s.center.y, p.x - s.center.x);
+		float a = s.cw ? a0 - a1 : a1 - a0;
+		while (a < 0)
+			a += glm::two_pi<float>();
+		while (a >= glm::two_pi<float>())
+			a -= glm::two_pi<float>();
+		return a;
+	}
+
+	// a scan line which goes through a vertex, or which is tangent to an arc, gives crossings which can not be counted safely
+	bool zigzag_clear(std::vector<Curve>& curves, float y)
+	{
+		for (Curve& c : curves)
+			for (Segment& s : c)
+			{
+				if (glm::abs(s.point.y - y) < geometry::ERR_FLOAT3)
+					return false;
+				if (s.type != SegmentType::Line && (glm::abs(s.center.y - s.radius - y) < geometry::ERR_FLOAT3 || glm::abs(s.center.y + s.radius - y) < geometry::ERR_FLOAT3))
+					return false;
+			}
+		return true;
+	}
+
+	void zigzag_cross(std::vector<ZigzagCrossing>& crossings, Curve& c, int curve, float y, int row)
+	{
+		for (int i = 0; i < (int)c.size(); i++)
+		{
+			Segment& s = c[i];
+			glm::vec2 dst = c[i == (int)c.size() - 1 ? 0 : i + 1].point;
+
+			if (s.type == SegmentType::Line)
+			{
+				if ((s.point.y < y) != (dst.y < y))
+				{
+					ZigzagCrossing x;
+					x.point = glm::vec2(s.point.x + (y - s.point.y) * (dst.x - s.point.x) / (dst.y - s.point.y), y);
+					x.curve = curve;
+					x.segment = i;
+					x.position = glm::distance(s.point, x.point);
+					x.row = row;
+					crossings.push_back(x);
+				}
+			}
+			else
+			{
+				float dy = y - s.center.y;
+				if (glm::abs(dy) >= s.radius)
+					continue;
+
+				float dx = glm::sqrt(s.radius * s.radius - dy * dy);
+				// an arc which ends where it starts is a whole circle, a very small sweep is a very small arc
+				float total = glm::distance(s.point, dst) < geometry::ERR_FLOAT6 ? glm::two_pi<float>() : zigzag_sweep(s, dst);
+
+				for (int k = -1; k <= 1; k += 2)
+				{
+					glm::vec2 p(s.center.x + k * dx, y);
+					float a = zigzag_sweep(s, p);
+					if (a < total)
+					{
+						ZigzagCrossing x;
+						x.point = p;
+						x.curve = curve;
+						x.segment = i;
+						x.position = a * s.radius;
+						x.row = row;
+						crossings.push_back(x);
+					}
+				}
+			}
+		}
+	}
+
+	// add the start of a piece of the path, which follows the segment s from the point p, in its direction or backwards
+	void zigzag_add(Curve& path, glm::vec2 p, Segment& s, bool forward)
+	{
+		if (s.type == SegmentType::Line)
+			path.add(p);
+		else
+			path.add(p, s.center, s.radius, forward ? s.cw : !s.cw);
+	}
+
+	// follow the curve c from a crossing to the next (or the previous) one. The destination is the start of the next piece of the path,
+	// so it is not added.
+	void zigzag_wall(Curve& path, Curve& c, ZigzagCrossing& from, ZigzagCrossing& to, bool forward)
+	{
+		int size = (int)c.size();
+		int k = from.segment;
+		bool first = true;
+
+		zigzag_add(path, from.point, c[k], forward);
+
+		if (forward)
+		{
+			while (!(k == to.segment && (!first || to.position > from.position)))
+			{
+				first = false;
+				k = (k + 1) % size;
+				zigzag_add(path, c[k].point, c[k], true);
+			}
+		}
+		else
+		{
+			while (!(k == to.segment && (!first || to.position < from.position)))
+			{
+				first = false;
+				int previous = (k + size - 1) % size;
+				zigzag_add(path, c[k].point, c[previous], false);
+				k = previous;
+			}
+		}
+	}
+
+	// the curves are the outer contours and the islands of the same part, the scan lines are horizontal and go from the bottom to the top
+	std::vector<Curve> zigzag_lines(std::vector<Curve>& curves, float step)
+	{
+		std::vector<Curve> result;
+
+		if (curves.size() == 0 || step <= 0)
+			return result;
+
+		float bottom = std::numeric_limits<float>::max(), top = std::numeric_limits<float>::lowest();
+		for (Curve& c : curves)
+		{
+			bottom = glm::min(bottom, c.bounds().bottom());
+			top = glm::max(top, c.bounds().top());
+		}
+
+		// every scan line is crossed with the curves, the crossings are sorted along the line, the material is between the odd
+		// crossings and the even ones
+		std::vector<ZigzagCrossing> crossings;
+		std::vector<ZigzagInterval> intervals;
+		int rows = 0;
+		for (int r = 1; bottom + r * step < top; r++)
+		{
+			float y = bottom + r * step;
+			while (!zigzag_clear(curves, y))
+				y += 2 * geometry::ERR_FLOAT3;
+
+			std::vector<ZigzagCrossing> line;
+			for (int i = 0; i < (int)curves.size(); i++)
+				if (curves[i].bounds().bottom() < y && curves[i].bounds().top() > y)
+					zigzag_cross(line, curves[i], i, y, rows);
+			std::sort(line.begin(), line.end(), [](const ZigzagCrossing& x1, const ZigzagCrossing& x2) { return x1.point.x < x2.point.x; });
+
+			for (int i = 0; i + 1 < (int)line.size(); i += 2)
+			{
+				ZigzagInterval interval;
+				interval.left = (int)crossings.size();
+				interval.right = interval.left + 1;
+				line[i].interval = line[i + 1].interval = (int)intervals.size();
+				intervals.push_back(interval);
+				crossings.push_back(line[i]);
+				crossings.push_back(line[i + 1]);
+			}
+			rows++;
+		}
+
+		// the crossings of each curve are sorted along it, to find the pieces of the curve which link a row to the next one
+		std::vector<std::vector<int>> along(curves.size());
+		for (int i = 0; i < (int)crossings.size(); i++)
+			along[crossings[i].curve].push_back(i);
+		for (std::vector<int>& a : along)
+		{
+			std::sort(a.begin(), a.end(), [&](int i1, int i2)
+			{
+				if (crossings[i1].segment != crossings[i2].segment)
+					return crossings[i1].segment < crossings[i2].segment;
+				return crossings[i1].position < crossings[i2].position;
+			});
+			for (int i = 0; i < (int)a.size(); i++)
+				crossings[a[i]].rank = i;
+		}
+
+		// we go through the intervals, from the first one on the left to its right end, we follow the curve up to the next row, and we go
+		// back on the next interval, and so on, until there is no interval left above
+		for (int first = 0; first < (int)intervals.size(); first++)
+		{
+			if (intervals[first].used)
+				continue;
+
+			Curve path;
+			int interval = first;
+			int from = intervals[first].left;
+			while (true)
+			{
+				intervals[interval].used = true;
+				int to = from == intervals[interval].left ? intervals[interval].right : intervals[interval].left;
+				path.add(crossings[from].point);
+
+				// the destination is the next or the previous crossing of the curve, if it is on the next row
+				std::vector<int>& a = along[crossings[to].curve];
+				int size = (int)a.size();
+				int next = -1;
+				bool forward = true;
+				for (int k = 0; k < 2 && next == -1; k++)
+				{
+					int candidate = a[(crossings[to].rank + (k == 0 ? 1 : size - 1)) % size];
+					if (crossings[candidate].row == crossings[to].row + 1 && !intervals[crossings[candidate].interval].used)
+					{
+						next = candidate;
+						forward = k == 0;
+					}
+				}
+
+				if (next == -1)
+				{
+					path.add(crossings[to].point);
+					break;
+				}
+
+				zigzag_wall(path, curves[crossings[to].curve], crossings[to], crossings[next], forward);
+				interval = crossings[next].interval;
+				from = next;
+			}
+			result.push_back(path);
+		}
+
+		return result;
+	}
+}
+
 std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 {
-	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
-	// after this delay, the curves already computed are kept as they are
-	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
-
-	std::vector<Curve> result, temp;
+	std::vector<Curve> result;
 
 	if (curves.size() == 0)
 		return result;
@@ -68,122 +330,50 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 		}
 	}
 
-	for (std::vector<Curve> inter : sorted_levels)
+	// the scan lines are horizontal : the curves are turned by the opposite of the angle of the lines, and the lines are turned back
+	const float rotation = glm::radians(_angle);
+	auto rotate = [](Curve& c, float angle)
 	{
-		Curve::sort_level(inter);
-		auto cw = inter.front().cw();
-		const int first_level = inter.front().level();
-
-		// checking iner and outer, the inner contour should exist, otherwise there is an algo issue
-		int smaller_level = std::numeric_limits<int>::max();
-		int greater_level = std::numeric_limits<int>::max();
-
-		while (inter.size() > 0 && smaller_level == greater_level && std::chrono::steady_clock::now() < deadline)
+		float cs = glm::cos(angle), sn = glm::sin(angle);
+		for (Segment& s : c)
 		{
-			// sort the list following level, because if different level, we have to make the substrat based on lower level
-			Curve::sort_level(inter);
+			s.point = glm::vec2(s.point.x * cs - s.point.y * sn, s.point.x * sn + s.point.y * cs);
+			s.center = glm::vec2(s.center.x * cs - s.center.y * sn, s.center.x * sn + s.center.y * cs);
+		}
+		c.reset_bounds();
+	};
 
-			temp.clear();
-
-			smaller_level = std::numeric_limits<int>::max();
-			greater_level = std::numeric_limits<int>::max();
-
-			for (Curve& c : inter)
+	for (std::vector<Curve>& group : sorted_levels)
+	{
+		for (Curve& c : group)
+		{
+			// the circles are turned into two arcs, to be followed like any other curve
+			if (c.size() > 0 && c[0].type == SegmentType::Circle)
 			{
-				auto o = c.offset((c.cw() == cw ? -radius() : radius()));
-				smaller_level = glm::min(smaller_level, c.level());
-				if (o.size() > 0)
-					greater_level = glm::min(greater_level, c.level());
-				temp.insert(temp.begin(), o.begin(), o.end());
+				Curve arcs;
+				glm::vec2 center = c[0].center;
+				float r = c[0].radius;
+				arcs.add(center + glm::vec2(r, 0), center, r, c[0].cw);
+				arcs.add(center - glm::vec2(r, 0), center, r, c[0].cw);
+				arcs.level(c.level());
+				c = arcs;
 			}
 
-			// every merge replaces curves by other curves, the budget guarantees that the loop ends even if a degenerate case would
-			// give the same curves again and again
-			int merge_budget = (int)temp.size() * 2 + 10;
-			if (temp.size() > 1)
-			{
-				std::vector<Curve>::iterator it1 = temp.begin();
-				while (it1 != temp.end() && temp.size() > 1 && merge_budget > 0 && std::chrono::steady_clock::now() < deadline)
-				{
-					bool merged = false;
-					std::vector<Curve>::iterator it2 = it1 + 1;
-					while (it2 != temp.end())
-					{
-						auto cw1 = (*it1).cw();
-						auto cw2 = (*it2).cw();
+			if (rotation != 0)
+				rotate(c, -rotation);
+			else
+				c.reset_bounds();
+		}
 
-						// curves which bounds do not touch have nothing to merge
-						if ((*it1).bounds().outside((*it2).bounds()))
-						{
-							it2++;
-							continue;
-						}
-						std::vector<Curve> merged_curves;
-
-						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
-						bool too_big = (*it1).size() > 1500 || (*it2).size() > 1500;
-
-						if ((*it1).level() != (*it2).level())
-						{
-							if ((*it1).level() < (*it2).level())
-								merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_substract((*it2));
-							else
-								merged_curves = too_big ? std::vector<Curve>() : (*it2).boolean_substract((*it1));
-						}
-						else
-							merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_union((*it2));
-
-
-						// the result keeps the lower level (the outer contour), whatever the order of the two curves
-						int merged_level = glm::min((*it1).level(), (*it2).level());
-						if (merged = merged_curves.size() > 0)
-						{
-							for (Curve& m : merged_curves)
-							{
-								m.close();
-								//m.cw(cw1);
-								// a subtraction can leave a hole inside the material (the holes enclosed a ring of material for instance) :
-								// a curve which turns against the first curve is a hole, it must keep growing as a hole
-								int level = merged_level;
-								if ((*it1).level() != (*it2).level() && (level - first_level) % 2 == 0 && m.cw() != cw)
-									level++;
-								m.level(level);
-							}
-							merge_budget--;
-							temp.erase(it2);
-							temp.erase(it1);
-							temp.insert(temp.begin(), merged_curves.begin(), merged_curves.end());
-							break;
-						}
-						else
-						{
-							(*it1).cw(cw1);
-							(*it1).close();
-							(*it2).cw(cw2);
-							(*it2).close();
-							it2++;
-						}
-					}
-					if (merged)
-						it1 = temp.begin();
-					else
-						it1++;
-				}
-			}
-
-			auto s = temp.size();
-
-			// without any material left, the holes have nothing to cut and must not keep growing
-			if (std::none_of(temp.begin(), temp.end(), [&](Curve& c) { return c.level() == smaller_level; }))
-				temp.clear();
-
-			result.insert(result.end(), temp.begin(), temp.end());
-			inter = temp;
+		auto lines = zigzag_lines(group, step());
+		for (Curve& l : lines)
+		{
+			if (rotation != 0)
+				rotate(l, rotation);
+			result.push_back(l);
 		}
 	}
 
-	for (auto& c : result)
-		c.close();
 	return result;
 }
 
@@ -584,12 +774,15 @@ void Pocket::update()
 	if (_tree != nullptr)
 	{
 		_computed.clear();
-		std::vector<Curve> inner;
+
+		// the finishing passes of all the parts are machined at the very end
+		std::vector<Curve> last;
 
 		_tree->cw_alter(!cw());
 
 		for (TreeCurve* t : _tree->children)
 		{
+			std::vector<Curve> inner;
 			bool cw = t->curve->cw();
 			_original = t->curves();
 
@@ -607,11 +800,13 @@ void Pocket::update()
 			std::vector<Curve> finish;
 			if (_finishing > 0)
 			{
+				// the first offset is the finishing one, the roughing one is farther inside, by the value of the finishing
 				for (Curve& c : inner)
 				{
-					auto curves = c.offset((c.cw() == cw ? _finishing : -_finishing));
+					auto curves = c.offset((c.cw() == cw ? -_finishing : _finishing));
 					finish.insert(finish.end(), curves.begin(), curves.end());
 				}
+				finish = merge(finish);
 			}
 			else
 				finish.insert(finish.end(), inner.begin(), inner.end());
@@ -627,8 +822,18 @@ void Pocket::update()
 
 
 			_computed.insert(_computed.end(), process.begin(), process.end());
-			_computed.insert(_computed.end(), finish.begin(), finish.end());
+
+			// the last offset is the finishing pass : the first one when there is a finishing value, the only one otherwise
+			if (_finishing > 0)
+			{
+				_computed.insert(_computed.end(), finish.begin(), finish.end());
+				last.insert(last.end(), inner.begin(), inner.end());
+			}
+			else
+				last.insert(last.end(), finish.begin(), finish.end());
 		}
+
+		_computed.insert(_computed.end(), last.begin(), last.end());
 
 		generate_data(_computed);
 		generate_deco(_computed);
@@ -675,7 +880,153 @@ void Pocket::ui()
 		mode((PocketMode)selected_item);
 	}
 
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Spacing();
+	ImGui::Text(Lang::l("FINISHING"));
+	ImGui::TableSetColumnIndex(1);
+	ImGui::PushItemWidth(-FLT_MIN);
+	float f = _finishing;
+	if (ImGui::InputFloat("##FINISHING", &f, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
+		finishing(glm::max(f, 0.0f));
+
+	if (_mode == PocketMode::Zigzag)
+	{
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("STEPOVER"));
+		ImGui::TableSetColumnIndex(1);
+		ImGui::PushItemWidth(-FLT_MIN);
+		float st = step();
+		if (ImGui::InputFloat("##STEPOVER", &st, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
+			stepover(glm::max(st, 0.0f));
+
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("ANGLE"));
+		ImGui::TableSetColumnIndex(1);
+		ImGui::PushItemWidth(-FLT_MIN);
+		float an = _angle;
+		if (ImGui::InputFloat("##ANGLE", &an, 0, 0, "%.1f", ImGuiInputTextFlags_EnterReturnsTrue))
+			angle(an);
+	}
 
 	ImGui::EndTable();
 	ImGui::End();
+}
+
+std::string Pocket::write()
+{
+	std::string result =
+		WN((short)type()) +
+		WN(id()) +
+		WS(parent()) +
+		WS(_name) +
+		WN(_radius) +
+		WB(_cw) +
+		WN((int)_mode) +
+		WN(_finishing) +
+		WN(_stepover) +
+		WN(_angle) +
+		WB(_climb);
+
+	auto ref = references();
+	result += WS(std::string("[#REF_IDS#]"));
+	result += WN(ref.size());
+	for (int i = 0; i < ref.size(); i++)
+		result += WN(ref[i]);
+
+	// the curves which the pocket is computed from
+	std::vector<Curve> curves;
+	if (_tree != nullptr)
+		curves = _tree->curves();
+
+	result += WS(std::string("[#COORDINATES#]"));
+	result += WN(curves.size());
+	for (auto& c : curves)
+	{
+		result += WN(c.size());
+		for (int i = 0; i < c.size(); i++)
+			result += WSEGMENT(c[i]);
+	}
+
+	return result;
+}
+
+void Pocket::read(std::string value, float version)
+{
+	auto data = stringex::split(value, ';');
+
+	RU(_id, 1);
+	RT(2);
+	RS(_name, 3);
+	RF(_radius, 4);
+	RB(_cw, 5);
+	int mode = (int)_mode;
+	RI(mode, 6);
+	_mode = (PocketMode)mode;
+	RF(_finishing, 7);
+	RF(_stepover, 8);
+	RF(_angle, 9);
+	RB(_climb, 10);
+
+	int ref = -1;
+	for (int i = 0; i < data.size() && ref == -1; i++)
+	{
+		if (data[i] == "[#REF_IDS#]")
+			ref = i + 1;
+	}
+	if (ref != -1)
+	{
+		std::vector<int> ids;
+		int count = 0, id = 0;
+		RI(count, ref);
+		ref++;
+		for (int i = 0; i < count; i++)
+		{
+			RI(id, ref + i);
+			ids.push_back(id);
+		}
+		references(ids);
+	}
+
+	ref = -1;
+	for (int i = 0; i < data.size() && ref == -1; i++)
+	{
+		if (data[i] == "[#COORDINATES#]")
+			ref = i + 1;
+	}
+	if (ref != -1)
+	{
+		std::vector<Curve> curves;
+		int count = 0;
+		RI(count, ref);
+		ref++;
+		for (int i = 0; i < count; i++)
+		{
+			int size = 0;
+			RI(size, ref + i);
+			ref++;
+			Curve c;
+			for (int j = 0; j < size; j++)
+			{
+				Segment s;
+				RSEGMENT(s, ref);
+				c.add(s.type, s.point, s.center, s.radius, s.cw);
+				ref++;
+			}
+			curves.push_back(c);
+		}
+
+		// the tree is built like the one of a new pocket
+		if (curves.size() > 0)
+		{
+			TreeCurve* tree = new TreeCurve(curves);
+			tree->sort();
+			tree->cw_alter();
+			_tree = tree;
+		}
+	}
 }

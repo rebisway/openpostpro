@@ -183,3 +183,5 @@ CAM_FOLLOW_CW=Déplacement horaire
 CAM_FOLLOW_CLOCKWISE=Sens horaire
 CAM_FOLLOW_COUNTERCW=Sens anti-horaire
 TOOLPATH_START_LENGTH=Position de départ
+FINISHING=Finition
+STEPOVER=Pas

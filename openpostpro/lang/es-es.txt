@@ -24,3 +24,6 @@ FILTER=Filter
 WINDOW_CAD=Dibujo
 WINDOW_LOG=Registro
 WINDOW_OUTPUT=Salida
+FINISHING=Acabado
+STEPOVER=Paso
+ANGLE=Angulo

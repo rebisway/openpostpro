@@ -34,6 +34,8 @@ private:
 	bool _climb = true;
 	PocketMode _mode = PocketMode::Offset;
 	float _finishing = 0.0f;
+	float _stepover = 0.0f;
+	float _angle = 0.0f;
 
 public:
 	GraphicType type() override { return GraphicType::CamPocket; }
@@ -45,6 +47,15 @@ public:
 
 	float finishing() const { return _finishing; }
 	void finishing(float value);
+
+	// distance between two scan lines of the zigzag, the radius of the tool by default
+	float stepover() { return _stepover; }
+	void stepover(float value);
+	float step() { return _stepover > 0 ? _stepover : radius(); }
+
+	// angle of the scan lines of the zigzag, in degrees
+	float angle() { return _angle; }
+	void angle(float value);
 
 	bool climb() { return _climb; }
 	void climb(bool value) { _climb = value; }
@@ -58,6 +69,10 @@ public:
 	std::vector<Curve> coordinates() override;
 
 	void ui() override;
+
+	// IO
+	std::string write() override;
+	void read(std::string value, float version = 0) override;
 };
 
 #endif
