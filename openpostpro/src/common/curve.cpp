@@ -16,8 +16,10 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "curve.h"
+
 #include <geometry.h>
 #include <map>
+#include <set>
 #include <algorithm>
 #include <deque>
 #include <iostream>
@@ -435,7 +437,8 @@ bool Curve::cw()
 			if (size() == 0)
 				_cw = true;
 			else
-				// we compute area : if odd then CCW else CW
+				// we compute the signed area, the arcs are taken into account : the points alone are not enough for a curve which
+				// has only a few arcs (a circle made of two arcs has no area when only the points are used)
 				_cw = limited_area() < 0;
 		}
 	}
@@ -970,6 +973,59 @@ void Curve::scale(float factor)
 //  3 - split the trimmed curve at intersection points. Indeed the trimmed result can create curve with self intersections.
 //      we need to split the trimmed curve and output a new curve following the intersection points
 //  4 - we have to check and refuse curves that are tout small (size of offset) or curves to close to the original curve
+/// <summary>
+/// When an arc of the original curve collapses during an offset, the raw offset curve folds back on itself along a line, which makes a
+/// spike : [p0, p1] followed by [p1, p2] with p2 on the line (p0, p1). The result is the same as the single segment [p0, p2], but the
+/// spike produces several intersections that are closer to each other than the precision of the coordinates, and the curve is then
+/// split the wrong way. The spikes are replaced by the single segment.
+/// </summary>
+void Curve::remove_spikes()
+{
+	bool closed_curve = size() > 2 && front().point == back().point;
+	if (closed_curve)
+		pop_back();
+
+	bool changed = true;
+	bool modified = false;
+	while (changed && size() > 3)
+	{
+		changed = false;
+		for (size_t i = 0; i < size(); i++)
+		{
+			size_t k = (i + 1) % size(), l = (i + 2) % size();
+			Segment& s1 = (*this)[i];
+			Segment& s2 = (*this)[k];
+
+			if (s1.type != SegmentType::Line || s2.type != SegmentType::Line)
+				continue;
+
+			glm::vec2 a = s2.point - s1.point, b = (*this)[l].point - s2.point;
+			float la = glm::length(a), lb = glm::length(b);
+			if (la == 0 || lb == 0)
+				continue;
+
+			// the second segment goes back along the first one, within less than a degree
+			if (glm::dot(a, b) / (la * lb) < -0.9999f)
+			{
+				s1.excluded = s1.excluded || s2.excluded;
+				erase(begin() + k);
+				changed = modified = true;
+				break;
+			}
+		}
+	}
+
+	if (closed_curve)
+		push_back(Segment(front().point));
+
+	if (modified)
+	{
+		_area = -1;
+		_cw = -1;
+		reset_bounds();
+	}
+}
+
 std::vector<Curve> Curve::offset(float o, float max)
 {
 	bool outside = o > 0;
@@ -991,7 +1047,10 @@ std::vector<Curve> Curve::offset(float o, float max)
 
 	auto trimmed = trim(segments, o);
 
-	auto splitted = trimmed.split_at_intersections();
+	trimmed.remove_spikes();
+
+	// the direction of the original curve tells which side of the raw offset curve is the valid one
+	auto splitted = trimmed.split_at_intersections(cw() ? -1 : 1);
 
 	if (false)
 	{
@@ -1859,6 +1918,508 @@ std::vector<Curve> Curve::split_at_intersections()
 }
 
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Robust split of a raw offset curve.
+//
+// The raw offset curve (see trim()) is full of loops that must be removed (swallow tails). Linking the pieces at each
+// intersection point only works if the order of the intersections along each segment is consistent with the order along
+// the curve, which is not the case when intersections are closer than what a float can represent (a cusp folded on a line).
+// Here the decision does not rely on that order : the curve is cut at every intersection into sub edges, and each sub edge
+// is kept or not by looking at the winding number of the whole raw curve on each side of it. The edges that bound the area
+// with a positive winding (relatively to the direction of the original curve) are the valid ones. They are then chained into
+// closed curves.
+// ---------------------------------------------------------------------------------------------------------------------
+
+namespace
+{
+	const double TWO_PI = 6.283185307179586;
+
+	double norm_angle(double a)
+	{
+		a = std::fmod(a, TWO_PI);
+		if (a < 0)
+			a += TWO_PI;
+		return a;
+	}
+
+	// intersections are computed again in double precision, from the same float inputs, to get a reliable position of each
+	// intersection along each of the two segments
+	glm::dvec2 refine_line_line(glm::vec2 a1, glm::vec2 a2, glm::vec2 b1, glm::vec2 b2, glm::vec2 guess)
+	{
+		glm::dvec2 p1(a1), d1 = glm::dvec2(a2) - p1, p2(b1), d2 = glm::dvec2(b2) - p2;
+		double den = d1.x * d2.y - d1.y * d2.x;
+		if (den == 0)
+			return glm::dvec2(guess);
+		double t = ((p2.x - p1.x) * d2.y - (p2.y - p1.y) * d2.x) / den;
+		return p1 + d1 * t;
+	}
+
+	glm::dvec2 refine_line_arc(glm::vec2 a1, glm::vec2 a2, glm::vec2 center, float radius, glm::vec2 guess)
+	{
+		glm::dvec2 p(a1), d = glm::dvec2(a2) - p, c(center), g(guess);
+		glm::dvec2 f = p - c;
+		double a = glm::dot(d, d), b = 2 * glm::dot(f, d), cc = glm::dot(f, f) - (double)radius * (double)radius;
+		if (a == 0)
+			return g;
+		double disc = b * b - 4 * a * cc;
+		if (disc < 0)
+			disc = 0;
+		double s = std::sqrt(disc);
+		glm::dvec2 r1 = p + d * ((-b - s) / (2 * a)), r2 = p + d * ((-b + s) / (2 * a));
+		return glm::dot(r1 - g, r1 - g) <= glm::dot(r2 - g, r2 - g) ? r1 : r2;
+	}
+
+	glm::dvec2 refine_arc_arc(glm::vec2 center1, float radius1, glm::vec2 center2, float radius2, glm::vec2 guess)
+	{
+		glm::dvec2 c1(center1), c2(center2), g(guess);
+		glm::dvec2 v = c2 - c1;
+		double dist = glm::length(v);
+		if (dist == 0)
+			return g;
+		double r1 = radius1, r2 = radius2;
+		double a = (r1 * r1 - r2 * r2 + dist * dist) / (2 * dist);
+		double h2 = r1 * r1 - a * a;
+		if (h2 < 0)
+			h2 = 0;
+		double h = std::sqrt(h2);
+		glm::dvec2 m = c1 + v * (a / dist), n(-v.y / dist, v.x / dist);
+		glm::dvec2 q1 = m + n * h, q2 = m - n * h;
+		return glm::dot(q1 - g, q1 - g) <= glm::dot(q2 - g, q2 - g) ? q1 : q2;
+	}
+
+	glm::dvec2 refine_intersection(const Segment& s1, glm::vec2 dst1, const Segment& s2, glm::vec2 dst2, glm::vec2 guess)
+	{
+		if (s1.type == SegmentType::Line && s2.type == SegmentType::Line)
+			return refine_line_line(s1.point, dst1, s2.point, dst2, guess);
+		if (s1.type == SegmentType::Line && s2.type == SegmentType::Arc)
+			return refine_line_arc(s1.point, dst1, s2.center, s2.radius, guess);
+		if (s1.type == SegmentType::Arc && s2.type == SegmentType::Line)
+			return refine_line_arc(s2.point, dst2, s1.center, s1.radius, guess);
+		if (s1.type == SegmentType::Arc && s2.type == SegmentType::Arc)
+			return refine_arc_arc(s1.center, s1.radius, s2.center, s2.radius, guess);
+		return glm::dvec2(guess);
+	}
+
+	// position of point p along the segment, growing from the start to the end of the segment
+	double position_along(const Segment& s, glm::vec2 dst, glm::dvec2 p)
+	{
+		if (s.type == SegmentType::Line)
+		{
+			glm::dvec2 a(s.point), d = glm::dvec2(dst) - a;
+			double len2 = glm::dot(d, d);
+			return len2 == 0 ? 0 : glm::dot(p - a, d) / len2;
+		}
+
+		glm::dvec2 c(s.center);
+		double a0 = std::atan2((double)s.point.y - c.y, (double)s.point.x - c.x);
+		double a1 = std::atan2(p.y - c.y, p.x - c.x);
+		double a2 = std::atan2((double)dst.y - c.y, (double)dst.x - c.x);
+		double sweep = s.cw ? a0 - a2 : a2 - a0;
+		while (sweep <= 0) sweep += TWO_PI;
+		double angle = s.cw ? a0 - a1 : a1 - a0;
+		// angles outside of the arc are centered on the gap, so a point at the very start or end of the arc is not wrapped
+		double low = -(TWO_PI - sweep) / 2;
+		while (angle < low) angle += TWO_PI;
+		while (angle >= low + TWO_PI) angle -= TWO_PI;
+		return angle;
+	}
+
+	// a segment of the raw curve, in the frame used to cast the winding rays
+	struct WindingSegment
+	{
+		bool arc = false;
+		glm::dvec2 p, q, c;
+		double r = 0, a0 = 0, sweep = 0;
+		bool cw = false;
+	};
+
+	class Winding
+	{
+	private:
+		std::vector<WindingSegment> _segments;
+		// the rays are cast along a direction which is not aligned with the coordinates, so a ray never goes exactly through a vertex
+		double _cos = std::cos(0.7390851332), _sin = std::sin(0.7390851332);
+
+		glm::dvec2 rotate(glm::dvec2 v) const { return glm::dvec2(v.x * _cos + v.y * _sin, -v.x * _sin + v.y * _cos); }
+
+	public:
+		void add(const Segment& s, glm::vec2 dst)
+		{
+			WindingSegment w;
+			w.p = rotate(glm::dvec2(s.point));
+			w.q = rotate(glm::dvec2(dst));
+			if (s.type == SegmentType::Arc)
+			{
+				w.arc = true;
+				w.cw = s.cw;
+				w.c = rotate(glm::dvec2(s.center));
+				w.r = glm::length(w.p - w.c);
+				w.a0 = std::atan2(w.p.y - w.c.y, w.p.x - w.c.x);
+				double a1 = std::atan2(w.q.y - w.c.y, w.q.x - w.c.x);
+				w.sweep = s.cw ? norm_angle(w.a0 - a1) : norm_angle(a1 - w.a0);
+			}
+			_segments.push_back(w);
+		}
+
+		int at(glm::dvec2 point) const
+		{
+			glm::dvec2 p = rotate(point);
+			int winding = 0;
+			for (const WindingSegment& s : _segments)
+			{
+				if (!s.arc)
+				{
+					if ((s.p.y <= p.y) != (s.q.y <= p.y))
+					{
+						double x = s.p.x + (p.y - s.p.y) * (s.q.x - s.p.x) / (s.q.y - s.p.y);
+						if (x > p.x)
+							winding += s.q.y > s.p.y ? 1 : -1;
+					}
+				}
+				else
+				{
+					double dy = p.y - s.c.y;
+					if (std::abs(dy) < s.r)
+					{
+						double dx = std::sqrt(s.r * s.r - dy * dy);
+						for (int sign = -1; sign <= 1; sign += 2)
+						{
+							double x = s.c.x + sign * dx;
+							if (x > p.x)
+							{
+								double theta = std::atan2(dy, x - s.c.x);
+								double t = s.cw ? norm_angle(s.a0 - theta) : norm_angle(theta - s.a0);
+								if (t < s.sweep)
+								{
+									double vy = s.cw ? -std::cos(theta) : std::cos(theta);
+									winding += vy > 0 ? 1 : -1;
+								}
+							}
+						}
+					}
+				}
+			}
+			return winding;
+		}
+	};
+
+	struct Hit
+	{
+		double key;
+		glm::vec2 point;
+		int node;
+	};
+
+	struct SubEdge
+	{
+		int segment;
+		int from, to;
+		glm::vec2 p1, p2;
+		bool keep = false;
+		glm::dvec2 tangent_start, tangent_end;
+	};
+
+	int find_root(std::vector<int>& parent, int i)
+	{
+		while (parent[i] != i)
+		{
+			parent[i] = parent[parent[i]];
+			i = parent[i];
+		}
+		return i;
+	}
+}
+
+std::vector<Curve> Curve::split_at_intersections(int orientation)
+{
+	Curve& a = *this;
+	const int n = (int)a.size();
+
+	for (const Segment& s : a)
+		if (s.type == SegmentType::Circle)
+			return split_at_intersections();
+
+	if (n < 3 || orientation == 0)
+		return split_at_intersections();
+
+	bounds();
+
+	// real segments of the curve, the last one goes back to the first point
+	auto dst_of = [&](int i) { return i == n - 1 ? a[0].point : a[i + 1].point; };
+	auto real = [&](int i) { return a[i].point != dst_of(i); };
+
+	// 1. every intersection, with its position along each of the two segments
+	std::vector<glm::vec2> points;
+	for (int i = 0; i < n; i++)
+		points.push_back(a[i].point);
+
+	std::vector<std::vector<Hit>> hits(n);
+	int hit_count = 0;
+
+	// a curve which does not lie on itself has a few intersections. When there are way more than the number of segments, parts of the curve
+	// are on each other (offsets that touch), the intersections can not be linked and there is nothing valid to extract. The search stops
+	// there because the number of intersections can reach the millions.
+	const int max_hits = 4 * n + 64;
+
+	for (int i = 0; i < n && hit_count <= max_hits; i++)
+	{
+		if (!real(i))
+			continue;
+
+		Segment s1 = a[i];
+		glm::vec2 dst1 = dst_of(i);
+
+		auto candidates = a.search(s1.bounds);
+		for (size_t k = 0; k < candidates.size() && hit_count <= max_hits; k++)
+		{
+			int j = candidates[k].index;
+			if (j <= i || !real(j))
+				continue;
+
+			Segment s2 = a[j];
+			glm::vec2 dst2 = dst_of(j);
+
+			// adjacent line segments only meet at their common point
+			if (j == i + 1 && s1.type == SegmentType::Line && s2.type == SegmentType::Line)
+				continue;
+
+			int count = 0;
+			glm::vec2 pp[2];
+
+			if (s1.type == SegmentType::Line && s2.type == SegmentType::Line)
+			{
+				glm::vec2 p = glm::vec2();
+				if (geometry::segment_segment_intersect(s1.point, dst1, s2.point, dst2, p))
+				{
+					pp[0] = p;
+					count = 1;
+				}
+			}
+			else if (s1.type == SegmentType::Line && s2.type == SegmentType::Arc)
+				count = geometry::segment_arc_intersect(s1.point, dst1, s2.point, s2.center, dst2, s2.radius, s2.cw, pp);
+			else if (s1.type == SegmentType::Arc && s2.type == SegmentType::Line)
+				count = geometry::segment_arc_intersect(s2.point, dst2, s1.point, s1.center, dst1, s1.radius, s1.cw, pp);
+			else if (s1.type == SegmentType::Arc && s2.type == SegmentType::Arc)
+				count = geometry::arc_arc_intersect(s1.point, s1.center, dst1, s1.radius, s1.cw, s2.point, s2.center, dst2, s2.radius, s2.cw, pp);
+
+			if (count == 1 && (j == i + 1 || (i == 0 && j == n - 1)))
+				count = 0;
+
+			for (int c = 0; c < count; c++)
+			{
+				glm::dvec2 exact = refine_intersection(s1, dst1, s2, dst2, pp[c]);
+				int node = (int)points.size();
+				points.push_back(pp[c]);
+				hits[i].push_back({ position_along(s1, dst1, exact), pp[c], node });
+				hits[j].push_back({ position_along(s2, dst2, exact), pp[c], node });
+				hit_count++;
+			}
+		}
+	}
+
+	if (hit_count > max_hits)
+		return std::vector<Curve>();
+
+	if (hit_count == 0)
+		return split_at_intersections();
+
+	// 2. nodes : points closer than the tolerance are the same node
+	const float eps = 2 * geometry::ERR_FLOAT3;
+	const float eps2 = eps * eps;
+	std::vector<int> parent(points.size());
+	for (size_t i = 0; i < parent.size(); i++)
+		parent[i] = (int)i;
+	for (size_t i = 0; i < points.size(); i++)
+		for (size_t j = i + 1; j < points.size(); j++)
+		{
+			glm::vec2 d = points[i] - points[j];
+			if (d.x * d.x + d.y * d.y <= eps2)
+			{
+				int ri = find_root(parent, (int)i), rj = find_root(parent, (int)j);
+				if (ri != rj)
+					parent[std::max(ri, rj)] = std::min(ri, rj);
+			}
+		}
+	auto node_of = [&](int point_index) { return find_root(parent, point_index); };
+
+	// 3. sub edges
+	std::vector<SubEdge> edges;
+	for (int i = 0; i < n; i++)
+	{
+		if (!real(i))
+			continue;
+
+		std::sort(hits[i].begin(), hits[i].end(), [](const Hit& h1, const Hit& h2) { return h1.key < h2.key; });
+
+		struct Stop { int node; glm::vec2 point; };
+		std::vector<Stop> stops;
+		stops.push_back({ node_of(i), a[i].point });
+		for (const Hit& h : hits[i])
+			stops.push_back({ node_of(h.node), h.point });
+		stops.push_back({ node_of(i == n - 1 ? 0 : i + 1), dst_of(i) });
+
+		for (size_t k = 0; k + 1 < stops.size(); k++)
+		{
+			SubEdge e;
+			e.segment = i;
+			e.from = stops[k].node;
+			e.to = stops[k + 1].node;
+			e.p1 = stops[k].point;
+			e.p2 = stops[k + 1].point;
+			edges.push_back(e);
+		}
+	}
+
+	// 4. winding number of the raw curve
+	Winding winding;
+	for (int i = 0; i < n; i++)
+		if (real(i))
+			winding.add(a[i], dst_of(i));
+
+	const double delta = 2e-4;
+	auto inside = [&](int w) { return orientation * w > 0; };
+
+	for (SubEdge& e : edges)
+	{
+		const Segment& s = a[e.segment];
+		glm::dvec2 mid, tangent;
+		double length;
+
+		if (s.type == SegmentType::Line)
+		{
+			glm::dvec2 p1(e.p1), p2(e.p2), d = p2 - p1;
+			length = glm::length(d);
+			if (length == 0)
+				continue;
+			tangent = d / length;
+			mid = (p1 + p2) / 2.0;
+			e.tangent_start = e.tangent_end = tangent;
+		}
+		else
+		{
+			glm::dvec2 c(s.center), p1(e.p1), p2(e.p2);
+			// the radius is the one used by the winding (distance from the segment start to the center) : the end points of the edge
+			// are intersections which can be off the arc by more than the sampling distance
+			double r = glm::length(glm::dvec2(s.point) - c);
+			double a1 = std::atan2(p1.y - c.y, p1.x - c.x), a2 = std::atan2(p2.y - c.y, p2.x - c.x);
+			double sweep = s.cw ? norm_angle(a1 - a2) : norm_angle(a2 - a1);
+			length = r * sweep;
+			if (sweep < 1e-12)
+				continue;
+			double am = s.cw ? a1 - sweep / 2 : a1 + sweep / 2;
+			mid = c + glm::dvec2(std::cos(am), std::sin(am)) * r;
+			tangent = s.cw ? glm::dvec2(std::sin(am), -std::cos(am)) : glm::dvec2(-std::sin(am), std::cos(am));
+			e.tangent_start = s.cw ? glm::dvec2(std::sin(a1), -std::cos(a1)) : glm::dvec2(-std::sin(a1), std::cos(a1));
+			e.tangent_end = s.cw ? glm::dvec2(std::sin(a2), -std::cos(a2)) : glm::dvec2(-std::sin(a2), std::cos(a2));
+		}
+
+		// an edge which starts and ends on the same node and which is tiny is just noise
+		if (e.from == e.to && length < 3 * eps)
+			continue;
+
+		glm::dvec2 left(-tangent.y, tangent.x);
+		bool inside_left = inside(winding.at(mid + left * delta));
+		bool inside_right = inside(winding.at(mid - left * delta));
+
+		// the area to keep is on the left of the edge for a counter clockwise curve and on the right otherwise
+		e.keep = orientation > 0 ? (inside_left && !inside_right) : (inside_right && !inside_left);
+	}
+
+	// two kept edges which run along each other between the same two nodes (a spike folded on itself, a loop which collapsed) are one edge
+	for (size_t k = 0; k < edges.size(); k++)
+	{
+		if (!edges[k].keep)
+			continue;
+		for (size_t m = k + 1; m < edges.size(); m++)
+		{
+			if (!edges[m].keep || edges[m].from != edges[k].from || edges[m].to != edges[k].to)
+				continue;
+			const Segment& s1 = a[edges[k].segment];
+			const Segment& s2 = a[edges[m].segment];
+			// two tiny edges between the same nodes are the two sides of a sliver, which is not a piece of the result either
+			const bool tiny = glm::distance(edges[k].p1, edges[k].p2) < 0.05f;
+			if (tiny || (s1.type == s2.type && (s1.type == SegmentType::Line || (s1.cw == s2.cw && glm::distance(s1.center, s2.center) <= eps && glm::abs(s1.radius - s2.radius) <= eps))))
+				edges[m].keep = false;
+		}
+	}
+
+	// 5. chain the edges which are kept into closed curves
+	std::vector<std::vector<int>> outgoing(points.size());
+	for (size_t k = 0; k < edges.size(); k++)
+		if (edges[k].keep)
+			outgoing[edges[k].from].push_back((int)k);
+
+	std::vector<bool> used(edges.size(), false);
+	std::vector<Curve> result;
+	bool ok = true;
+
+	for (size_t k = 0; k < edges.size() && ok; k++)
+	{
+		if (!edges[k].keep || used[k])
+			continue;
+
+		std::vector<int> loop;
+		int current = (int)k;
+		int start = edges[k].from;
+
+		while (true)
+		{
+			used[current] = true;
+			loop.push_back(current);
+			int node = edges[current].to;
+			if (node == start)
+				break;
+
+			// next edge : on a node where several edges leave, we keep the one which turns the most towards the area to keep,
+			// which gives loops that do not cross each other
+			int best = -1;
+			double best_turn = 0;
+			for (int candidate : outgoing[node])
+			{
+				if (used[candidate])
+					continue;
+				glm::dvec2 t1 = edges[current].tangent_end, t2 = edges[candidate].tangent_start;
+				double turn = std::atan2(t1.x * t2.y - t1.y * t2.x, glm::dot(t1, t2));
+				if (best == -1 || (orientation > 0 ? turn > best_turn : turn < best_turn))
+				{
+					best = candidate;
+					best_turn = turn;
+				}
+			}
+
+			if (best == -1)
+			{
+				ok = false;
+				break;
+			}
+			current = best;
+		}
+
+		if (!ok)
+			break;
+
+		Curve c;
+		for (int index : loop)
+		{
+			const Segment& s = a[edges[index].segment];
+			glm::vec2 from = points[edges[index].from];
+			if (s.type == SegmentType::Line)
+				c.add(from);
+			else
+				c.add(from, s.center, s.radius, s.cw);
+		}
+		c.close();
+		c.reset_bounds();
+		result.push_back(c);
+	}
+
+	// if the edges can not be chained, we use the previous way of splitting
+	if (!ok)
+		return split_at_intersections();
+
+	return result;
+}
+
 std::vector<Curve> Curve::boolean_union(Curve& b)
 {
 	// union means both curve have same direction
@@ -2302,6 +2863,17 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 	if (a.bounds().outside(b.bounds()))
 		return result;
 
+	// a curve with less than 3 points (except the circles) is not an area, and the walk below needs a closed curve
+	auto degenerate = [](Curve& c)
+	{
+		if (c.size() >= 3)
+			return false;
+		bool circle = c.size() > 0 && (c.front().type == SegmentType::Circle || (c.front().type == SegmentType::Arc && c.size() > 1 && c[1].point == c.front().point));
+		return !circle;
+	};
+	if (degenerate(a) || degenerate(b))
+		return result;
+
 	bool a_is_circle = false, b_is_circle = false;
 
 	if (a[0].type == SegmentType::Circle || (a[0].type == SegmentType::Arc && a.size() > 1 && a[1].point == a[0].point))
@@ -2355,7 +2927,12 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 		// we construct an array to store intersection points for each index
 		// a segment can have several intersections
 		// so we will push into the list associated to the segment every intersections detected
-		for (int i = 0; i < a.size(); i++)
+		// two curves which are not lying on each other have a few intersections. When there are way more than the number of segments, the
+		// curves are on each other (touching offsets) and the intersections can not be linked : there is nothing to merge, and the search
+		// stops here because the number of intersections can reach the millions
+		const int max_tag = 4 * (int)(a.size() + b.size()) + 64;
+
+		for (int i = 0; i < a.size() && tag <= max_tag; i++)
 		{
 			Segment s1 = a[i];
 			glm::vec dst1 = (i == a.size() - 1)? a[0].point : a[i + 1].point;
@@ -2363,7 +2940,7 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 			auto candidates = b.search(s1.bounds);
 
 			//for (int j = i + 1; j < a.size(); j++)
-			for (int k = 0; k < candidates.size(); k++)
+			for (int k = 0; k < candidates.size() && tag <= max_tag; k++)
 			{
 				int j = candidates[k].index;
 
@@ -2406,6 +2983,15 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 					tag++;
 				}
 			}
+		}
+
+		if (tag > max_tag)
+		{
+			if (a_is_circle)
+				a[0].type = SegmentType::Circle;
+			if (b_is_circle)
+				b[0].type = SegmentType::Circle;
+			return std::vector<Curve>();
 		}
 
 		// we have segments in indices and its intersections coordinates in intersections
@@ -2581,19 +3167,34 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 			}
 		}
 
+		// the segments which are removed can still be referenced by the links between the intersections : they are tagged as used
+		std::set<const Segment*> used;
+
 		if (a_is_circle)
+		{
+			used.insert(&b_a.back());
 			b_a.pop_back();
+		}
 
 		if (b_a.back().next_tag == b_a.back().tag + 1)
 			b_a.back().next_tag = b_a.front().tag;
 
 		if (b_is_circle)
+		{
+			used.insert(&b_b.back());
 			b_b.pop_back();
+		}
 
 		if (b_b.back().next_tag == b_b.back().tag + 1)
 			b_b.back().next_tag = b_b.front().tag;
 
 		int tag_limit = b_b.front().tag - 1;
+
+		std::map<const Segment*, int> owner;
+		for (const Segment& s : b_a)
+			owner[&s] = 0;
+		for (const Segment& s : b_b)
+			owner[&s] = 1;
 
 		// we have the curve with the intersection tag in segment tag, we have now to convert the intersection tag to curve index
 		while (b_a.size() > 0 || b_b.size() > 0)
@@ -2618,9 +3219,16 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 				first_segment_from_ba = false;
 			}
 
+			// segments which are already used. The intersections of curves which touch each other can make the walk reach a segment that
+			// was used before, or the segment it is on : the walk is then abandoned instead of reading a segment that does not exist anymore
+			bool broken = false;
+
 			do
 			{
 				c.push_back(*it);
+
+				// the list which holds the segment : it is not always the one the tag tells when intersections are very close
+				std::list<Segment>& own = owner[&*it] == 0 ? b_a : b_b;
 
 				if ((*it).next_tag != first.tag)
 				{
@@ -2630,30 +3238,32 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 					}
 					else
 					{
-						if ((*it).tag < tag_limit && it == (--b_a.end()))
-							next = b_a.begin();
-						else if ((*it).tag >= tag_limit && it == (--b_b.end()))
-							next = b_b.begin();
-						else
-							next = std::next(it);
+						next = std::next(it);
+						if (next == own.end())
+							next = own.begin();
 					}
 
-					if ((*it).tag < tag_limit)
-						b_a.erase(it);
-					else
-						b_b.erase(it);
+					if (next == it || used.count(&*next) > 0)
+						broken = true;
+
+					used.insert(&*it);
+					own.erase(it);
+
+					if (broken)
+						break;
 					it = next;
 				}
 				else
 				{
-					if ((*it).tag < tag_limit)
-						b_a.erase(it);
-					else
-						b_b.erase(it);
+					used.insert(&*it);
+					own.erase(it);
 					exit = true;
 				}
 
 			} while (exit == false && (*it).tag != first.tag);
+
+			if (broken)
+				continue;
 
 			if (c.size() > 1)
 			{

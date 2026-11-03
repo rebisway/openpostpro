@@ -18,6 +18,9 @@
 #include "pocket.h"
 #include <imgui.h>
 #include <lang.h>
+#include <algorithm>
+#include <chrono>
+#include <limits>
 
 void Pocket::mode(PocketMode value)
 {
@@ -39,6 +42,10 @@ void Pocket::finishing(float value)
 
 std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 {
+	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
+	// after this delay, the curves already computed are kept as they are
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+
 	std::vector<Curve> result, temp;
 
 	if (curves.size() == 0)
@@ -65,12 +72,13 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 	{
 		Curve::sort_level(inter);
 		auto cw = inter.front().cw();
+		const int first_level = inter.front().level();
 
 		// checking iner and outer, the inner contour should exist, otherwise there is an algo issue
 		int smaller_level = std::numeric_limits<int>::max();
 		int greater_level = std::numeric_limits<int>::max();
 
-		while (inter.size() > 0 && smaller_level == greater_level)
+		while (inter.size() > 0 && smaller_level == greater_level && std::chrono::steady_clock::now() < deadline)
 		{
 			// sort the list following level, because if different level, we have to make the substrat based on lower level
 			Curve::sort_level(inter);
@@ -89,10 +97,13 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 				temp.insert(temp.begin(), o.begin(), o.end());
 			}
 
+			// every merge replaces curves by other curves, the budget guarantees that the loop ends even if a degenerate case would
+			// give the same curves again and again
+			int merge_budget = (int)temp.size() * 2 + 10;
 			if (temp.size() > 1)
 			{
 				std::vector<Curve>::iterator it1 = temp.begin();
-				while (it1 != temp.end() && temp.size() > 1)
+				while (it1 != temp.end() && temp.size() > 1 && merge_budget > 0 && std::chrono::steady_clock::now() < deadline)
 				{
 					bool merged = false;
 					std::vector<Curve>::iterator it2 = it1 + 1;
@@ -102,15 +113,18 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 						auto cw2 = (*it2).cw();
 						std::vector<Curve> merged_curves;
 
+						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
+						bool too_big = (*it1).size() > 1500 || (*it2).size() > 1500;
+
 						if ((*it1).level() != (*it2).level())
 						{
 							if ((*it1).level() < (*it2).level())
-								merged_curves = (*it1).boolean_substract((*it2));
+								merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_substract((*it2));
 							else
-								merged_curves = (*it2).boolean_substract((*it1));
+								merged_curves = too_big ? std::vector<Curve>() : (*it2).boolean_substract((*it1));
 						}
 						else
-							merged_curves = (*it1).boolean_union((*it2));
+							merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_union((*it2));
 
 
 						// the result keeps the lower level (the outer contour), whatever the order of the two curves
@@ -121,8 +135,14 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 							{
 								m.close();
 								//m.cw(cw1);
-								m.level(merged_level);
+								// a subtraction can leave a hole inside the material (the holes enclosed a ring of material for instance) :
+								// a curve which turns against the first curve is a hole, it must keep growing as a hole
+								int level = merged_level;
+								if ((*it1).level() != (*it2).level() && (level - first_level) % 2 == 0 && m.cw() != cw)
+									level++;
+								m.level(level);
 							}
+							merge_budget--;
 							temp.erase(it2);
 							temp.erase(it1);
 							temp.insert(temp.begin(), merged_curves.begin(), merged_curves.end());
@@ -158,6 +178,10 @@ std::vector<Curve> Pocket::zigzag(std::vector<Curve>& curves)
 
 std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 {
+	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
+	// after this delay, the curves already computed are kept as they are
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+
 	std::vector<Curve> result, temp;
 
 	if (curves.size() == 0)
@@ -184,12 +208,30 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 	{
 		Curve::sort_level(inter);
 		auto cw = inter.front().cw();
+		const int first_level = inter.front().level();
+
+		// the curves of the pocket stay in the outer contour of the group : a curve which gets out of it comes from a boolean operation
+		// that failed (touching offsets for instance), and it would grow forever
+		// (all the curves which are the material of the group are used, the first one can be a small piece)
+		float outer_min_x = std::numeric_limits<float>::max(), outer_max_x = -std::numeric_limits<float>::max();
+		float outer_min_y = std::numeric_limits<float>::max(), outer_max_y = -std::numeric_limits<float>::max();
+		for (Curve& c : inter)
+		{
+			if (c.level() != inter.front().level())
+				continue;
+			geometry::rectangle& b = c.bounds();
+			outer_min_x = glm::min(outer_min_x, glm::min(b.top_left.x, b.bottom_right.x));
+			outer_max_x = glm::max(outer_max_x, glm::max(b.top_left.x, b.bottom_right.x));
+			outer_min_y = glm::min(outer_min_y, glm::min(b.top_left.y, b.bottom_right.y));
+			outer_max_y = glm::max(outer_max_y, glm::max(b.top_left.y, b.bottom_right.y));
+		}
+		outer_min_x -= geometry::ERR_FLOAT2; outer_max_x += geometry::ERR_FLOAT2; outer_min_y -= geometry::ERR_FLOAT2; outer_max_y += geometry::ERR_FLOAT2;
 
 		// checking iner and outer, the inner contour should exist, otherwise there is an algo issue
 		int smaller_level = std::numeric_limits<int>::max();
 		int greater_level = std::numeric_limits<int>::max();
 
-		while (inter.size() > 0 && smaller_level == greater_level)
+		while (inter.size() > 0 && smaller_level == greater_level && std::chrono::steady_clock::now() < deadline)
 		{
 			// sort the list following level, because if different level, we have to make the substrat based on lower level
 			Curve::sort_level(inter);
@@ -210,10 +252,15 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 
 			// set when the remaining material lies entirely inside a growing hole
 			bool region_empty = false;
+			// set when a piece of material has been dropped because it lies inside a hole offset
+			bool dropped_material = false;
+			// every merge replaces curves by other curves, the budget guarantees that the loop ends even if a degenerate case would
+			// give the same curves again and again
+			int merge_budget = (int)temp.size() * 2 + 10;
 			if (temp.size() > 1)
 			{
 				std::vector<Curve>::iterator it1 = temp.begin();
-				while (it1 != temp.end() && temp.size() > 1 && !region_empty)
+				while (it1 != temp.end() && temp.size() > 1 && !region_empty && merge_budget > 0 && std::chrono::steady_clock::now() < deadline)
 				{
 					bool merged = false;
 					std::vector<Curve>::iterator it2 = it1 + 1;
@@ -223,6 +270,9 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 						auto cw2 = (*it2).cw();
 						std::vector<Curve> merged_curves;
 
+						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
+						bool too_big = (*it1).size() > 1500 || (*it2).size() > 1500;
+
 						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
 						// there is nothing left to machine, and the holes must not keep growing outside of the material
 						if ((*it1).level() != (*it2).level())
@@ -231,7 +281,16 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 							Curve& hole = (*it1).level() < (*it2).level() ? (*it2) : (*it1);
 							if (material.inside(hole))
 							{
-								region_empty = true;
+								// other pieces of material remain : only this one is dropped
+								const int material_level = material.level();
+								if (std::count_if(temp.begin(), temp.end(), [&](Curve& c) { return c.level() == material_level; }) <= 1)
+								{
+									region_empty = true;
+									break;
+								}
+								temp.erase((*it1).level() < (*it2).level() ? it1 : it2);
+								dropped_material = true;
+								merged = true;
 								break;
 							}
 						}
@@ -239,12 +298,12 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 						if ((*it1).level() != (*it2).level())
 						{
 							if ((*it1).level() < (*it2).level())
-								merged_curves = (*it1).boolean_substract((*it2));
+								merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_substract((*it2));
 							else
-								merged_curves = (*it2).boolean_substract((*it1));
+								merged_curves = too_big ? std::vector<Curve>() : (*it2).boolean_substract((*it1));
 						}
 						else
-							merged_curves = (*it1).boolean_union((*it2));
+							merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_union((*it2));
 
 
 						// the result keeps the lower level (the outer contour), whatever the order of the two curves
@@ -255,8 +314,14 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 							{
 								m.close();
 								//m.cw(cw1);
-								m.level(merged_level);
+								// a subtraction can leave a hole inside the material (the holes enclosed a ring of material for instance) :
+								// a curve which turns against the first curve is a hole, it must keep growing as a hole
+								int level = merged_level;
+								if ((*it1).level() != (*it2).level() && (level - first_level) % 2 == 0 && m.cw() != cw)
+									level++;
+								m.level(level);
 							}
+							merge_budget--;
 							temp.erase(it2);
 							temp.erase(it1);
 							temp.insert(temp.begin(), merged_curves.begin(), merged_curves.end());
@@ -281,6 +346,25 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 			if (region_empty)
 				temp.clear();
 
+			// the holes which are not inside any remaining curve of a lower level have no material left to cut : they must not keep growing
+			if (dropped_material)
+				temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
+				{
+					if (c.level() <= 1)
+						return false;
+					for (Curve& d : temp)
+						if (d.level() < c.level() && c.inside(d))
+							return false;
+					return true;
+				}), temp.end());
+
+			temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
+			{
+				geometry::rectangle& b = c.bounds();
+				return glm::min(b.top_left.x, b.bottom_right.x) < outer_min_x || glm::max(b.top_left.x, b.bottom_right.x) > outer_max_x
+					|| glm::min(b.top_left.y, b.bottom_right.y) < outer_min_y || glm::max(b.top_left.y, b.bottom_right.y) > outer_max_y;
+			}), temp.end());
+
 			auto s = temp.size();
 
 			result.insert(result.end(), temp.begin(), temp.end());
@@ -296,6 +380,10 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 
 std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 {
+	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
+	// after this delay, the curves already computed are kept as they are
+	const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+
 	std::vector<Curve> result, temp;
 
 	if (curves.size() == 0)
@@ -322,12 +410,13 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 	{
 		Curve::sort_level(inter);
 		auto cw = inter.front().cw();
+		const int first_level = inter.front().level();
 
 		// checking iner and outer, the inner contour should exist, otherwise there is an algo issue
 		int smaller_level = std::numeric_limits<int>::max();
 		int greater_level = std::numeric_limits<int>::max();
 
-		while (inter.size() > 0 && smaller_level == greater_level)
+		while (inter.size() > 0 && smaller_level == greater_level && std::chrono::steady_clock::now() < deadline)
 		{
 			// sort the list following level, because if different level, we have to make the substrat based on lower level
 			Curve::sort_level(inter);
@@ -345,10 +434,15 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 
 			// set when the remaining material lies entirely inside a growing hole
 			bool region_empty = false;
+			// set when a piece of material has been dropped because it lies inside a hole offset
+			bool dropped_material = false;
+			// every merge replaces curves by other curves, the budget guarantees that the loop ends even if a degenerate case would
+			// give the same curves again and again
+			int merge_budget = (int)temp.size() * 2 + 10;
 			if (temp.size() > 1)
 			{
 				std::vector<Curve>::iterator it1 = temp.begin();
-				while (it1 != temp.end() && temp.size() > 1 && !region_empty)
+				while (it1 != temp.end() && temp.size() > 1 && !region_empty && merge_budget > 0 && std::chrono::steady_clock::now() < deadline)
 				{
 					bool merged = false;
 					std::vector<Curve>::iterator it2 = it1 + 1;
@@ -358,6 +452,9 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 						auto cw2 = (*it2).cw();
 						std::vector<Curve> merged_curves;
 
+						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
+						bool too_big = (*it1).size() > 1500 || (*it2).size() > 1500;
+
 						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
 						// there is nothing left to machine, and the holes must not keep growing outside of the material
 						if ((*it1).level() != (*it2).level())
@@ -366,7 +463,16 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 							Curve& hole = (*it1).level() < (*it2).level() ? (*it2) : (*it1);
 							if (material.inside(hole))
 							{
-								region_empty = true;
+								// other pieces of material remain : only this one is dropped
+								const int material_level = material.level();
+								if (std::count_if(temp.begin(), temp.end(), [&](Curve& c) { return c.level() == material_level; }) <= 1)
+								{
+									region_empty = true;
+									break;
+								}
+								temp.erase((*it1).level() < (*it2).level() ? it1 : it2);
+								dropped_material = true;
+								merged = true;
 								break;
 							}
 						}
@@ -374,12 +480,12 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 						if ((*it1).level() != (*it2).level())
 						{
 							if ((*it1).level() < (*it2).level())
-								merged_curves = (*it1).boolean_substract((*it2));
+								merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_substract((*it2));
 							else
-								merged_curves = (*it2).boolean_substract((*it1));
+								merged_curves = too_big ? std::vector<Curve>() : (*it2).boolean_substract((*it1));
 						}
 						else
-							merged_curves = (*it1).boolean_union((*it2));
+							merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_union((*it2));
 
 
 						// the result keeps the lower level (the outer contour), whatever the order of the two curves
@@ -389,8 +495,14 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 							for (Curve& m : merged_curves)
 							{
 								m.close();
-								m.level(merged_level);
+								// a subtraction can leave a hole inside the material (the holes enclosed a ring of material for instance) :
+								// a curve which turns against the first curve is a hole, it must keep growing as a hole
+								int level = merged_level;
+								if ((*it1).level() != (*it2).level() && (level - first_level) % 2 == 0 && m.cw() != cw)
+									level++;
+								m.level(level);
 							}
+							merge_budget--;
 							temp.erase(it2);
 							temp.erase(it1);
 							temp.insert(temp.begin(), merged_curves.begin(), merged_curves.end());
@@ -414,6 +526,18 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 
 			if (region_empty)
 				temp.clear();
+
+			// the holes which are not inside any remaining curve of a lower level have no material left to cut : they must not keep growing
+			if (dropped_material)
+				temp.erase(std::remove_if(temp.begin(), temp.end(), [&](Curve& c)
+				{
+					if (c.level() <= 1)
+						return false;
+					for (Curve& d : temp)
+						if (d.level() < c.level() && c.inside(d))
+							return false;
+					return true;
+				}), temp.end());
 
 			auto s = temp.size();
 

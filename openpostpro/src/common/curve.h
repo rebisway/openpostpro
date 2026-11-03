@@ -386,10 +386,22 @@ public:
 	Curve trim(std::vector<SegmentUntrim>& original, float o);
 
 	/// <summary>
+	/// Replace the spikes (a segment going back along the previous one) of a raw offset curve by a single segment
+	/// </summary>
+	void remove_spikes();
+
+	/// <summary>
 	/// Split the curve into several parts following the self intersections points detected
 	/// </summary>
 	/// <returns></returns>
 	std::vector<Curve> split_at_intersections();
+
+	/// <summary>
+	/// Same as split_at_intersections() but the pieces to keep are chosen with the winding number of the raw curve, which does not
+	/// depend on the order of intersections that are very close to each other
+	/// </summary>
+	/// <param name="orientation">1 if the valid area is on the left of the curve (counter clockwise), -1 if it is on the right</param>
+	std::vector<Curve> split_at_intersections(int orientation);
 
 	bool too_small(float o);
 
