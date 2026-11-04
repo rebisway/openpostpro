@@ -21,6 +21,7 @@
 #include "point.h"
 #include "circle.h"
 #include "arc.h"
+#include "ellipse.h"
 #include "polyline.h"
 #include <geometry.h>
 #include <glm/gtc/constants.hpp>
@@ -154,7 +155,20 @@ std::vector<Shape*> DxfLoader::add_arc(DxfEntity* e, Renderer* r)
 
 std::vector<Shape*> DxfLoader::add_ellipse(DxfEntity* e, Renderer* r)
 {
-	return std::vector<Shape*>();
+	Ellipse* l = new Ellipse(r);
+	// center
+	auto center = glm::vec2(std::get<float>(e->properties("center.x")), std::get<float>(e->properties("center.y")));
+
+	// major axis end point, relative to the center
+	auto major = glm::vec2(std::get<float>(e->properties("major.x")), std::get<float>(e->properties("major.y")));
+	// Ellipse stores the full length of its axes
+	float mj = glm::length(major) * 2;
+	float mn = mj * std::get<float>(e->properties("ratio"));
+	float angle = geometry::oriented_angle(major, glm::vec2(0.0f));
+
+	l->set(center, mn, mj, std::get<float>(e->properties("start")), std::get<float>(e->properties("end")), angle);
+
+	return std::vector<Shape*>({ l });
 }
 
 

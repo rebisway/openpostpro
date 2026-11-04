@@ -367,26 +367,29 @@ std::vector<glm::vec2> ellipse(float minor, float major, float start, float stop
 
 	float inc = segment_length / 10.0f, ang = 0;
 
-	float e = stop;
-	while (start > e) // we ensure stop angle > start angle, add mod(2*pi)
-		e += glm::two_pi<float>();
-	float s = start;
+	// sweep of the arc in ]0, 2*pi], the arc can cross the angle 0
+	float sweep = stop - start;
+	bool full = sweep >= glm::two_pi<float>() - 0.0001f;
+	if (full)
+		sweep = glm::two_pi<float>();
+	else
+	{
+		while (sweep <= 0)
+			sweep += glm::two_pi<float>();
+		while (sweep > glm::two_pi<float>())
+			sweep -= glm::two_pi<float>();
+	}
 
-	while (s > glm::two_pi<float>())
-		s -= glm::two_pi<float>();
-	while (e > glm::two_pi<float>())
-		e -= glm::two_pi<float>();
-
-
-	for (ang = s; ang <= e; ang += inc)
+	float e = start + sweep;
+	for (ang = start; ang <= e; ang += inc)
 	{
 		glm::vec2 p((a * glm::cos(ang)), (b * glm::sin(ang)));
 		vertices.push_back(p);
 	}
-	glm::vec2 p((a * glm::cos(stop)), (b * sin(stop)));
+	glm::vec2 p((a * glm::cos(e)), (b * glm::sin(e)));
 	vertices.push_back(p);
 
-	if (start == 0 && stop == glm::two_pi<float>())
+	if (full)
 		vertices.push_back(vertices.front());
 
 	return vertices;
