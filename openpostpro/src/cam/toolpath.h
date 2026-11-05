@@ -75,6 +75,9 @@ public:
 
 	virtual bool start_point_allowed() { return false; }
 
+	// draw the properties window, the rows come from properties()
+	void ui() override { display_properties(); }
+
 	void start_point_type(StartPointType value);
 	StartPointType start_point_type() { return _start_point_type; }
 

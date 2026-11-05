@@ -87,26 +87,6 @@ public:
 	virtual Shape* symmetry(glm::vec2 p1, glm::vec2 p2) { return nullptr; }
 	virtual Shape* symmetry(glm::vec2 center) { return nullptr; }
 
-	// draw the properties window: common frame, then the rows given by properties()
-	void ui() override;
-
-protected:
-	// override to add the rows of the shape, using the property_* helpers
-	virtual void properties() {}
-
-	// each helper draws one row (label + input). Return true when the user validated a new value, stored in 'value'
-	bool property_point(const char* label, const char* id, glm::vec2& value);
-	bool property_float(const char* label, const char* id, float& value);
-	bool property_bool(const char* label, const char* id, bool& value);
-	bool property_string(const char* label, const char* id, std::string& value);
-	// drop-down list: 'selected' is the index in 'items', returns true when another item is chosen
-	bool property_combo(const char* label, const char* id, int& selected, const std::vector<std::string>& items);
-	// read only row
-	void property_text(const char* label, const std::string& value);
-
-	// push the undo action, then apply the change
-	void modify(const std::function<void()>& change);
-
-private:
-	void property_label(const char* label);
+	// draw the properties window, the rows come from properties()
+	void ui() override { display_properties(); }
 };

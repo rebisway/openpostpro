@@ -17,6 +17,7 @@
 
 #pragma once
 #include <string>
+#include <functional>
 #include <vector>
 #include <renderer.h>
 #include <environment.h>
@@ -95,6 +96,28 @@ protected:
 	virtual void update() {};
 	virtual void needs_update() { _needs_update = true; }
 
+	// override to add the rows of the properties window, using the property_* helpers
+	virtual void properties() {}
+
+	// draw the properties window: common frame, then the rows given by properties()
+	void display_properties();
+
+	// each helper draws one row (label + input). Return true when the user validated a new value, stored in 'value'
+	bool property_point(const char* label, const char* id, glm::vec2& value);
+	bool property_float(const char* label, const char* id, float& value);
+	bool property_int(const char* label, const char* id, int& value);
+	bool property_bool(const char* label, const char* id, bool& value);
+	bool property_string(const char* label, const char* id, std::string& value);
+	// drop-down list: 'selected' is the index in 'items', returns true when another item is chosen
+	bool property_combo(const char* label, const char* id, int& selected, const std::vector<std::string>& items);
+	// slider: returns true while the value moves; the undo step is pushed by the helper, once per drag (do not call modify())
+	bool property_slider(const char* label, const char* id, float& value, float min, float max);
+	// read only row
+	void property_text(const char* label, const std::string& value);
+
+	// push the undo action, then apply the change
+	void modify(const std::function<void()>& change);
+
 public:
 	unsigned int id() { return _id; }
 	void id(unsigned int value) { _id = value; }
@@ -137,4 +160,8 @@ public:
 
 	// serialize
 	virtual void read(std::string value, float version=0) {}
+
+private:
+	void property_label(const char* label);
+	std::string _slider_snapshot;		// state saved when a slider drag starts
 };
