@@ -62,6 +62,9 @@ public:
 
 	virtual bool closable() { return true; }
 
+	// true if the module is displayed in a panel outside the tabs
+	virtual bool docked() { return false; }
+
 	virtual bool selected() { return _selected; }
 	virtual void selected(bool value) { _selected = value; }
 

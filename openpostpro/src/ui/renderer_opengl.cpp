@@ -91,7 +91,7 @@ void OpenGlRenderer::set_size(float width, float height)
 {
 	Renderer::set_size(width, height);
 
-	glViewport(0, 0, (int)width, (int)height);
+	glViewport(0, (int)_bottom, (int)width, (int)height);
 }
 
 void OpenGlRenderer::clear(float r, float g, float b, float a)

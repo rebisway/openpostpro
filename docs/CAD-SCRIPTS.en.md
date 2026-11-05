@@ -48,6 +48,8 @@ run()                               the script draws and may open a dialog
 -> the drawing returned by the engine is added to the document
 ```
 
+A file without a `class Cadscript` is not a script: it is skipped and not listed in the menu. Use such a file for code shared by several scripts (`import my_tools`). When a script fails, the log gives the Python traceback, with the file and the line of the error.
+
 ## 2. Methods of `Cadscript`
 
 | Method | Arguments | Returns | Meaning |
@@ -86,7 +88,7 @@ Use it as the origin of the shape.
 | `self.core.unit` | `str` | unit of the document, `'mm'` or `'inch'`: all the coordinates are in this unit |
 | `self.core.selection` | `list` of `dict` | the shapes selected when the script is chosen (toolpaths are not listed) |
 
-The selection is read when the script is chosen in the menu: it does not change while the properties dialog box is open. It is empty if nothing is selected. Each shape is a dictionary with the keys `id` (unique number of the shape in the document) and `type`, then the keys of its type. Points are tuples `(x, y)`.
+The selection is read when the script is chosen in the menu: it does not change while the properties dialog box is open. It is empty if nothing is selected. Each shape is a dictionary with the keys `id` (unique number of the shape in the document), `layer` (name of its layer) and `type`, then the keys of its type. Points are tuples `(x, y)`.
 
 | `type` | Other keys |
 |---|---|
@@ -110,6 +112,13 @@ for shape in self.core.selection:
 ```
 
 `mark_middles.py` is a complete example of a script that reads the selection.
+
+### Log and layers
+
+| Call | Effect |
+|---|---|
+| `self.core.log(text)` | writes a line `Script: text` in the log of the application (`print` is not visible) |
+| `self.core.set_layer(name)` | the shapes added after this call go into the layer of this name, created if it does not exist (the creation is undone with the script); without a name, they go back to the current layer. A modified shape keeps its layer |
 
 ### Messages
 

@@ -21,7 +21,7 @@
 # Supported shapes:
 #  - lines: the lines that share an end are shortened, the arcs are added. The lines keep their id.
 #  - splines made of lines only: modified in place, they keep their id.
-#  - polylines: they cannot hold an arc, so they are replaced by a spline (new id, current layer).
+#  - polylines: they cannot hold an arc, so they are replaced by a spline (new id, same layer).
 # A corner is left sharp if the radius does not fit in the length of its sides.
 
 import math
@@ -215,6 +215,7 @@ class Cadscript:
 			points[b][eb] = end
 			changed.add(a)
 			changed.add(b)
+			self.core.set_layer(lines[a].get('layer', ''))		# the cut goes into the layer of the line
 			if center is None:
 				self.core.line(start[0], start[1], end[0], end[1])
 			else:
@@ -240,6 +241,7 @@ class Cadscript:
 		else:
 			# a polyline cannot hold an arc
 			self.core.remove(shape['id'])
+			self.core.set_layer(shape.get('layer', ''))
 			self.core.spline(segments)
 		return True
 

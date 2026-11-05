@@ -58,6 +58,7 @@ static PyObject* shape_to_dict(Shape* shape)
 {
 	PyObject* d = PyDict_New();
 	py_put(d, "id", PyLong_FromUnsignedLong(shape->id()));
+	py_put(d, "layer", py_text(shape->parent()));
 
 	switch (shape->type())
 	{

@@ -144,6 +144,14 @@ class Cadcore:
     def remove(self, id):
         self.output += 'D:' + str(id) + '\n'
 
+    # write a line in the log of the application
+    def log(self, text):
+        self.output += 'G:' + str(text).replace('\n', ' ') + '\n'
+
+    # the shapes added after this call go into the layer of this name (created if needed); an empty name goes back to the current layer
+    def set_layer(self, name=''):
+        self.output += 'Y:' + str(name) + '\n'
+
     # display a message box (tkinter), the script goes on if the box cannot be displayed
     def message(self, text, title=''):
         try:

@@ -271,6 +271,14 @@ void Application::initialize()
 Postpro* Application::load_postpro(const std::string& file)
 {
 	auto name = std::filesystem::path(file).filename().string();
+
+	// a file without the class is a module used by other post-processors
+	if (file::read_all_text(file).find("class Postpro") == std::string::npos)
+	{
+		Logger::log("Module " + name + " is not a post-processor, skipped");
+		return nullptr;
+	}
+
 	Postpro* p = new Postpro();
 
 	try
@@ -297,6 +305,14 @@ Postpro* Application::load_postpro(const std::string& file)
 CadScript* Application::load_cad_script(const std::string& file)
 {
 	auto name = std::filesystem::path(file).filename().string();
+
+	// a file without the class is a module used by other scripts
+	if (file::read_all_text(file).find("class Cadscript") == std::string::npos)
+	{
+		Logger::log("Module " + name + " is not a script, skipped");
+		return nullptr;
+	}
+
 	CadScript* p = new CadScript();
 
 	try
@@ -640,7 +656,11 @@ void Application::onRenderGUI()
 		auto last_pos = ImGui::GetWindowPos();
 		auto last_size = ImGui::GetWindowSize();
 		auto top = last_pos.y + last_size.y;
-		auto height = ImGui::GetMainViewport()->Size.y - top;
+
+		// the log can be a panel at the bottom of the window: the modules keep the space above it
+		auto log = (ModLog*)module("MOD_LOG");
+		float dock_height = (log->docked() && log->show()) ? (float)config.log_height : 0.0f;
+		auto height = ImGui::GetMainViewport()->Size.y - top - dock_height;
 
 		if (_top_left.y != top - 1 || _bottom_right.x != width() || _bottom_right.y != (height + 1))
 		{
@@ -655,6 +675,8 @@ void Application::onRenderGUI()
 		for (int i = 0; i < _modules.size(); i++)
 		{
 			auto module = _modules[i];
+			if (module->docked())
+				continue;
 			bool* open = NULL;
 			if (module->closable())
 			{
@@ -702,6 +724,9 @@ void Application::onRenderGUI()
 
 		ImGui::EndTabBar();
 		ImGui::End();
+
+		if (dock_height > 0.0f)
+			log->render_dock(ImGui::GetMainViewport()->Size.y - dock_height, (float)width(), dock_height);
 	}
 
 	render_menu();
@@ -1034,6 +1059,22 @@ void Application::render_menu()
 				m->show(!m->show());
 				m->selected(m->show());
 			}
+			if (ImGui::MenuItem(Lang::l("DISPLAY_LOG_DOCK"), NULL, config.log_docked))
+			{
+				config.log_docked = !config.log_docked;
+				m->show(true);
+				if (config.log_docked)
+				{
+					// the log leaves the tabs: the drawing becomes the current module again
+					if (_current_module == m)
+					{
+						_current_module = _modules[0];
+						_modules[0]->selected(true);
+					}
+				}
+				else
+					m->selected(true);
+			}
 
 			ImGui::Separator();
 
@@ -1330,9 +1371,11 @@ void Application::insert(std::string content)
 	Logger::log("Mouse (" + std::to_string(cad->mouse().x) + ";" + std::to_string(cad->mouse().y) + ")");
 
 	// the whole output of a script is undone in one step
-	bool record = std::any_of(lines.begin(), lines.end(), [](const std::string& l) { return l.size() > 0; });
+	// log and layer commands do not change the drawing
+	bool record = std::any_of(lines.begin(), lines.end(), [](const std::string& l) { return l.size() > 0 && l[0] != 'G' && l[0] != 'Y'; });
 	if (record)
 		History::begin_undo_record();
+	cad->insert("Y");
 	for (auto l : lines)
 	{
 		if (l.size() > 0)
@@ -1341,6 +1384,7 @@ void Application::insert(std::string content)
 			cad->insert(l);
 		}
 	}
+	cad->insert("Y");
 	if (record)
 		History::end_undo_record();
 

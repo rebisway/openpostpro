@@ -209,6 +209,7 @@ public:
 
 	void insert(std::string code);
 	Shape* find_shape(unsigned int id);
+	std::string _script_layer;		// layer of the shapes added by the running script, empty for the current layer
 
 	// CAM processing
 	std::vector<Shape*> get_selection();

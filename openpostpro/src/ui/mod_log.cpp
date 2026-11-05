@@ -21,6 +21,8 @@
 #include "file.h"
 #include "lang.h"
 #include <imgui.h>
+#include <config.h>
+#include <algorithm>
 
 void ModLog::show(bool value)
 {
@@ -36,9 +38,15 @@ ModLog::ModLog(Window* window) : Module(window)
 	_show = config.display_log;
 }
 
-void ModLog::render_GUI()
+bool ModLog::docked()
 {
-	if ((glfwGetTime() - _last_modify) > 1.0) // pull every seconds
+	return config.log_docked;
+}
+
+// read the log file when it changed, once per second
+void ModLog::pull()
+{
+	if ((glfwGetTime() - _last_modify) > 1.0)
 	{
 		auto time = std::filesystem::last_write_time(std::filesystem::path(Logger::path()));
 		if (time > _log_file_time)
@@ -63,11 +71,11 @@ void ModLog::render_GUI()
 
 		_last_modify = glfwGetTime();
 	}
+}
 
-	ImGui::SetNextWindowSize(ImVec2(_width, _height));
-	ImGui::SetNextWindowPos(ImVec2(_left, _top));
-	ImGui::Begin("mouse_position", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
-
+// toolbar and text, in a tab or in the docked panel
+void ModLog::draw(bool dock)
+{
 	if (ImGui::Button(Lang::l("CLEAR")))
 	{
 		Logger::clear();
@@ -76,7 +84,13 @@ void ModLog::render_GUI()
 	}
 
 	ImGui::SameLine();
-	_filter.Draw(Lang::l("FILTER"), -60.0f);
+	_filter.Draw(Lang::l("FILTER"), dock ? -110.0f : -60.0f);
+	if (dock)
+	{
+		ImGui::SameLine();
+		if (ImGui::Button(Lang::l("CLOSE")))
+			show(false);
+	}
 	ImGui::Separator();
 	ImGui::BeginChild("scrolling");
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
@@ -110,6 +124,37 @@ void ModLog::render_GUI()
 	_window->pop_font();
 	ImGui::PopStyleVar();
 	ImGui::EndChild();
-	ImGui::End();
+}
 
+void ModLog::render_GUI()
+{
+	pull();
+
+	ImGui::SetNextWindowSize(ImVec2(_width, _height));
+	ImGui::SetNextWindowPos(ImVec2(_left, _top));
+	ImGui::Begin("mouse_position", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+	draw(false);
+	ImGui::End();
+}
+
+void ModLog::render_dock(float y, float width, float height)
+{
+	pull();
+
+	ImGui::SetNextWindowPos(ImVec2(0.0f, y));
+	ImGui::SetNextWindowSize(ImVec2(width, height));
+	ImGui::Begin("LOG_DOCK", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+
+	// the top edge of the panel resizes it
+	ImGui::InvisibleButton("##LOG_SPLITTER", ImVec2(ImGui::GetContentRegionAvail().x, 6.0f));
+	if (ImGui::IsItemHovered() || ImGui::IsItemActive())
+		ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeNS);
+	if (ImGui::IsItemActive())
+	{
+		int limit = (int)(ImGui::GetMainViewport()->Size.y * 0.8f);
+		config.log_height = (std::min)(limit, (std::max)(80, config.log_height - (int)ImGui::GetIO().MouseDelta.y));
+	}
+
+	draw(true);
+	ImGui::End();
 }

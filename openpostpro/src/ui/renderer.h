@@ -62,6 +62,10 @@ public:
 	virtual bool is_available() { return true; }
 
 	virtual void set_size(float width, float height) { _width = width; _height = height; }
+
+	// space left under the drawing area (docked panel), used as the origin of the viewport
+	float _bottom = 0.0f;
+	virtual void set_bottom(float value) { _bottom = value; }
 	virtual void clear(float r, float g, float b, float a) {}
 
 	void load_programs();

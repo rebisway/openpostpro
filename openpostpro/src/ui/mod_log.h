@@ -32,7 +32,15 @@ private:
 	std::filesystem::file_time_type _log_file_time;
 
 	double _last_modify;
+
+	void pull();
+	void draw(bool dock);
+
 public:
+	bool docked() override;
+	void render_dock(float y, float width, float height);
+
+	using Module::show;		// the override of show(bool) hides the getter
 	void show(bool value) override;
 
 	ModLog(Window* window);

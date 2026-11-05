@@ -303,6 +303,8 @@ void ModCad::display(float left, float top, float width, float height)
 
 	Module::display(left, top, width, height);
 
+	// the drawing area can end above a docked panel: the viewport starts at the bottom of the window
+	_render->set_bottom((std::max)(0.0f, _window->height() - top - height));
 	_render->set_size(width, height);
 	_camera->set_size(width, height);
 	
@@ -3615,6 +3617,25 @@ void ModCad::insert(std::string code)
 	if (data.empty())
 		return;
 
+	// G:text -> write in the log
+	if (data[0] == "G")
+	{
+		std::string text;
+		for (size_t i = 1; i < data.size(); i++)
+			text += (i > 1 ? ":" : "") + data[i];
+		Logger::log("Script: " + text);
+		return;
+	}
+
+	// Y:name -> the next shapes go into this layer, no name goes back to the current layer
+	if (data[0] == "Y")
+	{
+		_script_layer = "";
+		for (size_t i = 1; i < data.size(); i++)
+			_script_layer += (i > 1 ? ":" : "") + data[i];
+		return;
+	}
+
 	// D:id -> delete a shape
 	if (data[0] == "D" && data.size() > 1)
 	{
@@ -3697,7 +3718,18 @@ void ModCad::insert(std::string code)
 		History::undo(HistoryActionType::Modify, before);
 	else
 	{
-		_document->current_layer()->add(shape);
+		Layer* layer = _document->current_layer();
+		if (!_script_layer.empty())
+		{
+			// the layer is created if it does not exist
+			bool exists = false;
+			for (Layer* l : _document->layers())
+				exists = exists || l->name() == _script_layer;
+			layer = _document->layer(_script_layer);
+			if (!exists)
+				History::undo(HistoryActionType::Add, layer->write());
+		}
+		layer->add(shape);
 		History::undo(HistoryActionType::Add, shape->write());
 	}
 }

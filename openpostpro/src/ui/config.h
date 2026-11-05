@@ -58,6 +58,8 @@ public:
 	std::string output_path = "";
 
 	bool display_log = false;
+	bool log_docked = false;			// the log is a panel at the bottom of the window instead of a tab
+	int log_height = 200;				// height of this panel
 	bool display_output = false;
 
 	std::string python_path = "";

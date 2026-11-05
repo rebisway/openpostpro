@@ -40,6 +40,8 @@ void Config::read()
 	show_cam_start = _ini.get_bool(_section, "ShowCamStart", true);
 	postpro = _ini.get_string(_section, "Postpro", "");
 	display_log = _ini.get_bool(_section, "DisplayLog", false);
+	log_docked = _ini.get_bool(_section, "LogDocked", false);
+	log_height = _ini.get_int(_section, "LogHeight", 200);
 	display_output = _ini.get_bool(_section, "DisplayOutput", false);
 
 	python_path = _ini.get_string(_section, "PythonPath", "");
@@ -78,6 +80,8 @@ void Config::write()
 	_ini.set(_section, "ShowCamStart", show_cam_start);
 	_ini.set(_section, "Postpro", postpro);
 	_ini.set(_section, "DisplayLog", display_log);
+	_ini.set(_section, "LogDocked", log_docked);
+	_ini.set(_section, "LogHeight", log_height);
 	_ini.set(_section, "DisplayOutput", display_output);
 	_ini.set(_section, "PythonPath", python_path);
 	_ini.set(_section, "Language", language);

@@ -48,6 +48,8 @@ run()                               le script dessine et peut ouvrir une fenêtr
 -> le dessin renvoyé par le moteur est ajouté au document
 ```
 
+Un fichier sans `class Cadscript` n'est pas un script : il est ignoré et absent du menu. Utilisez-le pour du code partagé entre plusieurs scripts (`import mes_outils`). Quand un script échoue, le journal donne la trace Python, avec le fichier et la ligne de l'erreur.
+
 ## 2. Méthodes de `Cadscript`
 
 | Méthode | Arguments | Retour | Rôle |
@@ -86,7 +88,7 @@ Un script peut aussi gérer sa propre fenêtre (par exemple `tkinter`, pour ouvr
 | `self.core.unit` | `str` | unité du document, `'mm'` ou `'inch'` : toutes les coordonnées sont dans cette unité |
 | `self.core.selection` | `list` de `dict` | les formes sélectionnées quand le script est choisi (les usinages ne sont pas listés) |
 
-La sélection est lue quand le script est choisi dans le menu : elle ne change pas tant que la boîte de propriétés est ouverte. Elle est vide si rien n'est sélectionné. Chaque forme est un dictionnaire avec les clés `id` (numéro unique de la forme dans le document) et `type`, puis les clés de son type. Les points sont des tuples `(x, y)`.
+La sélection est lue quand le script est choisi dans le menu : elle ne change pas tant que la boîte de propriétés est ouverte. Elle est vide si rien n'est sélectionné. Chaque forme est un dictionnaire avec les clés `id` (numéro unique de la forme dans le document), `layer` (nom de son calque) et `type`, puis les clés de son type. Les points sont des tuples `(x, y)`.
 
 | `type` | Autres clés |
 |---|---|
@@ -110,6 +112,13 @@ for shape in self.core.selection:
 ```
 
 `mark_middles.py` est un exemple complet de script qui lit la sélection.
+
+### Journal et calques
+
+| Appel | Effet |
+|---|---|
+| `self.core.log(text)` | écrit une ligne `Script: text` dans le journal de l'application (`print` n'est pas visible) |
+| `self.core.set_layer(name)` | les formes ajoutées après cet appel vont dans le calque de ce nom, créé s'il n'existe pas (la création s'annule avec le script) ; sans nom, elles retournent dans le calque courant. Une forme modifiée garde son calque |
 
 ### Messages
 

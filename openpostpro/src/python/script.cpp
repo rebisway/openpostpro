@@ -59,7 +59,28 @@ std::string Script::python_error()
 	PyObject* ex = PyErr_GetRaisedException();
 	if (ex != NULL)
 	{
-		PyObject* value = PyException_GetArgs(ex);
+		// the formatted exception gives the file and the line of the error
+		PyObject* tb = PyImport_ImportModule("traceback");
+		if (tb != NULL)
+		{
+			PyObject* lines = PyObject_CallMethod(tb, "format_exception", "O", ex);
+			if (lines != NULL && PyList_Check(lines))
+			{
+				for (Py_ssize_t i = 0; i < PyList_Size(lines); i++)
+				{
+					PyObject* item = PyList_GetItem(lines, i);
+					if (PyUnicode_Check(item))
+						error += py_utf8(item);
+				}
+			}
+			Py_XDECREF(lines);
+			Py_DECREF(tb);
+		}
+		PyErr_Clear();
+		while (!error.empty() && (error.back() == '\n' || error.back() == '\r'))
+			error.pop_back();
+
+		PyObject* value = error.empty() ? PyException_GetArgs(ex) : NULL;
 
 		if (value != NULL && PyTuple_Check(value))
 		{
