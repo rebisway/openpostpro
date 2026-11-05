@@ -867,6 +867,9 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 
 	initialize(_module, _lang);
 
+	// the post-processor works in the unit of the document
+	set("set_unit", "s", doc->unit() == Unit::Inch ? "inch" : "mm");
+
 	// ensure existence of path
 	Directory::create(path);
 

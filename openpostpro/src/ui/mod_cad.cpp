@@ -1563,6 +1563,10 @@ void ModCad::render_menu()
 				reverse();
 			}
 		}
+		if (ImGui::MenuItem(_document->unit() == Unit::Millimeter ? Lang::l("DRAWING_CONVERT_TO_INCH") : Lang::l("DRAWING_CONVERT_TO_MM")))
+		{
+			convert_unit();
+		}
 		if (_document->selected().size() > 0)
 		{
 			if (ImGui::BeginMenu(Lang::l("DRAWING_MOVE_TO")))
@@ -2427,6 +2431,34 @@ HistoryAction ModCad::process_action(HistoryAction action)
 	}
 	else 
 		return action;
+}
+
+void ModCad::convert_unit()
+{
+	auto target = _document->unit() == Unit::Millimeter ? Unit::Inch : Unit::Millimeter;
+	float factor = target == Unit::Inch ? 1.0f / 25.4f : 25.4f;
+	auto scale = glm::scale(glm::mat4(1.0f), glm::vec3(factor, factor, 1.0f));
+
+	// only the drawing is converted, the toolpaths are defined afterwards
+	for (Layer* layer : _document->layers())
+	{
+		for (Shape* shape : layer->shapes())
+		{
+			shape->transform(scale);
+			if (shape->type() == GraphicType::Text)
+			{
+				auto text = (Text*)shape;
+				text->height(text->height() * factor);
+				text->inter(text->inter() * factor);
+			}
+		}
+	}
+
+	_document->unit(target);
+	_document->modified(true);
+
+	// the unit change cannot be undone, the history starts again
+	clear_history();
 }
 
 void ModCad::undo()

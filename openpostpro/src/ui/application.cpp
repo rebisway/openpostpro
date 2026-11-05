@@ -102,6 +102,14 @@ void Application::initialize()
 		Logger::error("Reading configuration [" + std::string(e.what()) + "]");
 	}
 
+	// apply the saved language before the modules, post-processors and scripts are loaded
+	if (!config.language.empty() && config.language != Lang::getName())
+	{
+		auto languages = Lang::get_langs();
+		if (std::find(languages.begin(), languages.end(), config.language) != languages.end())
+			Lang::load(config.language);
+	}
+
 	/*_textures.push_back(load_texture("image2.jpg"));
 	_textures.push_back(load_texture("box-4x.png"));
 	_textures.push_back(load_texture("bug-4x.png"));
@@ -160,8 +168,14 @@ void Application::initialize()
 
 	onSizeChanged(width(), height());
 
+	// the first start asks for the language and the unit
+	_display_first_run = config.first;
+	_first_language = Lang::getName();
+	_first_unit = config.default_unit;
+
 	// Default document
 	_document = new Document();
+	_document->unit(config.default_unit == 1 ? Unit::Inch : Unit::Millimeter);
 	if (config.open_last_file)
 		load_file(config.last_file_path);
 	else
@@ -870,6 +884,46 @@ void Application::render_menu()
 		ImGui::EndMainMenuBar();
 	}
 
+	if (_display_first_run)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+		ImGui::Begin(Lang::l("WELCOME"), 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+		ImGui::Text("%s", Lang::l("WELCOME_MESSAGE"));
+		ImGui::NewLine();
+
+		if (ImGui::BeginCombo(Lang::l("LANGUAGE"), _first_language.c_str()))
+		{
+			for (const std::string& code : Lang::get_langs())
+			{
+				const bool is_selected = (code == _first_language);
+				if (ImGui::Selectable(code.c_str(), is_selected) && code != _first_language)
+				{
+					// the interface changes at once
+					_first_language = code;
+					Lang::load(code);
+				}
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+
+		const char* units[] = { Lang::l("UNIT_MM"), Lang::l("UNIT_INCH") };
+		ImGui::Combo(Lang::l("DEFAULT_UNIT"), &_first_unit, units, IM_ARRAYSIZE(units));
+
+		ImGui::NewLine();
+		if (ImGui::Button(Lang::l("OK")))
+		{
+			config.language = _first_language;
+			config.default_unit = _first_unit;
+			config.write();
+			_document->unit(_first_unit == 1 ? Unit::Inch : Unit::Millimeter);
+			_display_first_run = false;
+		}
+		ImGui::End();
+	}
+
 	if (_display_preferences)
 	{
 		auto result = config.drawUI();
@@ -904,6 +958,7 @@ void Application::new_document()
 			_document->clear();
 			_document->init();
 			_document->path("");
+			_document->unit(config.default_unit == 1 ? Unit::Inch : Unit::Millimeter);
 			
 
 			title(_application_title);

@@ -27,6 +27,8 @@
 #include <glm/gtc/constants.hpp>
 #include "window.h"
 #include <logger.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include "text.h"
 
 int DxfLoader::_count = 0;
 
@@ -37,7 +39,28 @@ void DxfLoader::read(std::string path, Document* document)
 	dxf.read(path);
 
 	document->clear();
-	
+
+	// unit of the file ($INSUNITS) converted to the unit of the document, nothing is converted when the file has no unit
+	double factor = 1.0;
+	for (DxfSection* section : dxf.sections())
+	{
+		if (section->type() == DxfSectionType::Header)
+		{
+			double to_mm = 0.0;
+			switch (std::get<int>(section->properties("insunits")))
+			{
+			case 1: to_mm = 25.4; break;		// inch
+			case 2: to_mm = 304.8; break;		// foot
+			case 4: to_mm = 1.0; break;			// millimeter
+			case 5: to_mm = 10.0; break;		// centimeter
+			case 6: to_mm = 1000.0; break;		// meter
+			}
+			if (to_mm > 0.0)
+				factor = to_mm / (document->unit() == Unit::Inch ? 25.4 : 1.0);
+		}
+	}
+	auto scale = glm::scale(glm::mat4(1.0f), glm::vec3((float)factor, (float)factor, 1.0f));
+
 	std::map<std::string, DxfLayer*> layers;
 	for(DxfTable* t : dxf.tables()->items()) {
 		for(DxfLayer* l : t->layers()) {
@@ -61,6 +84,16 @@ void DxfLoader::read(std::string path, Document* document)
 				std::vector<Shape*> shapes = add_entity(e, document->render());
 				for (Shape* s : shapes)
 				{
+					if (factor != 1.0)
+					{
+						s->transform(scale);
+						if (s->type() == GraphicType::Text)
+						{
+							auto text = (Text*)s;
+							text->height(text->height() * (float)factor);
+							text->inter(text->inter() * (float)factor);
+						}
+					}
 					layer->shapes().push_back(s);
 					s->parent(layer->name());
 				}

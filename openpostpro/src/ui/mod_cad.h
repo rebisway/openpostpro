@@ -190,6 +190,9 @@ public:
 	
 	// CAD processing
 	void reverse();
+
+	// scale the drawing to the other unit (millimeter <-> inch) and change the unit of the document
+	void convert_unit();
 	void cut_at_intersections();
 	void set_reference_to_text();
 	std::vector<Shape*> look_for_siblings(Shape* s);

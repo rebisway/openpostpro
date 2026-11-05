@@ -54,6 +54,9 @@ private:
 	glm::vec2 _bottom_right = glm::vec2();
 
 	bool _display_preferences = false;
+	bool _display_first_run = false;		// language and unit are asked at the very first start
+	std::string _first_language = "";
+	int _first_unit = 0;
 	bool _display_postpro_preferences = false;
 
 	std::string _application_title = "";

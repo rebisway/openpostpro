@@ -476,6 +476,8 @@ std::string Document::write(float version)
 
 	buffer += "0;output;" + _output + '\n';
 
+	buffer += "0;unit;" + std::to_string((int)_unit) + '\n';
+
 	buffer += "0;camera;" + std::to_string(_render->camera()->scale()) + ";" + 
 		std::to_string(_render->camera()->znear()) + ";" +
 		std::to_string(_render->camera()->zfar()) + ";" +
@@ -519,6 +521,9 @@ void Document::read(std::string value)
 {
 	clear();
 
+	// documents saved before the unit existed are in millimeters
+	_unit = Unit::Millimeter;
+
 	auto data = stringex::split(value, '\n');
 	float version = 0.0f;
 	std::vector<std::shared_future<Graphic*>> futures;
@@ -542,6 +547,8 @@ void Document::read(std::string value)
 					version = std::stof(values[2]);
 				if (values[1] == "output")
 					_output = values[2];
+				if (values[1] == "unit")
+					_unit = (Unit)std::stoi(values[2]);
 				if (values[1] == "camera")
 				{
 					_render->camera()->scale(std::stof(values[2]));

@@ -43,6 +43,8 @@ void Config::read()
 	display_output = _ini.get_bool(_section, "DisplayOutput", false);
 
 	python_path = _ini.get_string(_section, "PythonPath", "");
+	language = _ini.get_string(_section, "Language", "");
+	default_unit = _ini.get_int(_section, "Unit", 0);
 
 	anchorFillColor = geometry::from_string(_ini.get_string("COLOR", "AnchorFill", "(1.0;1.0;1.0;0.5)"));
 	anchorLineColor = geometry::from_string(_ini.get_string("COLOR", "AnchorLine", "(0.0;1.0;0.0;0.5)"));			//glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -78,6 +80,8 @@ void Config::write()
 	_ini.set(_section, "DisplayLog", display_log);
 	_ini.set(_section, "DisplayOutput", display_output);
 	_ini.set(_section, "PythonPath", python_path);
+	_ini.set(_section, "Language", language);
+	_ini.set(_section, "Unit", default_unit);
 
 	_ini.set("COLOR", "AnchorFill", geometry::to_string(anchorFillColor));
 	_ini.set("COLOR", "AnchorLine", geometry::to_string(anchorLineColor));
@@ -167,6 +171,29 @@ MessageBoxResult Config::drawUI()
 			{
 				_ini_temp.set("GENERAL", "PythonPath", std::string(input));
 			}
+
+			// language: the code of a file of the lang folder
+			std::string current = _ini_temp.get_string("GENERAL", "Language");
+			if (current.empty())
+				current = Lang::getName();
+			if (ImGui::BeginCombo(Lang::l("LANGUAGE"), current.c_str()))
+			{
+				for (const std::string& code : Lang::get_langs())
+				{
+					const bool is_selected = (code == current);
+					if (ImGui::Selectable(code.c_str(), is_selected))
+						_ini_temp.set("GENERAL", "Language", code);
+					if (is_selected)
+						ImGui::SetItemDefaultFocus();
+				}
+				ImGui::EndCombo();
+			}
+
+			// unit given to the new documents
+			int unit = _ini_temp.get_int("GENERAL", "Unit", 0);
+			const char* units[] = { Lang::l("UNIT_MM"), Lang::l("UNIT_INCH") };
+			if (ImGui::Combo(Lang::l("DEFAULT_UNIT"), &unit, units, IM_ARRAYSIZE(units)))
+				_ini_temp.set("GENERAL", "Unit", unit);
 			ImGui::EndTabItem();
 		}
 		ImGui::EndTabBar();
@@ -243,6 +270,8 @@ MessageBoxResult Config::drawUI()
 		_ini.write();
 		_load_temp = true;
 		read();
+		if (!language.empty() && language != Lang::getName())
+			Lang::load(language);
 		result = MessageBoxResult::Ok;
 	}
 	ImGui::SameLine();

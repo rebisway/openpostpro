@@ -22,6 +22,12 @@
 #include <layer.h>
 #include <group.h>
 
+// unit of the document: the drawing has no unit by itself, the unit applies to the post-processor and the imports
+enum class Unit {
+	Millimeter = 0,
+	Inch = 1
+};
+
 enum doc_type {
 	router
 };
@@ -42,6 +48,7 @@ private:
 	bool _modified = false;
 
 	float _scale = 1.0f;					// last camera scale factor
+	Unit _unit = Unit::Millimeter;			// unit of the coordinates
 
 public:
 	Document();
@@ -57,6 +64,9 @@ public:
 	void path(std::string value) { _path = value; }
 
 	std::string output() { return _output; }
+
+	Unit unit() { return _unit; }
+	void unit(Unit value) { _unit = value; }
 	void output(std::string value) { _output = value; }
 
 	bool modified() { return _modified; }

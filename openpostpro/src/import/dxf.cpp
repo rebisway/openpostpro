@@ -141,6 +141,13 @@ void DxfHeader::read(std::ifstream& input)
 				_properties["unit"] = std::stoi(_val);
 			}
 		}
+		else if (_val == "$INSUNITS")
+		{
+			read_line(input);
+			if (_code == 70) {
+				_properties["insunits"] = std::stoi(_val);
+			}
+		}
 		else if (_val == "$LIMMIN")
 		{
 			read_line(input);

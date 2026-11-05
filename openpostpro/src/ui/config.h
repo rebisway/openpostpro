@@ -62,6 +62,12 @@ public:
 
 	std::string python_path = "";
 
+	// language code (name of a file of the lang folder), empty keeps the default one
+	std::string language = "";
+
+	// unit given to the new documents: 0 millimeter, 1 inch
+	int default_unit = 0;
+
 	Config();
 
 
