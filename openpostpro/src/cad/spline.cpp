@@ -262,23 +262,9 @@ void Spline::draw()
 	}
 }
 
-void Spline::ui()
+void Spline::properties()
 {
-	ImGui::Begin((_name + "###OBJECT").c_str());
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("NB_POINTS"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Spacing();
-	ImGui::Text(std::to_string(_curve.size()).c_str());
-
-	ImGui::EndTable();
-	ImGui::End();
+	property_text(Lang::l("NB_POINTS"), std::to_string(_curve.size()));
 }
 
 Shape* Spline::symmetry(glm::vec2 p1, glm::vec2 p2)

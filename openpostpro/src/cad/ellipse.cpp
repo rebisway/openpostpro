@@ -432,164 +432,31 @@ void Ellipse::draw_anchors()
 	}
 }
 
-void Ellipse::ui()
+void Ellipse::properties()
 {
-	char input[20];
+	auto center = _center;
+	if (property_point(Lang::l("CENTER"), "##CENTER", center))
+		modify([&] { this->center(center); });
 
-	ImGui::Begin((_name + "###OBJECT").c_str());
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
+	auto minor = _minor;
+	if (property_float(Lang::l("MINOR"), "##MINOR", minor))
+		modify([&] { this->minor(minor); });
 
+	auto major = _major;
+	if (property_float(Lang::l("MAJOR"), "##MAJOR", major))
+		modify([&] { this->major(major); });
 
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f,%0.3f", _center.x, _center.y);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("CENTER"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	if (ImGui::InputText("##CENTER", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		std::string val = input;
-		auto numbers = stringex::split(val, ';');
-		auto point = _center;
-		if (numbers.size() == 2)
-		{
-			try
-			{
-				point.x = std::stof(numbers[0]);
-				point.y = std::stof(numbers[1]);
-				if (point != _center)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					center(point);
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
-	}
+	auto start = glm::degrees(_start);
+	if (property_float(Lang::l("START_ANGLE"), "##START_ANGLE", start))
+		modify([&] { this->start(glm::radians(start)); });
 
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", _minor);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("MINOR"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##MINOR", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto m = std::stof(input);
-			if (m != _minor)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				minor(m);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
+	auto stop = glm::degrees(_stop);
+	if (property_float(Lang::l("STOP_ANGLE"), "##STOP_ANGLE", stop))
+		modify([&] { this->stop(glm::radians(stop)); });
 
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", _major);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("MAJOR"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##MAJOR", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto m = std::stof(input);
-			if (m != _major)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				major(m);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", glm::degrees(_start));
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("START_ANGLE"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##START_ANGLE", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto a = glm::radians(std::stof(input));
-			if (a != _start)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				start(a);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", glm::degrees(_stop));
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("STOP_ANGLE"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##STOP_ANGLE", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto a = glm::radians(std::stof(input));
-			if (a != _stop)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				stop(a);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", glm::degrees(_angle));
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("ANGLE"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##ANGLE", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto a = glm::radians(std::stof(input));
-			if (a != _angle)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				angle(a);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-
-	ImGui::EndTable();
-	ImGui::End();
+	auto angle = glm::degrees(_angle);
+	if (property_float(Lang::l("ANGLE"), "##ANGLE", angle))
+		modify([&] { this->angle(glm::radians(angle)); });
 }
 
 std::string Ellipse::write()

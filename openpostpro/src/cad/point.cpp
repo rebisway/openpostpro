@@ -196,49 +196,11 @@ void Point::draw_anchors()
 		_a1->draw();
 }
 
-void Point::ui()
+void Point::properties()
 {
-	char input[20];
-
-	ImGui::Begin((_name + "###OBJECT").c_str());
-
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f;%0.3f", _p1.x, _p1.y);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text("Point");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	if (ImGui::InputText("##LP1", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		std::string val = input;
-		auto numbers = stringex::split(val, ';');
-		auto p = _p1;
-		if (numbers.size() == 2)
-		{
-			try
-			{
-				p.x = std::stof(numbers[0]);
-				p.y = std::stof(numbers[1]);
-				if (p != _p1)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					p1(p);
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
-	}
-
-	ImGui::EndTable();
-	ImGui::End();
+	auto position = _p1;
+	if (property_point("Point", "##LP1", position))
+		modify([&] { p1(position); });
 }
 
 std::string Point::write()

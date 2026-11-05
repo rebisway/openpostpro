@@ -87,7 +87,7 @@ public:
 	void compute() override;
 	void update() override;
 	void draw() override;
-	void ui() override;
+	void properties() override;
 
 	// construction
 	Shape* symmetry(glm::vec2 p1, glm::vec2 p2) override;

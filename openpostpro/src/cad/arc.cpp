@@ -493,190 +493,39 @@ void Arc::draw_anchors()
 	}
 }
 
-void Arc::ui()
+void Arc::properties()
 {
-	char input[20];
+	auto format = [](glm::vec2 p) { char t[40]; sprintf_s(t, "%0.3f;%0.3f", p.x, p.y); return std::string(t); };
 
-	ImGui::Begin((_name + "###OBJECT").c_str());
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
+	property_text(Lang::l("START"), format(_start));
+	property_text(Lang::l("END"), format(_stop));
 
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f;%0.3f", _start.x, _start.y);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("START"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	ImGui::Text(input);
-	//if (ImGui::InputText("##LP1", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	//{
-	//	std::string val = input;
-	//	auto numbers = stringex::split(val, ';');
-	//	auto ref_point = _start;
-	//	if (numbers.size() == 2)
-	//	{
-	//		try
-	//		{
-	//			ref_point.x = std::stof(numbers[0]);
-	//			ref_point.y = std::stof(numbers[1]);
-	//			start(ref_point);
-	//		}
-	//		catch (const std::exception& e)
-	//		{
-	//			Logger::log(e.what());
-	//		}
-	//	}
-	//}
+	auto center = _center;
+	if (property_point(Lang::l("CENTER"), "##CENTER", center))
+		modify([&] { auto diff = center - _center; set(_start + diff, center, _stop + diff, _cw); });
 
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("END"));
-	ImGui::TableSetColumnIndex(1);
-	sprintf_s(input, "%0.3f;%0.3f", _stop.x, _stop.y);
-	ImGui::Text(input);
-	//if (ImGui::InputText("##LP2", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	//{
-	//	std::string val = input;
-	//	auto numbers = stringex::split(val, ';');
-	//	auto ref_point = _stop;
-	//	if (numbers.size() == 2)
-	//	{
-	//		try
-	//		{
-	//			ref_point.x = std::stof(numbers[0]);
-	//			ref_point.y = std::stof(numbers[1]);
-	//			stop(ref_point);
-	//		}
-	//		catch (const std::exception& e)
-	//		{
-	//			Logger::log(e.what());
-	//		}
-	//	}
-	//}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f;%0.3f", _center.x, _center.y);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("CENTER"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##CENTER", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		std::string val = input;
-		auto numbers = stringex::split(val, ';');
-		auto point = _center;
-		if (numbers.size() == 2)
-		{
-			try
-			{
-				point.x = std::stof(numbers[0]);
-				point.y = std::stof(numbers[1]);
-				auto diff = point - _center;
-				if (point != _center)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					set(_start + diff, point, _stop + diff, _cw);
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
-	}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", _radius);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("RADIUS"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##RADIUS", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto r = std::stof(input);
+	auto radius = _radius;
+	if (property_float(Lang::l("RADIUS"), "##RADIUS", radius))
+		modify([&] {
 			auto s_a = geometry::angle(_start - _center);
 			auto s_o = geometry::angle(_stop - _center);
-			auto sta = geometry::position(s_a, r, _center);
-			auto sto = geometry::position(s_o, r, _center);
-			if (_radius != r)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				set(sta, _center, sto, _cw);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
+			set(geometry::position(s_a, radius, _center), _center, geometry::position(s_o, radius, _center), _cw);
+		});
 
-	ImGui::TableNextRow();
-	auto angle = glm::degrees( geometry::oriented_angle(_start, _stop, _center, _cw) );
-	sprintf_s(input, "%.3f", angle);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("ANGLE"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##ANGLE", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			float oa = geometry::oriented_angle(_start, _stop, _center, _cw);
-			float so = glm::radians(std::stof(input));
-			if (oa != so)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				float sa = geometry::oriented_angle(_start, _center);
-				auto point = geometry::position(sa + so, _radius, _center);
-				stop(point);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
+	auto angle = glm::degrees(geometry::oriented_angle(_start, _stop, _center, _cw));
+	if (property_float(Lang::l("ANGLE"), "##ANGLE", angle))
+		modify([&] {
+			float sa = geometry::oriented_angle(_start, _center);
+			stop(geometry::position(sa + glm::radians(angle), _radius, _center));
+		});
 
 	bool clock = _cw;
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("CLOCKWISE"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::Checkbox("##CW", &clock))
-	{
+	if (property_bool(Lang::l("CLOCKWISE"), "##CW", clock))
 		cw(clock);
-	}
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("LENGTH"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%f", geometry::arc_length(_start, _center, _stop, _cw));
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("CORDE"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%f", geometry::distance(_start, _stop));
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("THICKNESS"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Text("%f", geometry::arc_thickness(_start, _center, _stop, _cw));
-
-	ImGui::EndTable();
-	ImGui::End();
+	property_text(Lang::l("LENGTH"), std::to_string(geometry::arc_length(_start, _center, _stop, _cw)));
+	property_text(Lang::l("CORDE"), std::to_string(geometry::distance(_start, _stop)));
+	property_text(Lang::l("THICKNESS"), std::to_string(geometry::arc_thickness(_start, _center, _stop, _cw)));
 }
 
 std::string Arc::write()

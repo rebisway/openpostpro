@@ -285,105 +285,19 @@ void Line::draw_anchors()
 }
 
 
-void Line::ui()
+void Line::properties()
 {
-	char input[20];
+	auto point1 = _p1;
+	if (property_point("P1", "##LP1", point1))
+		modify([&] { p1(point1); });
 
-	ImGui::Begin((_name + "###OBJECT").c_str());
+	auto point2 = _p2;
+	if (property_point("P2", "##LP2", point2))
+		modify([&] { p2(point2); });
 
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f;%0.3f", _p1.x, _p1.y);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text("P1");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	if (ImGui::InputText("##LP1", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		std::string val = input;
-		auto numbers = stringex::split(val, ';');
-		auto point = _p1;
-		if (numbers.size() == 2)
-		{
-			try
-			{
-				point.x = std::stof(numbers[0]);
-				point.y = std::stof(numbers[1]);
-				if (point != _p1)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					p1(point);
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
-	}
-
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0); 
-	ImGui::Spacing();
-	ImGui::Text("P2");
-	ImGui::TableSetColumnIndex(1);
-	sprintf_s(input, "%0.3f;%0.3f", _p2.x, _p2.y);
-	if (ImGui::InputText("##LP2", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		std::string val = input;
-		auto numbers = stringex::split(val, ';');
-		auto point = _p2;
-		if (numbers.size() == 2)
-		{
-			try
-			{
-				point.x = std::stof(numbers[0]);
-				point.y = std::stof(numbers[1]);
-				if (point != _p2)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					p2(point);
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
-	}
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0); 
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("LENGTH"));
-	ImGui::TableSetColumnIndex(1);
-	sprintf_s(input, "%.3f", glm::length(_p2 - _p1));
-	if (ImGui::InputText("##LL", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto len = std::stof(input);
-			auto angle = geometry::angle(_p2 - _p1);
-			auto point = geometry::position(angle, len);
-			if (point + _p1 != _p2)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				p2(point + _p1);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-	
-	ImGui::EndTable();
-	ImGui::End();
+	auto length = glm::length(_p2 - _p1);
+	if (property_float(Lang::l("LENGTH"), "##LL", length))
+		modify([&] { p2(geometry::position(geometry::angle(_p2 - _p1), length) + _p1); });
 }
 
 Shape* Line::symmetry(glm::vec2 p1, glm::vec2 p2)

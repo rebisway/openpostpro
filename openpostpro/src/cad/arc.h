@@ -115,7 +115,7 @@ public:
 	void update() override;
 	void draw() override;
 	void draw_anchors() override;
-	void ui() override;
+	void properties() override;
 
 	// IO
 	std::string write() override;

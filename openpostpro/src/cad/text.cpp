@@ -563,264 +563,78 @@ void Text::draw_anchors()
 		_a1->draw();
 }
 
-void Text::ui()
+void Text::properties()
 {
 	auto families = environment::fonts();
 	auto cur_fam = families[_family];
 
-	char input[100];
-
-	ImGui::Begin((_name + "###OBJECT").c_str());
-
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-		ImGui::TableNextRow();
-		sprintf_s(input, "%0.3f;%0.3f", _p1.x, _p1.y);
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text("Point");
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		if (_reference == -1)
-		{
-			if (ImGui::InputText("##LP1", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-			{
-				std::string val = input;
-				auto numbers = stringex::split(val, ';');
-				auto p = _p1;
-				if (numbers.size() == 2)
-				{
-					try
-					{
-						p.x = std::stof(numbers[0]);
-						p.y = std::stof(numbers[1]);
-						if (p != _p1)
-						{
-							History::undo(HistoryActionType::Modify, write());
-							point(p);
-						}
-					}
-					catch (const std::exception& e)
-					{
-						Logger::log(e.what());
-					}
-				}
-			}
-		}
-		else
-			ImGui::Text(input);
-
-	ImGui::TableNextRow();
-	if (_text.size() < 100)
-		sprintf_s(input, "%s", _text.c_str());
+	if (_reference == -1)
+	{
+		auto position = _p1;
+		if (property_point("Point", "##LP1", position))
+			modify([&] { point(position); });
+	}
 	else
-		sprintf_s(input, "%s", _text.substr(0, 99).c_str());
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("FONT_TEXT"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##FT_TEXT", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-		{
-		try
-		{
-			if (std::string(input) != _text)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				text(input);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("FONT_FAMILY"));
-	ImGui::TableSetColumnIndex(1);
-	int cur_font_index = 0, n = 0;
-	if (ImGui::BeginCombo("##FAMILY", _family.c_str(), 0))
 	{
-		std::map<std::string, environment::FontFamily>::iterator it;
-		for (it = families.begin(); it != families.end(); it++)
-		{
-			const bool is_selected = (it->first == _family);
-			if (ImGui::Selectable(it->first.c_str(), is_selected))
-			{
-				cur_font_index = n;
-				if (it->first != _family)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					fontFamily(it->first);
-				}
-			}
-			n++;
-
-			if (is_selected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
-		}
-		ImGui::EndCombo();
+		char t[40];
+		sprintf_s(t, "%0.3f;%0.3f", _p1.x, _p1.y);
+		property_text("Point", t);
 	}
 
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", _height);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("FONT_HEIGHT"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##FT_HEIGHT", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
+	auto content = _text;
+	if (property_string(Lang::l("FONT_TEXT"), "##FT_TEXT", content))
+		modify([&] { text(content); });
+
+	std::vector<std::string> names;
+	int family = 0;
+	for (auto& f : families)
 	{
-		try
-		{
-			auto h = std::stof(input);
-			if (h != _height)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				height(h);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
+		if (f.first == _family)
+			family = (int)names.size();
+		names.push_back(f.first);
 	}
+	if (property_combo(Lang::l("FONT_FAMILY"), "##FAMILY", family, names))
+		modify([&] { fontFamily(names[family]); });
+
+	auto height = _height;
+	if (property_float(Lang::l("FONT_HEIGHT"), "##FT_HEIGHT", height))
+		modify([&] { this->height(height); });
 
 	if (!cur_fam.bold_path.empty() || !cur_fam.bold_italic_path.empty())
 	{
 		bool bd = _bold;
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("FONT_BOLD"));
-		ImGui::TableSetColumnIndex(1);
-		if (ImGui::Checkbox("##FT_BOLD", &bd))
-		{
-			if (bd != _bold)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				bold(bd);
-			}
-		}
+		if (property_bool(Lang::l("FONT_BOLD"), "##FT_BOLD", bd))
+			modify([&] { bold(bd); });
 	}
 
 	if (!cur_fam.italic_path.empty() || !cur_fam.bold_italic_path.empty())
 	{
 		bool it = _italic;
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("FONT_ITALIC"));
-		ImGui::TableSetColumnIndex(1);
-		if (ImGui::Checkbox("##FT_ITALIC", &it))
-		{
-			if (it != _italic)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				italic(it);
-			}
-		}
+		if (property_bool(Lang::l("FONT_ITALIC"), "##FT_ITALIC", it))
+			modify([&] { italic(it); });
 	}
 
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", _inter);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("FONT_INTER"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##FT_INTER", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto i = std::stof(input);
-			if (i != _inter)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				inter(i);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
+	auto inter = _inter;
+	if (property_float(Lang::l("FONT_INTER"), "##FT_INTER", inter))
+		modify([&] { this->inter(inter); });
 
 	bool mr = _mirror;
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("FONT_MIRROR"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::Checkbox("##FT_MIRROR", &mr))
-	{
-		if (mr != _mirror)
-		{
-			History::undo(HistoryActionType::Modify, write());
-			mirror(mr);
-		}
-	}
+	if (property_bool(Lang::l("FONT_MIRROR"), "##FT_MIRROR", mr))
+		modify([&] { mirror(mr); });
 
 	if (_reference != -1)
 	{
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("FONT_POSITION"));
-		ImGui::TableSetColumnIndex(1);
-		if (ImGui::BeginCombo("##FT_POSITION", Lang::l("FONT_POS" + std::to_string((int)_position)), 0))
-		{
-			for (int i = 0; i < 3; i++)
-			{
-				const bool is_selected = (i == (int)_position);
-				if (ImGui::Selectable(Lang::l("FONT_POS" + std::to_string(i)), is_selected))
-				{
-					if (i != (int)_position)
-					{
-						History::undo(HistoryActionType::Modify, write());
-						_position = (TextPos)i;
-						compute();
-					}
-				}
+		int position = (int)_position;
+		std::vector<std::string> positions;
+		for (int i = 0; i < 3; i++)
+			positions.push_back(Lang::l("FONT_POS" + std::to_string(i)));
+		if (property_combo(Lang::l("FONT_POSITION"), "##FT_POSITION", position, positions))
+			modify([&] { _position = (TextPos)position; compute(); });
 
-				if (is_selected)
-				{
-					ImGui::SetItemDefaultFocus();
-				}
-			}
-			ImGui::EndCombo();
-		}
-
-		ImGui::TableNextRow();
-		sprintf_s(input, "%.3f", _reference_pos);
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("FONT_LENGTH"));
-		ImGui::TableSetColumnIndex(1);
-		if (ImGui::InputText("##REF_LENGTH", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-		{
-			try
-			{
-				auto h = std::stof(input);
-				if (h != _reference_pos)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					reference_pos(h);
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
+		auto reference = _reference_pos;
+		if (property_float(Lang::l("FONT_LENGTH"), "##REF_LENGTH", reference))
+			modify([&] { reference_pos(reference); });
 	}
-
-	ImGui::EndTable();
-	ImGui::End();
 }
 
 std::string Text::write()

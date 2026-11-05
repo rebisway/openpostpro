@@ -160,3 +160,63 @@ void Shape::modify(const std::function<void()>& change)
 	History::undo(HistoryActionType::Modify, write());
 	change();
 }
+
+bool Shape::property_bool(const char* label, const char* id, bool& value)
+{
+	property_label(label);
+	bool checked = value;
+	if (ImGui::Checkbox(id, &checked) && checked != value)
+	{
+		value = checked;
+		return true;
+	}
+	return false;
+}
+
+bool Shape::property_string(const char* label, const char* id, std::string& value)
+{
+	char input[100];
+	bool changed = false;
+
+	snprintf(input, sizeof(input), "%s", value.c_str());
+	property_label(label);
+	if (ImGui::InputText(id, input, sizeof(input), ImGuiInputTextFlags_EnterReturnsTrue))
+	{
+		if (std::string(input) != value)
+		{
+			value = input;
+			changed = true;
+		}
+	}
+	return changed;
+}
+
+bool Shape::property_combo(const char* label, const char* id, int& selected, const std::vector<std::string>& items)
+{
+	bool changed = false;
+
+	property_label(label);
+	const char* current = (selected >= 0 && selected < (int)items.size()) ? items[selected].c_str() : "";
+	if (ImGui::BeginCombo(id, current, 0))
+	{
+		for (int i = 0; i < (int)items.size(); i++)
+		{
+			const bool is_selected = (i == selected);
+			if (ImGui::Selectable(items[i].c_str(), is_selected) && i != selected)
+			{
+				selected = i;
+				changed = true;
+			}
+			if (is_selected)
+				ImGui::SetItemDefaultFocus();
+		}
+		ImGui::EndCombo();
+	}
+	return changed;
+}
+
+void Shape::property_text(const char* label, const std::string& value)
+{
+	property_label(label);
+	ImGui::Text("%s", value.c_str());
+}

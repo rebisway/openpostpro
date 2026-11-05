@@ -454,112 +454,32 @@ void Polyline::draw_anchors()
 	}
 }
 
-void Polyline::ui()
+void Polyline::properties()
 {
-	ImGui::Begin((_name + "###OBJECT").c_str());
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
+	property_text(Lang::l("NB_POINTS"), std::to_string(_points.size()));
 
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("NB_POINTS"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::Spacing();
-	ImGui::Text(std::to_string(_points.size()).c_str());
-
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("MODE"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	const char* items[]{ "Poly","Bezier"/*,"BSpline"*/, "Natural Cubic", "Lagrange" };
-	int selected_item = (int)_mode;
-	if (ImGui::Combo("##MODE", &selected_item, items, IM_ARRAYSIZE(items)))
+	int selected = (int)_mode;
+	if (property_combo(Lang::l("MODE"), "##MODE", selected, { "Poly", "Bezier", "Natural Cubic", "Lagrange" }))
 	{
-		mode((PolylineMode)selected_item);
+		mode((PolylineMode)selected);
 		compute();
 		update();
 	}
 
-	char input[20];
-
+	// only the first points are editable, then the last one
 	size_t max = 10;
-	for (size_t i = 0; i < _points.size()&& i < max; i++)
+	for (size_t i = 0; i < _points.size() && i < max; i++)
 	{
-		ImGui::TableNextRow();
-		sprintf_s(input, "%0.3f;%0.3f", _points[i].x, _points[i].y);
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text((std::string("Point_") + std::to_string(i+1)).c_str());
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		if (ImGui::InputText((std::string("##LP") + std::to_string(i)).c_str(), input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-		{
-			std::string val = input;
-			auto numbers = stringex::split(val, ';');
-			auto p = _points[i];
-			if (numbers.size() == 2)
-			{
-				try
-				{
-					p.x = std::stof(numbers[0]);
-					p.y = std::stof(numbers[1]);
-					if (p != _points[i])
-					{
-						History::undo(HistoryActionType::Modify, write());
-						_points[i] = p;
-						compute();
-					}
-				}
-				catch (const std::exception& e)
-				{
-					Logger::log(e.what());
-				}
-			}
-		}
+		auto p = _points[i];
+		if (property_point((std::string("Point_") + std::to_string(i + 1)).c_str(), (std::string("##LP") + std::to_string(i)).c_str(), p))
+			modify([&] { _points[i] = p; compute(); });
 	}
 	if (_points.size() > max)
 	{
-		ImGui::TableNextRow();
-		sprintf_s(input, "%0.3f;%0.3f", _points.back().x, _points.back().y);
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text((std::string("Point_") + std::to_string(_points.size())).c_str());
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		if (ImGui::InputText("##LP_LAST", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-		{
-			std::string val = input;
-			auto numbers = stringex::split(val, ';');
-			auto p = _points.back();
-			if (numbers.size() == 2)
-			{
-				try
-				{
-					p.x = std::stof(numbers[0]);
-					p.y = std::stof(numbers[1]);
-					if (p != _points.back())
-					{
-						History::undo(HistoryActionType::Modify, write());
-						_points.pop_back();
-						_points.push_back(p);
-						compute();
-					}
-				}
-				catch (const std::exception& e)
-				{
-					Logger::log(e.what());
-				}
-			}
-		}
+		auto p = _points.back();
+		if (property_point((std::string("Point_") + std::to_string(_points.size())).c_str(), "##LP_LAST", p))
+			modify([&] { _points.pop_back(); _points.push_back(p); compute(); });
 	}
-
-	ImGui::EndTable();
-	ImGui::End();
 }
 
 std::string Polyline::write()
