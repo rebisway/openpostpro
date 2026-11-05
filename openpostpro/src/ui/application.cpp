@@ -268,12 +268,19 @@ void Application::initialize()
 	}
 }
 
+
+// true if the source defines the class "name:" or "name(" (a file without it is a library module)
+static bool defines_class(const std::string& source, const std::string& name)
+{
+	return source.find("class " + name + ":") != std::string::npos || source.find("class " + name + "(") != std::string::npos;
+}
+
 Postpro* Application::load_postpro(const std::string& file)
 {
 	auto name = std::filesystem::path(file).filename().string();
 
 	// a file without the class is a module used by other post-processors
-	if (file::read_all_text(file).find("class Postpro") == std::string::npos)
+	if (!defines_class(file::read_all_text(file), "Postpro"))
 	{
 		Logger::log("Module " + name + " is not a post-processor, skipped");
 		return nullptr;
@@ -307,7 +314,7 @@ CadScript* Application::load_cad_script(const std::string& file)
 	auto name = std::filesystem::path(file).filename().string();
 
 	// a file without the class is a module used by other scripts
-	if (file::read_all_text(file).find("class Cadscript") == std::string::npos)
+	if (!defines_class(file::read_all_text(file), "Cadscript"))
 	{
 		Logger::log("Module " + name + " is not a script, skipped");
 		return nullptr;

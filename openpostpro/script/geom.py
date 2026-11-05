@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-# Geometry helpers for the CAD scripts. This file is a library: it has no class Cadscript,
-# so it is not listed as a script. Use it with "import geom".
+# Geometry helpers for the CAD scripts. This file is a library: it defines no script class,
+# so it is not listed in the menu. Use it with "import geom".
 #
 # Points are tuples (x, y). Angles are in degrees, counter-clockwise from the X axis.
 # Functions that can fail (parallel lines, no intersection...) return None.
