@@ -208,6 +208,7 @@ public:
 	void cad_fillet(float value);
 
 	void insert(std::string code);
+	Shape* find_shape(unsigned int id);
 
 	// CAM processing
 	std::vector<Shape*> get_selection();

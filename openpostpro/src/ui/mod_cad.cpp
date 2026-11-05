@@ -3468,9 +3468,73 @@ void ModCad::cad_fillet(float value)
 	}
 }
 
+Shape* ModCad::find_shape(unsigned int id)
+{
+	for (Layer* l : _document->layers())
+	{
+		for (Shape* s : l->shapes())
+		{
+			if (s->id() == id)
+				return s;
+		}
+	}
+	return nullptr;
+}
+
 void ModCad::insert(std::string code)
 {
 	auto data = stringex::split(code, ':');
+
+	// D:id -> delete a shape
+	if (data[0] == "D" && data.size() > 1)
+	{
+		auto s = find_shape((unsigned int)std::stoul(data[1]));
+		Layer* layer = s != nullptr ? _document->layer(s->parent()) : nullptr;
+		if (layer == nullptr)
+		{
+			Logger::error("Script: shape " + data[1] + " not found");
+			return;
+		}
+
+		History::undo(HistoryActionType::Delete, s->write());
+		s->selected(false);
+		auto& selection = _document->selected();
+		selection.erase(std::remove(selection.begin(), selection.end(), (Graphic*)s), selection.end());
+		layer->remove(s);
+		return;
+	}
+
+	// M:id:L|C|A:parameters -> change the parameters of a shape, the id and the type do not change
+	if (data[0] == "M" && data.size() > 2)
+	{
+		auto s = find_shape((unsigned int)std::stoul(data[1]));
+		if (s == nullptr)
+		{
+			Logger::error("Script: shape " + data[1] + " not found");
+			return;
+		}
+
+		auto v = [&](size_t i) { return (float)std::atof(data[i].c_str()); };
+
+		if (data[2] == "L" && s->type() == GraphicType::Line && data.size() >= 7)
+		{
+			History::undo(HistoryActionType::Modify, s->write());
+			((Line*)s)->set(glm::vec2(v(3), v(4)), glm::vec2(v(5), v(6)));
+		}
+		else if (data[2] == "C" && s->type() == GraphicType::Circle && data.size() >= 6)
+		{
+			History::undo(HistoryActionType::Modify, s->write());
+			((Circle*)s)->set(glm::vec2(v(3), v(4)), v(5));
+		}
+		else if (data[2] == "A" && s->type() == GraphicType::Arc && data.size() >= 10)
+		{
+			History::undo(HistoryActionType::Modify, s->write());
+			((Arc*)s)->set(glm::vec2(v(3), v(4)), glm::vec2(v(5), v(6)), glm::vec2(v(7), v(8)), std::atoi(data[9].c_str()) != 0);
+		}
+		else
+			Logger::error("Script: shape " + data[1] + " keeps its type, cannot apply " + data[2]);
+		return;
+	}
 	if (data[0] == "L")
 	{
 		Line* l = new Line(_render);
