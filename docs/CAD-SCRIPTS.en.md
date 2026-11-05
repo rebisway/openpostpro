@@ -111,6 +111,12 @@ for shape in self.core.selection:
 
 `mark_middles.py` is a complete example of a script that reads the selection.
 
+### Messages
+
+| Call | Effect |
+|---|---|
+| `self.core.message(text, title)` | displays a message box (`tkinter`) and waits for the user to close it; `title` is optional (the name of the script by default). If the box cannot be displayed, the script goes on |
+
 ### Modifying and deleting
 
 | Call | Effect |
@@ -127,7 +133,7 @@ for shape in self.core.selection:
 
 `id` is the `id` key of a shape of `self.core.selection`. A modification changes the parameters only: a line stays a line, and the shape keeps its `id`, its layer and its toolpaths. Applying `modify_circle` to the id of a line is refused and written to the log. Deleting a shape does not delete the toolpaths that use it.
 
-All the changes, the new shapes included, are undone in one step. `scale_circles.py` is an example.
+All the changes, the new shapes included, are undone in one step. `scale_circles.py` is an example, and so are `fillet.py` and `chamfer.py`: they round or cut the corners of the selected lines, splines made of lines and polylines. `chamfer.py` reuses the code of `fillet.py` (`import fillet`), which shows how scripts can share code.
 
 ### Drawing
 

@@ -111,6 +111,12 @@ for shape in self.core.selection:
 
 `mark_middles.py` est un exemple complet de script qui lit la sélection.
 
+### Messages
+
+| Appel | Effet |
+|---|---|
+| `self.core.message(text, title)` | affiche une boîte de message (`tkinter`) et attend que l'utilisateur la ferme ; `title` est facultatif (le nom du script par défaut). Si la boîte ne peut pas s'afficher, le script continue |
+
 ### Modifier et supprimer
 
 | Appel | Effet |
@@ -127,7 +133,7 @@ for shape in self.core.selection:
 
 `id` est la clé `id` d'une forme de `self.core.selection`. Une modification ne change que les paramètres : une ligne reste une ligne, et la forme garde son `id`, son calque et ses usinages. Appliquer `modify_circle` à l'id d'une ligne est refusé et écrit dans le log. Supprimer une forme ne supprime pas les usinages qui l'utilisent.
 
-Tous les changements, nouvelles formes comprises, s'annulent en une seule fois. `scale_circles.py` en est un exemple.
+Tous les changements, nouvelles formes comprises, s'annulent en une seule fois. `scale_circles.py` en est un exemple, tout comme `fillet.py` et `chamfer.py` : ils arrondissent ou coupent les coins des lignes, des splines de lignes et des polylignes sélectionnées. `chamfer.py` réutilise le code de `fillet.py` (`import fillet`), ce qui montre comment des scripts peuvent partager du code.
 
 ### Dessin
 

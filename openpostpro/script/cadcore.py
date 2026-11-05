@@ -144,6 +144,19 @@ class Cadcore:
     def remove(self, id):
         self.output += 'D:' + str(id) + '\n'
 
+    # display a message box (tkinter), the script goes on if the box cannot be displayed
+    def message(self, text, title=''):
+        try:
+            import tkinter
+            from tkinter import messagebox
+            window = tkinter.Tk()
+            window.withdraw()
+            window.attributes('-topmost', True)
+            messagebox.showwarning(title if title else self.script.get_description(), str(text), parent=window)
+            window.destroy()
+        except Exception:
+            pass
+
     def get_output(self):
         return self.output
 
