@@ -17,6 +17,10 @@
 
 #include <shape.h>
 #include <history.h>
+#include <imgui.h>
+#include <logger.h>
+#include <lang.h>
+#include <strings.h>
 
 float Shape::precision = PRECISION;
 
@@ -68,4 +72,91 @@ glm::vec2& Shape::topLeft()
 glm::vec2& Shape::bottomRight()
 {
 	return _bounds.bottom_right;
+}
+
+void Shape::ui()
+{
+	ImGui::Begin((_name + "###OBJECT").c_str());
+
+	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
+	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
+	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
+
+	properties();
+
+	ImGui::EndTable();
+	ImGui::End();
+}
+
+void Shape::property_label(const char* label)
+{
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Spacing();
+	ImGui::Text(label);
+	ImGui::TableSetColumnIndex(1);
+	ImGui::PushItemWidth(-FLT_MIN);
+}
+
+bool Shape::property_point(const char* label, const char* id, glm::vec2& value)
+{
+	char input[32];
+	bool changed = false;
+
+	sprintf_s(input, "%0.3f;%0.3f", value.x, value.y);
+	property_label(label);
+	if (ImGui::InputText(id, input, sizeof(input), ImGuiInputTextFlags_EnterReturnsTrue))
+	{
+		std::string text = input;
+		auto numbers = stringex::split(text, ';');
+		if (numbers.size() == 2)
+		{
+			try
+			{
+				glm::vec2 point(std::stof(numbers[0]), std::stof(numbers[1]));
+				if (point != value)
+				{
+					value = point;
+					changed = true;
+				}
+			}
+			catch (const std::exception& e)
+			{
+				Logger::log(e.what());
+			}
+		}
+	}
+	return changed;
+}
+
+bool Shape::property_float(const char* label, const char* id, float& value)
+{
+	char input[32];
+	bool changed = false;
+
+	sprintf_s(input, "%.3f", value);
+	property_label(label);
+	if (ImGui::InputText(id, input, sizeof(input), ImGuiInputTextFlags_EnterReturnsTrue))
+	{
+		try
+		{
+			auto number = std::stof(input);
+			if (number != value)
+			{
+				value = number;
+				changed = true;
+			}
+		}
+		catch (const std::exception& e)
+		{
+			Logger::log(e.what());
+		}
+	}
+	return changed;
+}
+
+void Shape::modify(const std::function<void()>& change)
+{
+	History::undo(HistoryActionType::Modify, write());
+	change();
 }

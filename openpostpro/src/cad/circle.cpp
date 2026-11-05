@@ -248,95 +248,19 @@ void Circle::draw_anchors()
 	}
 }
 
-void Circle::ui()
+void Circle::properties()
 {
-	char input[20];
+	auto center = _center;
+	if (property_point(Lang::l("CENTER"), "##0", center))
+		modify([&] { this->center(center); });
 
-	ImGui::Begin((_name + "###OBJECT").c_str());
+	auto radius = _radius;
+	if (property_float(Lang::l("RADIUS"), "##1", radius))
+		modify([&] { this->radius(radius); });
 
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f;%0.3f", _center.x, _center.y);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("CENTER"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	if (ImGui::InputText("##0", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		std::string val = input;
-		auto numbers = stringex::split(val, ';');
-		auto point = _center;
-		if (numbers.size() == 2)
-		{
-			try
-			{
-				point.x = std::stof(numbers[0]);
-				point.y = std::stof(numbers[1]);
-				if (point != _center)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					center(point);
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
-	}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", _radius);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("RADIUS"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##1", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto r = std::stof(input);
-			if (r != _radius)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				radius(r);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%.3f", _radius*2);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("DIAMETER"));
-	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##2", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			auto r = std::stof(input) / 2.0f;
-			if (r != _radius)
-			{
-				History::undo(HistoryActionType::Modify, write());
-				radius(r);
-			}
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
-
-	ImGui::EndTable();
-	ImGui::End();
+	auto diameter = _radius * 2;
+	if (property_float(Lang::l("DIAMETER"), "##2", diameter))
+		modify([&] { this->radius(diameter / 2.0f); });
 }
 
 std::string Circle::write()

@@ -18,6 +18,7 @@
 #pragma once
 #include <graphic.h>
 #include <anchor.h>
+#include <functional>
 
 #define PRECISION  5.0f
 
@@ -85,4 +86,21 @@ public:
 
 	virtual Shape* symmetry(glm::vec2 p1, glm::vec2 p2) { return nullptr; }
 	virtual Shape* symmetry(glm::vec2 center) { return nullptr; }
+
+	// draw the properties window: common frame, then the rows given by properties()
+	void ui() override;
+
+protected:
+	// override to add the rows of the shape, using the property_* helpers
+	virtual void properties() {}
+
+	// each helper draws one row (label + input). Return true when the user validated a new value, stored in 'value'
+	bool property_point(const char* label, const char* id, glm::vec2& value);
+	bool property_float(const char* label, const char* id, float& value);
+
+	// push the undo action, then apply the change
+	void modify(const std::function<void()>& change);
+
+private:
+	void property_label(const char* label);
 };
