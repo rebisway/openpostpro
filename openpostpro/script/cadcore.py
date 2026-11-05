@@ -68,6 +68,65 @@ class Cadcore:
             clock = 1
         self.output += 'A:' + str(x1) + ':' + str(y1) + ':' + str(cx) + ':' + str(cy) + ':' + str(x2) + ':' + str(y2) + ':' + str(clock) + '\n'
 
+    # The other shapes. Coordinates are tuples (x, y), as in the selection. Each shape has its modify_ version
+    # with the id of the shape as first argument: a shape keeps its type (a line stays a line).
+    def point(self, x, y):
+        self.output += self._point(x, y) + '\n'
+
+    def ellipse(self, cx, cy, major, minor, start=0.0, stop=6.283185307179586, angle=0.0):
+        self.output += self._ellipse(cx, cy, major, minor, start, stop, angle) + '\n'
+
+    # points: list of (x, y); mode: 'polyline', 'bspline', 'natural_cubic', 'lagrange', 'catmull' or 'bezier'
+    def polyline(self, points, mode='polyline'):
+        self.output += self._polyline(points, mode) + '\n'
+
+    # segments: list of dictionaries as in the selection: type ('line', 'arc' or 'circle'), point, and center, radius, cw for an arc
+    def spline(self, segments):
+        self.output += self._spline(segments) + '\n'
+
+    def text(self, x, y, text, height=10.0, family='Arial', bold=False, italic=False, inter=0.0):
+        self.output += self._text(x, y, text, height, family, bold, italic, inter) + '\n'
+
+    def modify_point(self, id, x, y):
+        self.output += 'M:' + str(id) + ':' + self._point(x, y) + '\n'
+
+    def modify_ellipse(self, id, cx, cy, major, minor, start=0.0, stop=6.283185307179586, angle=0.0):
+        self.output += 'M:' + str(id) + ':' + self._ellipse(cx, cy, major, minor, start, stop, angle) + '\n'
+
+    def modify_polyline(self, id, points, mode='polyline'):
+        self.output += 'M:' + str(id) + ':' + self._polyline(points, mode) + '\n'
+
+    def modify_spline(self, id, segments):
+        self.output += 'M:' + str(id) + ':' + self._spline(segments) + '\n'
+
+    def modify_text(self, id, x, y, text, height=10.0, family='Arial', bold=False, italic=False, inter=0.0):
+        self.output += 'M:' + str(id) + ':' + self._text(x, y, text, height, family, bold, italic, inter) + '\n'
+
+    # text of the commands, one per shape
+    def _point(self, x, y):
+        return 'P:' + str(x) + ':' + str(y)
+
+    def _ellipse(self, cx, cy, major, minor, start, stop, angle):
+        return 'E:' + ':'.join(str(v) for v in (cx, cy, major, minor, start, stop, angle))
+
+    def _polyline(self, points, mode):
+        return 'PL:' + mode + ':' + ':'.join(str(c) for p in points for c in p)
+
+    def _spline(self, segments):
+        parts = []
+        for s in segments:
+            x, y = s['point']
+            if s['type'] == 'line':
+                parts.append('L:' + str(x) + ':' + str(y))
+            else:
+                cx, cy = s['center']
+                parts.append(('A' if s['type'] == 'arc' else 'C') + ':' + ':'.join(str(v) for v in (x, y, cx, cy, s['radius'], 1 if s['cw'] else 0)))
+        return 'S:' + ':'.join(parts)
+
+    def _text(self, x, y, text, height, family, bold, italic, inter):
+        # a text cannot contain a line break: it would cut the command
+        return 'T:' + ':'.join(str(v) for v in (x, y, height, inter, 1 if bold else 0, 1 if italic else 0, family)) + ':' + str(text).replace('\n', ' ')
+
     # modify the parameters of a selected shape: a shape keeps its type (a line stays a line)
     def modify_line(self, id, x1, y1, x2, y2):
         self.output += 'M:' + str(id) + ':L:' + str(x1) + ':' + str(y1) + ':' + str(x2) + ':' + str(y2) + '\n'

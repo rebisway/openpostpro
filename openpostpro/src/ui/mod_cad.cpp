@@ -2181,7 +2181,7 @@ void ModCad::remove()
 			if (l != nullptr)
 			{
 				g->selected(false);
-				undo = g->write() + '\n';
+				undo += g->write() + '\n';
 				l->remove((Shape*)g);
 			}
 		}
@@ -2191,13 +2191,14 @@ void ModCad::remove()
 			if (t != nullptr)
 			{
 				g->selected(false);
-				undo = g->write() + '\n';
+				undo += g->write() + '\n';
 				t->remove((Toolpath*)g);
 			}
 		}
 	}
 	_document->selected().clear();
-	History::undo(HistoryActionType::Delete, undo.substr(0, undo.size() - 1));
+	if (!undo.empty())
+		History::undo(HistoryActionType::Delete, undo.substr(0, undo.size() - 1));
 }
 
 void ModCad::add_layer()
@@ -3468,6 +3469,133 @@ void ModCad::cad_fillet(float value)
 	}
 }
 
+// helpers reading the parameters of the commands sent by the scripts
+static glm::vec2 cmd_point(const std::vector<std::string>& d, size_t i)
+{
+	return glm::vec2((float)std::atof(d[i].c_str()), (float)std::atof(d[i + 1].c_str()));
+}
+
+static float cmd_float(const std::vector<std::string>& d, size_t i)
+{
+	return (float)std::atof(d[i].c_str());
+}
+
+static GraphicType cmd_type(const std::string& kind)
+{
+	if (kind == "L") return GraphicType::Line;
+	if (kind == "C") return GraphicType::Circle;
+	if (kind == "A") return GraphicType::Arc;
+	if (kind == "P") return GraphicType::Point;
+	if (kind == "E") return GraphicType::Ellipse;
+	if (kind == "PL") return GraphicType::Polyline;
+	if (kind == "S") return GraphicType::Spline;
+	if (kind == "T") return GraphicType::Text;
+	return GraphicType::None;
+}
+
+// set the parameters of a shape from a command, d[o] is the first parameter. Returns false if the parameters are not valid,
+// the shape is not modified in this case
+static bool cmd_apply(Shape* s, const std::string& kind, const std::vector<std::string>& d, size_t o)
+{
+	size_t n = d.size() - o;
+
+	if (kind == "L")
+	{
+		if (n < 4) return false;
+		((Line*)s)->set(cmd_point(d, o), cmd_point(d, o + 2));
+	}
+	else if (kind == "C")
+	{
+		if (n < 3 || cmd_float(d, o + 2) <= 0) return false;
+		((Circle*)s)->set(cmd_point(d, o), cmd_float(d, o + 2));
+	}
+	else if (kind == "A")
+	{
+		if (n < 7) return false;
+		((Arc*)s)->set(cmd_point(d, o), cmd_point(d, o + 2), cmd_point(d, o + 4), std::atoi(d[o + 6].c_str()) != 0);
+	}
+	else if (kind == "P")
+	{
+		if (n < 2) return false;
+		((Point*)s)->p1(cmd_point(d, o));
+	}
+	else if (kind == "E")
+	{
+		// center, major, minor, start, stop, angle
+		if (n < 7 || cmd_float(d, o + 2) <= 0 || cmd_float(d, o + 3) <= 0) return false;
+		((Ellipse*)s)->set(cmd_point(d, o), cmd_float(d, o + 3), cmd_float(d, o + 2), cmd_float(d, o + 4), cmd_float(d, o + 5), cmd_float(d, o + 6));
+	}
+	else if (kind == "PL")
+	{
+		// mode, then the points
+		static const char* modes[] = { "polyline", "bspline", "natural_cubic", "lagrange", "catmull", "bezier" };
+		if (n < 5) return false;
+		int mode = -1;
+		for (int i = 0; i < 6; i++)
+		{
+			if (d[o] == modes[i])
+				mode = i;
+		}
+		if (mode < 0) return false;
+
+		std::vector<glm::vec2> points;
+		for (size_t i = o + 1; i + 1 < d.size(); i += 2)
+			points.push_back(cmd_point(d, i));
+
+		((Polyline*)s)->mode((PolylineMode)mode);
+		((Polyline*)s)->points(points);
+	}
+	else if (kind == "S")
+	{
+		// segments: L:x:y for a line, A:x:y:cx:cy:r:cw or C:x:y:cx:cy:r:cw for an arc or a circle
+		std::vector<Segment> segments;
+		size_t i = o;
+		while (i < d.size())
+		{
+			if (d[i] == "L" && i + 2 < d.size())
+			{
+				segments.push_back(Segment(cmd_point(d, i + 1)));
+				i += 3;
+			}
+			else if ((d[i] == "A" || d[i] == "C") && i + 6 < d.size())
+			{
+				segments.push_back(Segment(cmd_point(d, i + 1), cmd_point(d, i + 3), cmd_float(d, i + 5), std::atoi(d[i + 6].c_str()) != 0, d[i] == "A" ? SegmentType::Arc : SegmentType::Circle));
+				i += 7;
+			}
+			else
+				return false;
+		}
+		if (segments.size() < 2) return false;
+
+		auto sp = (Spline*)s;
+		sp->curve().clear();
+		for (auto& segment : segments)
+		{
+			if (segment.type == SegmentType::Line)
+				sp->add(segment.point);
+			else
+				sp->add(segment.point, segment.center, segment.radius, segment.cw, segment.type);
+		}
+	}
+	else if (kind == "T")
+	{
+		// x, y, height, inter, bold, italic, family, then the text (it can contain ':')
+		if (n < 7) return false;
+		std::string text;
+		for (size_t i = o + 7; i < d.size(); i++)
+			text += (i > o + 7 ? ":" : "") + d[i];
+
+		auto t = (Text*)s;
+		t->set(text, d[o + 6], std::atoi(d[o + 5].c_str()) != 0, std::atoi(d[o + 4].c_str()) != 0, cmd_float(d, o + 2));
+		t->inter(cmd_float(d, o + 3));
+		t->p1(cmd_point(d, o));
+	}
+	else
+		return false;
+
+	return true;
+}
+
 Shape* ModCad::find_shape(unsigned int id)
 {
 	for (Layer* l : _document->layers())
@@ -3484,6 +3612,8 @@ Shape* ModCad::find_shape(unsigned int id)
 void ModCad::insert(std::string code)
 {
 	auto data = stringex::split(code, ':');
+	if (data.empty())
+		return;
 
 	// D:id -> delete a shape
 	if (data[0] == "D" && data.size() > 1)
@@ -3504,71 +3634,71 @@ void ModCad::insert(std::string code)
 		return;
 	}
 
-	// M:id:L|C|A:parameters -> change the parameters of a shape, the id and the type do not change
-	if (data[0] == "M" && data.size() > 2)
+	// KIND:parameters -> add a shape
+	// M:id:KIND:parameters -> change the parameters of a shape, the id and the type do not change
+	bool modify = data[0] == "M";
+	size_t first = modify ? 3 : 1;
+	if (data.size() < first)
+		return;
+
+	const std::string kind = data[first - 1];
+	GraphicType type = cmd_type(kind);
+	if (type == GraphicType::None)
 	{
-		auto s = find_shape((unsigned int)std::stoul(data[1]));
-		if (s == nullptr)
+		Logger::error("Script: unknown command " + kind);
+		return;
+	}
+
+	Shape* shape = nullptr;
+	if (modify)
+	{
+		shape = find_shape((unsigned int)std::stoul(data[1]));
+		if (shape == nullptr)
 		{
 			Logger::error("Script: shape " + data[1] + " not found");
 			return;
 		}
+		if (shape->type() != type)
+		{
+			Logger::error("Script: shape " + data[1] + " keeps its type, cannot apply " + kind);
+			return;
+		}
+	}
+	else
+	{
+		switch (type)
+		{
+		case GraphicType::Line: shape = new Line(_render); break;
+		case GraphicType::Circle: shape = new Circle(_render); break;
+		case GraphicType::Arc: shape = new Arc(_render); break;
+		case GraphicType::Point: shape = new Point(_render); break;
+		case GraphicType::Ellipse: shape = new Ellipse(_render); break;
+		case GraphicType::Polyline: shape = new Polyline(_render); break;
+		case GraphicType::Spline: shape = new Spline(_render); break;
+		case GraphicType::Text: shape = new Text(_render); break;
+		}
+	}
 
-		auto v = [&](size_t i) { return (float)std::atof(data[i].c_str()); };
+	// the state before the change goes into the history
+	std::string before = modify ? shape->write() : "";
 
-		if (data[2] == "L" && s->type() == GraphicType::Line && data.size() >= 7)
-		{
-			History::undo(HistoryActionType::Modify, s->write());
-			((Line*)s)->set(glm::vec2(v(3), v(4)), glm::vec2(v(5), v(6)));
-		}
-		else if (data[2] == "C" && s->type() == GraphicType::Circle && data.size() >= 6)
-		{
-			History::undo(HistoryActionType::Modify, s->write());
-			((Circle*)s)->set(glm::vec2(v(3), v(4)), v(5));
-		}
-		else if (data[2] == "A" && s->type() == GraphicType::Arc && data.size() >= 10)
-		{
-			History::undo(HistoryActionType::Modify, s->write());
-			((Arc*)s)->set(glm::vec2(v(3), v(4)), glm::vec2(v(5), v(6)), glm::vec2(v(7), v(8)), std::atoi(data[9].c_str()) != 0);
-		}
-		else
-			Logger::error("Script: shape " + data[1] + " keeps its type, cannot apply " + data[2]);
+	if (!cmd_apply(shape, kind, data, first))
+	{
+		Logger::error("Script: invalid parameters for " + kind);
+		if (!modify)
+			delete shape;
 		return;
 	}
-	if (data[0] == "L")
-	{
-		Line* l = new Line(_render);
 
-		l->point(glm::vec2(std::atof(data[1].c_str()), std::atof(data[2].c_str())));
-		l->point(glm::vec2(std::atof(data[3].c_str()), std::atof(data[4].c_str())));
-		l->done();
-		l->compute();
-		_document->current_layer()->add(l);
-		History::undo(HistoryActionType::Add, l->write());
-	}
-	if (data[0] == "C")
-	{
-		Circle* c = new Circle(_render);
+	shape->done(true);
+	shape->compute();
 
-		c->center(glm::vec2(std::atof(data[1].c_str()), std::atof(data[2].c_str())));
-		c->radius((float)std::atof(data[3].c_str()));
-		c->done();
-		c->compute();
-		_document->current_layer()->add(c);
-		History::undo(HistoryActionType::Add, c->write());
-	}
-	if (data[0] == "A")
+	if (modify)
+		History::undo(HistoryActionType::Modify, before);
+	else
 	{
-		Arc* a = new Arc(_render);
-
-		a->start(glm::vec2(std::atof(data[1].c_str()), std::atof(data[2].c_str())));
-		a->center(glm::vec2(std::atof(data[3].c_str()), std::atof(data[4].c_str())));
-		a->stop(glm::vec2(std::atof(data[5].c_str()), std::atof(data[6].c_str())));
-		a->cw(std::atoi(data[7].c_str()));
-		a->done();
-		a->compute();
-		_document->current_layer()->add(a);
-		History::undo(HistoryActionType::Add, a->write());
+		_document->current_layer()->add(shape);
+		History::undo(HistoryActionType::Add, shape->write());
 	}
 }
 

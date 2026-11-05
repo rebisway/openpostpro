@@ -118,9 +118,14 @@ for shape in self.core.selection:
 | `self.core.modify_line(id, x1, y1, x2, y2)` | change les points d'une ligne |
 | `self.core.modify_circle(id, x, y, r)` | change le centre et le rayon d'un cercle |
 | `self.core.modify_arc(id, x1, y1, cx, cy, x2, y2, cw)` | change le début, le centre, la fin et le sens d'un arc |
+| `self.core.modify_point(id, x, y)` | change un point |
+| `self.core.modify_ellipse(id, cx, cy, major, minor, start, stop, angle)` | change une ellipse (`start`, `stop`, `angle` en radians, par défaut `0` et `2*pi` pour une ellipse entière, `0`) |
+| `self.core.modify_polyline(id, points, mode)` | change les points (liste de `(x, y)`) et le mode d'une polyligne |
+| `self.core.modify_spline(id, segments)` | change les segments d'une spline (liste de dictionnaires, même format que la sélection) |
+| `self.core.modify_text(id, x, y, text, height, family, bold, italic, inter)` | change un texte |
 | `self.core.remove(id)` | supprime une forme |
 
-`id` est la clé `id` d'une forme de `self.core.selection`. Une modification ne change que les paramètres : une ligne reste une ligne, et la forme garde son `id`, son calque et ses usinages. Appliquer `modify_circle` à l'id d'une ligne est refusé et écrit dans le log. Les autres types (point, ellipse, polyligne, spline, texte) ne sont pas encore modifiables. Supprimer une forme ne supprime pas les usinages qui l'utilisent.
+`id` est la clé `id` d'une forme de `self.core.selection`. Une modification ne change que les paramètres : une ligne reste une ligne, et la forme garde son `id`, son calque et ses usinages. Appliquer `modify_circle` à l'id d'une ligne est refusé et écrit dans le log. Supprimer une forme ne supprime pas les usinages qui l'utilisent.
 
 Tous les changements, nouvelles formes comprises, s'annulent en une seule fois. `scale_circles.py` en est un exemple.
 
@@ -131,6 +136,11 @@ Tous les changements, nouvelles formes comprises, s'annulent en une seule fois. 
 | `self.core.line(x1, y1, x2, y2)` | début, fin | ajoute une ligne |
 | `self.core.circle(x, y, r)` | centre, rayon | ajoute un cercle |
 | `self.core.arc(x1, y1, cx, cy, x2, y2, cw)` | début, centre, fin, sens | ajoute un arc de `(x1, y1)` à `(x2, y2)` autour de `(cx, cy)` ; `cw` vaut `True` pour le sens horaire |
+| `self.core.point(x, y)` | position | ajoute un point |
+| `self.core.ellipse(cx, cy, major, minor, start, stop, angle)` | centre, axes, plage, orientation | ajoute une ellipse ; `start`, `stop` et `angle` sont en radians et facultatifs (ellipse entière, sans rotation) |
+| `self.core.polyline(points, mode)` | liste de `(x, y)`, mode | ajoute une polyligne ; `mode` vaut `'polyline'` (défaut), `'bspline'`, `'natural_cubic'`, `'lagrange'`, `'catmull'` ou `'bezier'` ; répétez le premier point pour la fermer |
+| `self.core.spline(segments)` | liste de dictionnaires | ajoute une spline : chaque segment a `type` (`'line'`, `'arc'` ou `'circle'`) et `point`, et pour un arc `center`, `radius`, `cw` (voir la sélection) |
+| `self.core.text(x, y, text, height, family, bold, italic, inter)` | position, texte, police | ajoute un texte (défauts : hauteur `10`, famille `'Arial'`, `bold` et `italic` à `False`, `inter` à `0`) |
 | `self.core.append_output(text)` | texte brut | ajoute du texte à la sortie du dessin (avancé) |
 
 Le moteur écrit une ligne de texte par élément, dans ce format :
@@ -140,6 +150,13 @@ Le moteur écrit une ligne de texte par élément, dans ce format :
 | ligne | `L:x1:y1:x2:y2` |
 | cercle | `C:x:y:r` |
 | arc | `A:x1:y1:cx:cy:x2:y2:clock` où `clock` vaut `1` pour le sens horaire, `0` sinon |
+| point | `P:x:y` |
+| ellipse | `E:cx:cy:major:minor:start:stop:angle` |
+| polyligne | `PL:mode:x1:y1:x2:y2:...` |
+| spline | `S:` puis les segments `L:x:y` ou `A:x:y:cx:cy:r:clock` (`C:` pour un cercle) |
+| texte | `T:x:y:height:inter:bold:italic:family:text` (le texte peut contenir `:`) |
+| modification | `M:id:` suivi du texte de l'élément, par exemple `M:12:L:x1:y1:x2:y2` |
+| suppression | `D:id` |
 
 `append_output` permet à un script d'écrire lui-même de telles lignes. La géométrie est ajoutée au dessin quand `run()` se termine.
 

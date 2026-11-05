@@ -118,9 +118,14 @@ for shape in self.core.selection:
 | `self.core.modify_line(id, x1, y1, x2, y2)` | changes the points of a line |
 | `self.core.modify_circle(id, x, y, r)` | changes the center and the radius of a circle |
 | `self.core.modify_arc(id, x1, y1, cx, cy, x2, y2, cw)` | changes the start, the center, the end and the direction of an arc |
+| `self.core.modify_point(id, x, y)` | changes a point |
+| `self.core.modify_ellipse(id, cx, cy, major, minor, start, stop, angle)` | changes an ellipse (`start`, `stop`, `angle` in radians, default `0` and `2*pi` for a whole ellipse, `0`) |
+| `self.core.modify_polyline(id, points, mode)` | changes the points (list of `(x, y)`) and the mode of a polyline |
+| `self.core.modify_spline(id, segments)` | changes the segments of a spline (list of dictionaries, same format as the selection) |
+| `self.core.modify_text(id, x, y, text, height, family, bold, italic, inter)` | changes a text |
 | `self.core.remove(id)` | deletes a shape |
 
-`id` is the `id` key of a shape of `self.core.selection`. A modification changes the parameters only: a line stays a line, and the shape keeps its `id`, its layer and its toolpaths. Applying `modify_circle` to the id of a line is refused and written to the log. Other types (point, ellipse, polyline, spline, text) cannot be modified yet. Deleting a shape does not delete the toolpaths that use it.
+`id` is the `id` key of a shape of `self.core.selection`. A modification changes the parameters only: a line stays a line, and the shape keeps its `id`, its layer and its toolpaths. Applying `modify_circle` to the id of a line is refused and written to the log. Deleting a shape does not delete the toolpaths that use it.
 
 All the changes, the new shapes included, are undone in one step. `scale_circles.py` is an example.
 
@@ -131,6 +136,11 @@ All the changes, the new shapes included, are undone in one step. `scale_circles
 | `self.core.line(x1, y1, x2, y2)` | start, end | adds a line |
 | `self.core.circle(x, y, r)` | center, radius | adds a circle |
 | `self.core.arc(x1, y1, cx, cy, x2, y2, cw)` | start, center, end, direction | adds an arc from `(x1, y1)` to `(x2, y2)` around `(cx, cy)`; `cw` is `True` for clockwise |
+| `self.core.point(x, y)` | position | adds a point |
+| `self.core.ellipse(cx, cy, major, minor, start, stop, angle)` | center, axes, range, orientation | adds an ellipse; `start`, `stop` and `angle` are in radians and optional (whole ellipse, not rotated) |
+| `self.core.polyline(points, mode)` | list of `(x, y)`, mode | adds a polyline; `mode` is `'polyline'` (default), `'bspline'`, `'natural_cubic'`, `'lagrange'`, `'catmull'` or `'bezier'`; repeat the first point to close it |
+| `self.core.spline(segments)` | list of dictionaries | adds a spline: each segment has `type` (`'line'`, `'arc'` or `'circle'`) and `point`, and for an arc `center`, `radius`, `cw` (see the selection) |
+| `self.core.text(x, y, text, height, family, bold, italic, inter)` | position, text, font | adds a text (defaults: height `10`, family `'Arial'`, `bold` and `italic` `False`, `inter` `0`) |
 | `self.core.append_output(text)` | raw text | appends text to the drawing output (advanced) |
 
 The engine writes one line of text per element, in this format:
@@ -140,6 +150,13 @@ The engine writes one line of text per element, in this format:
 | line | `L:x1:y1:x2:y2` |
 | circle | `C:x:y:r` |
 | arc | `A:x1:y1:cx:cy:x2:y2:clock` where `clock` is `1` for clockwise, `0` otherwise |
+| point | `P:x:y` |
+| ellipse | `E:cx:cy:major:minor:start:stop:angle` |
+| polyline | `PL:mode:x1:y1:x2:y2:...` |
+| spline | `S:` then the segments `L:x:y` or `A:x:y:cx:cy:r:clock` (`C:` for a circle) |
+| text | `T:x:y:height:inter:bold:italic:family:text` (the text can contain `:`) |
+| modification | `M:id:` followed by the text of the element, for example `M:12:L:x1:y1:x2:y2` |
+| deletion | `D:id` |
 
 `append_output` lets a script write such lines itself. The geometry is added to the drawing when `run()` returns.
 
