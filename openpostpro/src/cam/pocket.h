@@ -73,7 +73,7 @@ public:
 	void scaled() override;
 	std::vector<Curve> coordinates() override;
 
-	void ui() override;
+	void properties() override;
 
 	// IO
 	std::string write() override;

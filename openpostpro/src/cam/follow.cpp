@@ -50,59 +50,30 @@ std::vector<Curve> Follow::coordinates()
 	return result;
 }
 
-void Follow::ui()
+void Follow::properties()
 {
-	ImGui::Begin((_name + "###OBJECT").c_str());
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("CAM_FOLLOW_CW"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	bool cw = _cw;
-	ImGui::Checkbox("##GROUP_CW", &cw);
+	bool clockwise = _cw;
+	if (property_bool(Lang::l("CAM_FOLLOW_CW"), "##GROUP_CW", clockwise))
+		modify([&] { cw(clockwise); });
 
 	if (_original.size() == 1 && _original[0].closed())
 	{
+		// no undo step: _start_point_inside is not part of write()
 		if (_start_point_type != StartPointType::normal)
 		{
-			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::Spacing();
-			ImGui::Text(Lang::l("INTERIOR"));
-			ImGui::TableSetColumnIndex(1);
-			ImGui::PushItemWidth(-FLT_MIN);
-			bool v = _start_point_inside;
-			if (ImGui::Checkbox("##VISIBLE", &v))
+			bool inside = _start_point_inside;
+			if (property_bool(Lang::l("INTERIOR"), "##VISIBLE", inside))
 			{
-				if (_start_point_inside != v)
-				{
-					_start_point_inside = v;
-					compute();
-				}
+				_start_point_inside = inside;
+				compute();
 			}
 		}
 
-		auto c = _original[0];
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("TOOLPATH_START_LENGTH"));
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		float l = start_point_length();
-		if (ImGui::SliderFloat("##TOOLPATH_START_LENGTH", &l, 0, c.length()))
-		{
-			if (l != start_point_length())
-				start_point_length(l);
-		}
+		// the undo step of a slider is pushed by the helper
+		float length = start_point_length();
+		if (property_slider(Lang::l("TOOLPATH_START_LENGTH"), "##TOOLPATH_START_LENGTH", length, 0, _original[0].length()))
+			start_point_length(length);
 	}
-	ImGui::EndTable();
-	ImGui::End();
 }
 
 
@@ -133,6 +104,7 @@ std::string Follow::write()
 	result += WN((int)_start_point_type);
 	result += WN(_start_point_length);
 	result += WN(_start_point_offset);
+	result += WB(_cw);
 
 	return result;
 }
@@ -198,4 +170,10 @@ void Follow::read(std::string value, float version)
 	RI(stype, ref); _start_point_type = (StartPointType)stype;
 	RF(_start_point_length, ref++);
 	RF(_start_point_offset, ref);
+
+	// older data have no direction
+	if (ref + 1 < data.size())
+		RB(_cw, ref + 1);
+
+	update();
 }

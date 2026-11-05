@@ -57,51 +57,19 @@ std::vector<Curve> Offset::coordinates()
 	return result;
 }
 
-void Offset::ui()
+void Offset::properties()
 {
-	//char input[20];
-
-	ImGui::Begin((_name + "###OBJECT").c_str());
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("INTERIOR"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	bool v = _interior;
-	if (ImGui::Checkbox("##VISIBLE", &v))
-	{
-		if (_interior != v)
-		{
-			_start_point_inside = _interior = v;
-			compute();
-		}
-	}
-
+	bool interior = _interior;
+	if (property_bool(Lang::l("INTERIOR"), "##VISIBLE", interior))
+		modify([&] { _start_point_inside = _interior = interior; compute(); });
 
 	if (_original.size() == 1 && _original[0].closed())
 	{
-		auto c = _original[0];
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("TOOLPATH_START_LENGTH"));
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		float l = start_point_length();
-		if (ImGui::SliderFloat("##TOOLPATH_START_LENGTH", &l, 0, c.length()))
-		{
-			if (l != start_point_length())
-				start_point_length(l);
-		}
+		// the undo step of a slider is pushed by the helper
+		float length = start_point_length();
+		if (property_slider(Lang::l("TOOLPATH_START_LENGTH"), "##TOOLPATH_START_LENGTH", length, 0, _original[0].length()))
+			start_point_length(length);
 	}
-
-	ImGui::EndTable();
-	ImGui::End();
 }
 
 std::string Offset::write()
@@ -146,6 +114,7 @@ std::string Offset::write()
 
 void Offset::read(std::string value, float version)
 {
+	_original.clear();
 	auto data = stringex::split(value, ';');
 
 	RU(_id, 1);
@@ -154,6 +123,7 @@ void Offset::read(std::string value, float version)
 	RF(_radius, 4);
 	RB(_cw, 5);
 	RB(_interior, 6);
+	_start_point_inside = _interior;
 
 	//int ref = -1;
 	//for (int i = 0; i < data.size() && ref == -1; i++)

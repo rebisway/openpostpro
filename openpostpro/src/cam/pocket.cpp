@@ -869,73 +869,30 @@ std::vector<Curve> Pocket::coordinates()
 	return result;
 }
 
-void Pocket::ui()
+void Pocket::properties()
 {
-	//char input[20];
+	int mode_index = (int)_mode;
+	if (property_combo(Lang::l("MODE"), "##MODE", mode_index, { "Zigzag", "Offset" }))
+		modify([&] { mode((PocketMode)mode_index); });
 
-	ImGui::Begin((_name + "###OBJECT").c_str());
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("MODE"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	const char* items[]{ "Zigzag","Offset" };
-	int selected_item = (int)_mode;
-	if (ImGui::Combo("##MODE", &selected_item, items, IM_ARRAYSIZE(items)))
-	{
-		mode((PocketMode)selected_item);
-	}
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("FINISHING"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	float f = _finishing;
-	if (ImGui::InputFloat("##FINISHING", &f, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
-		finishing(glm::max(f, 0.0f));
+	float finishing_value = _finishing;
+	if (property_float(Lang::l("FINISHING"), "##FINISHING", finishing_value))
+		modify([&] { finishing(glm::max(finishing_value, 0.0f)); });
 
 	if (_mode == PocketMode::Zigzag)
 	{
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("STEPOVER"));
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		float st = step();
-		if (ImGui::InputFloat("##STEPOVER", &st, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
-			stepover(glm::max(st, 0.0f));
+		float step_value = step();
+		if (property_float(Lang::l("STEPOVER"), "##STEPOVER", step_value))
+			modify([&] { stepover(glm::max(step_value, 0.0f)); });
 
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("ANGLE"));
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		float an = _angle;
-		if (ImGui::InputFloat("##ANGLE", &an, 0, 0, "%.1f", ImGuiInputTextFlags_EnterReturnsTrue))
-			angle(an);
+		float angle_value = _angle;
+		if (property_float(Lang::l("ANGLE"), "##ANGLE", angle_value))
+			modify([&] { angle(angle_value); });
 
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("CONTOURS"));
-		ImGui::TableSetColumnIndex(1);
-		bool co = _contours;
-		if (ImGui::Checkbox("##CONTOURS", &co))
-			contours(co);
+		bool contours_value = _contours;
+		if (property_bool(Lang::l("CONTOURS"), "##CONTOURS", contours_value))
+			modify([&] { contours(contours_value); });
 	}
-
-	ImGui::EndTable();
-	ImGui::End();
 }
 
 std::string Pocket::write()
@@ -979,6 +936,7 @@ std::string Pocket::write()
 
 void Pocket::read(std::string value, float version)
 {
+	_original.clear();
 	auto data = stringex::split(value, ';');
 
 	RU(_id, 1);

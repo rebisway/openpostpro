@@ -64,7 +64,7 @@ public:
 	std::vector<Curve> coordinates() override;
 	void compute() override;
 	void scaled() override;
-	void ui() override;
+	void properties() override;
 	void draw() override;
 
 	// IO

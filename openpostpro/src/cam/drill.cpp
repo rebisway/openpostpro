@@ -73,127 +73,34 @@ void Drill::draw()
 	_data_buffer->draw(_render->pr_lines());
 }
 
-void Drill::ui()
+void Drill::properties()
 {
-	char input[20];
+	auto position = _original[0][0].point;
+	if (property_point("Point", "##LP1", position))
+		modify([&] { _original[0][0].point = position; });
 
-	ImGui::Begin((_name + "###OBJECT").c_str());
+	std::vector<std::string> modes = { Lang::l("CAM_DRILL_DRILLING"), Lang::l("CAM_DRILL_PECKING"), Lang::l("CAM_DRILL_TAPPING"), Lang::l("CAM_DRILL_BORING") };
+	int selected = ((int)_mode) - 1;
+	if (property_combo(Lang::l("MODE"), "##MODE", selected, modes))
+		modify([&] { mode((DrillMode)(selected + 1)); compute(); update(); });
 
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f;%0.3f", _original[0][0].point.x, _original[0][0].point.y);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text("Point");
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	if (ImGui::InputText("##LP1", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		std::string val = input;
-		auto numbers = stringex::split(val, ';');
-		auto p = _original[0][0].point;
-		if (numbers.size() == 2)
-		{
-			try
-			{
-				p.x = std::stof(numbers[0]);
-				p.y = std::stof(numbers[1]);
-				if (p != _original[0][0].point)
-				{
-					History::undo(HistoryActionType::Modify, write());
-					_original[0][0].point = p;
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
-	}
-
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("MODE"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	const char* items[]{ /*Lang::l("CAM_DRILL_MANUAL"),*/Lang::l("CAM_DRILL_DRILLING"), Lang::l("CAM_DRILL_PECKING"), Lang::l("CAM_DRILL_TAPPING"), Lang::l("CAM_DRILL_BORING") };
-	int selected_item = ((int)_mode)-1;
-	if (ImGui::Combo("##MODE", &selected_item, items, IM_ARRAYSIZE(items)))
-	{
-		mode((DrillMode)(selected_item + 1));
-		compute();
-		update();
-	}
-
-	ImGui::TableNextRow();
-	sprintf_s(input, "%0.3f", _retract);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("CAM_DRILL_RETRACT"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	float retract = _retract;
-	if (ImGui::InputFloat("##DRILL_RETRACT", &retract, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		_retract = retract;
-	}
+	auto retract = _retract;
+	if (property_float(Lang::l("CAM_DRILL_RETRACT"), "##DRILL_RETRACT", retract))
+		modify([&] { _retract = retract; });
 
 	if (_mode == DrillMode::Pecking)
 	{
-		ImGui::TableNextRow();
-		sprintf_s(input, "%0.3f", _delta);
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("CAM_DRILL_DELTA"));
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		float delta = _delta;
-		if (ImGui::InputFloat("##DRILL_DELTA", &delta, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
-		{
-			_delta = delta;
-		}
+		auto delta = _delta;
+		if (property_float(Lang::l("CAM_DRILL_DELTA"), "##DRILL_DELTA", delta))
+			modify([&] { _delta = delta; });
 	}
 
 	if (_mode == DrillMode::Drilling || _mode == DrillMode::Boring)
 	{
-		ImGui::TableNextRow();
-		*input = 0;
-		if (_pause > 0)
-			sprintf_s(input, "%d", _pause);
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("CAM_DRILL_PAUSE"));
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		if (ImGui::InputText("##DRILL_PAUSE", input, ImGuiInputTextFlags_EnterReturnsTrue))
-		{
-			try
-			{
-				std::string result = input;
-				if (result.size() == 0)
-					_pause = 0;
-				else
-				{
-					int t = std::stoi(result);
-					if (t > 0)
-						_pause = t;
-					else
-						_pause = 0;
-				}
-			}
-			catch (const std::exception& e)
-			{
-				Logger::log(e.what());
-			}
-		}
+		int pause = _pause;
+		if (property_int(Lang::l("CAM_DRILL_PAUSE"), "##DRILL_PAUSE", pause))
+			modify([&] { _pause = pause > 0 ? pause : 0; });
 	}
-
-	ImGui::EndTable();
-	ImGui::End();
 }
 
 std::string Drill::write()
@@ -221,6 +128,7 @@ std::string Drill::write()
 
 void Drill::read(std::string value, float version)
 {
+	_original.clear();
 	glm::vec2 p = glm::vec2();
 	auto data = stringex::split(value, ';');
 
@@ -259,4 +167,5 @@ void Drill::read(std::string value, float version)
 	}
 
 	compute();
+	update();
 }

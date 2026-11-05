@@ -2383,6 +2383,7 @@ HistoryAction ModCad::process_action(HistoryAction action)
 		Graphic* g = nullptr;
 		for (std::string v : list)
 		{
+			g = nullptr;
 			auto data = stringex::split(v, ';');
 			GraphicType type = (GraphicType)std::stoi(data[0]);
 			switch (type)
@@ -2405,6 +2406,8 @@ HistoryAction ModCad::process_action(HistoryAction action)
 			case GraphicType::CamFollow:
 			case GraphicType::CamOffset:
 			case GraphicType::CamSpiral:
+			case GraphicType::CamPocket:
+			case GraphicType::CamDrill:
 				g = _document->group(data[2])->toolpath(std::stoi(data[1]));
 
 				break;
