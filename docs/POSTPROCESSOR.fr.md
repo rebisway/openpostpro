@@ -16,6 +16,10 @@ Contenu : installation, déroulement d'une génération, toutes les méthodes de
 | Chargement | au démarrage, chaque fichier `.py` est copié dans `~/.openpostpro/postpro` et chargé depuis cet emplacement |
 | Nom | le vôtre (`my_mill.py`) : la copie **écrase les fichiers de même nom**, ne modifiez donc jamais un fichier fourni sur place |
 | Classe | le fichier définit une classe nommée `Postpro` |
+| Fichiers bibliothèque | un fichier `.py` sans la ligne `class Postpro` est un module partagé par d'autres fichiers (comme le moteur) : il est importé, pas listé dans le menu |
+| Lecture seule | un fichier fourni avec l'application n'est pas modifiable dans l'application : utilisez **Cloner** pour en faire une copie modifiable sous un autre nom et une autre description |
+| Menu | Éditer (fichiers personnels seulement), Cloner, Ouvrir le dossier (le dossier de `~/.openpostpro`) |
+| Éditeur | **Enregistrer** ou Ctrl+S écrit le fichier, **Compiler** vérifie la syntaxe et recharge le fichier. Une erreur Python est écrite dans le journal avec sa trace |
 | Moteur | `postcore.py` est le moteur. Il n'est jamais chargé comme post-processeur. Ne le modifiez pas |
 | Erreurs | écrites dans `~/.openpostpro/openpostpro.log` |
 | Python | 3.12 ou plus, installé avec « Add Python to PATH » (voir le README) |

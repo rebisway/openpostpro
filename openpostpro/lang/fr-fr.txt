@@ -33,6 +33,7 @@ DISPLAY_DARK=Sombre
 DISPLAY_LIGHT=Clair
 DISPLAY_OPTIONS=Options
 DISPLAY_LOG=Journal
+DISPLAY_LOG_DOCK=Journal en bas
 DISPLAY_OUTPUT=Sortie
 POST=Post-processeur
 POST_RUN=Générer

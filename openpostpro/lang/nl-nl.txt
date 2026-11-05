@@ -33,6 +33,7 @@ DISPLAY_DARK=Donker
 DISPLAY_LIGHT=Licht
 DISPLAY_OPTIONS=Opties
 DISPLAY_LOG=Logboek
+DISPLAY_LOG_DOCK=Logboek onderaan
 DISPLAY_OUTPUT=Uitvoer
 POST=Postprocessor
 POST_RUN=Genereren

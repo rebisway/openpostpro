@@ -33,6 +33,7 @@ DISPLAY_DARK=Dunkel
 DISPLAY_LIGHT=Hell
 DISPLAY_OPTIONS=Optionen
 DISPLAY_LOG=Protokoll
+DISPLAY_LOG_DOCK=Protokoll unten
 DISPLAY_OUTPUT=Ausgabe
 POST=Postprozessor
 POST_RUN=Erzeugen

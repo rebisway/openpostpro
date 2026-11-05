@@ -16,6 +16,10 @@ Covered here: installation, the life cycle of a run, every method of the `Postpr
 | Loading | at startup, each `.py` file is copied to `~/.openpostpro/postpro` and loaded from there |
 | Name | your own (`my_mill.py`): the copy **overwrites files of the same name**, so never edit a bundled file in place |
 | Class | the file defines a class named `Postpro` |
+| Library files | a `.py` file without the `class Postpro` line is a module shared by other files (like the engine): it is imported, not listed in the menu |
+| Read-only | a file shipped with the application cannot be edited in the application: use **Clone** to make an editable copy under a new name and description |
+| Menu | Edit (own files only), Clone, Open folder (the folder in `~/.openpostpro`) |
+| Editor | **Save** or Ctrl+S writes the file, **Compile** checks the syntax and reloads the file. A Python error is written in the log with its traceback |
 | Engine | `postcore.py` is the engine. It is never loaded as a post-processor. Do not edit it |
 | Errors | written to `~/.openpostpro/openpostpro.log` |
 | Python | 3.12 or later, installed with "Add Python to PATH" (see the README) |

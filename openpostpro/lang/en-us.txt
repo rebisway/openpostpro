@@ -33,6 +33,7 @@ DISPLAY_DARK=Dark
 DISPLAY_LIGHT=Light
 DISPLAY_OPTIONS=Options
 DISPLAY_LOG=Log
+DISPLAY_LOG_DOCK=Log at the bottom
 DISPLAY_OUTPUT=Output
 POST=Post-processor
 POST_RUN=Generate

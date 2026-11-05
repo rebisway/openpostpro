@@ -33,6 +33,7 @@ DISPLAY_DARK=Scuro
 DISPLAY_LIGHT=Chiaro
 DISPLAY_OPTIONS=Opzioni
 DISPLAY_LOG=Registro
+DISPLAY_LOG_DOCK=Registro in basso
 DISPLAY_OUTPUT=Output
 POST=Postprocessore
 POST_RUN=Genera

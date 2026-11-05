@@ -16,6 +16,10 @@ Covered here: installation, the life cycle of a run, the methods of `Cadscript`,
 | Loading | at startup, each `.py` file is copied to `~/.openpostpro/script` and loaded from there |
 | Name | your own (`my_rectangle.py`): the copy **overwrites files of the same name** |
 | Class | the file defines a class named `Cadscript` |
+| Library files | a `.py` file without the `class Cadscript` line is a module shared by other files (like the engine): it is imported, not listed in the menu |
+| Read-only | a file shipped with the application cannot be edited in the application: use **Clone** to make an editable copy under a new name and description |
+| Menu | Edit (own files only), Clone, Open folder (the folder in `~/.openpostpro`) |
+| Editor | **Save** or Ctrl+S writes the file, **Compile** checks the syntax and reloads the file. A Python error is written in the log with its traceback |
 | Engine | `cadcore.py` is the engine. It is never loaded as a script. Do not edit it |
 | Errors | written to `~/.openpostpro/openpostpro.log` |
 | Python | 3.12 or later, installed with "Add Python to PATH" (see the README) |

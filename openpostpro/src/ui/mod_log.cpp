@@ -21,6 +21,7 @@
 #include "file.h"
 #include "lang.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <config.h>
 #include <algorithm>
 
@@ -144,6 +145,9 @@ void ModLog::render_dock(float y, float width, float height)
 	ImGui::SetNextWindowPos(ImVec2(0.0f, y));
 	ImGui::SetNextWindowSize(ImVec2(width, height));
 	ImGui::Begin("LOG_DOCK", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+
+	// keep the panel in front of the module windows, which can overlap it when the window is small
+	ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
 
 	// the top edge of the panel resizes it
 	ImGui::InvisibleButton("##LOG_SPLITTER", ImVec2(ImGui::GetContentRegionAvail().x, 6.0f));
