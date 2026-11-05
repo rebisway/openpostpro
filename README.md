@@ -25,6 +25,8 @@ For example, the project includes a demo script that generates oblong holes (slo
 
 This CAD scripting capability is separate from Python post-processors: CAD scripts generate drawing geometry, while post-processors translate CAM operations into machine-specific output.
 
+Guide: [Writing a CAD script](docs/CAD-SCRIPTS.en.md) · [Écrire un script CAO](docs/CAD-SCRIPTS.fr.md)
+
 ## ⚙️ CAM operations
 
 Create toolpath operations from your drawing, including:
@@ -41,6 +43,8 @@ CAM operations have configurable parameters. Because this is an early release, t
 ## 🧩 Python post-processors
 
 Post-processors are written in Python, making machine-output customization accessible without changing the C++ application.
+
+Guide: [Writing a post-processor](docs/POSTPROCESSOR.en.md) · [Écrire un post-processeur](docs/POSTPROCESSOR.fr.md)
 
 The repository includes generic post-processors for:
 
