@@ -44,10 +44,6 @@ private:
 
 	glm::vec3 _pos = glm::vec3(0,0,0);
 
-	int _property_count=0;
-	std::vector<std::variant<bool, int, float, std::string, std::vector<std::string>>> _properties;
-	std::vector<std::variant<bool, int, float, std::string, std::vector<std::string>>> _properties_config;
-	std::vector<std::string> _property_names;
 	bool _first_call = true;
 
 	// postpro python class

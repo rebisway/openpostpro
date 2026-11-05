@@ -173,6 +173,10 @@ class Postpro:
 		elif index == 13:
 			return self.lang['disable_z']
 
+	# return the name used to save the property value, it does not change with the language or the order
+	def get_property_key(self, index):
+		return ['use_inc', 'increment', 'cond', 'decimales', 'ext', 'use_comment', 'pre_data', 'post_data', 'relative', 'init_zero', 'plasma_start', 'plasma_stop', 'plasma_delay', 'disable_z'][index]
+
 	# return the property value
 	def get_property(self, index):
 		if index == 0:

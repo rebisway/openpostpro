@@ -58,11 +58,15 @@ run()                               the script draws and may open a dialog
 | `get_category()` | none | string | menu category, usually `'CAD'` |
 | `get_properties_count()` | none | number | number of parameters of the script |
 | `get_property_description(index)` | index from 0 | string | label of the parameter |
+| `get_property_key(index)` | index from 0 | string | optional: name used to save the value (default: the index) |
+| `use_properties()` | none | `bool` | optional: `False` if the script shows its own window (default `True`) |
 | `get_property(index)` | index from 0 | `bool`, `int`, `float`, `str` or `list` of `str` | current value |
 | `set_property(index, value)` | index, value | nothing | receives the saved value at startup, or the edited one |
 | `run()` | none | nothing | creates the geometry through `self.core` |
 
-Properties are saved by OpenPostPro between sessions. The script is responsible for any input window it wants (the bundled example builds a `tkinter` dialog in `run()`, reads the values, then draws). `use_properties()` and `configurate()` exist in `oblong.py` but are not called by the application.
+If `get_properties_count()` returns more than 0, OpenPostPro displays the properties dialog box (same controls as the post-processors, see POSTPROCESSOR.en.md section 4) when the script is chosen. **Ok** sends the values through `set_property` and runs the script; **Cancel** stops it. The values are saved per script and given back at the next call. Return a stable name from `get_property_key` so that adding or reordering properties never mixes the saved values.
+
+A script can also manage its own window (for example `tkinter`, to open a file dialog): return `False` from `use_properties()` and no dialog box is displayed; `oblong.py` is such an example.
 
 ## 3. Engine calls (`self.core`)
 

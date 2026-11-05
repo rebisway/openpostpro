@@ -26,6 +26,7 @@
 #include <strings.h>
 #include <message_box.h>
 #include <lang.h>
+#include <config.h>
 #include <inifile.h>
 #include <directory.h>
 #include <file.h>
@@ -237,64 +238,10 @@ bool Postpro::initialize(std::string module_path, std::string lang)
 	
 	set("set_language", "s", _lang.c_str());
 
-	IniFile ini;
-
 	try 
 	{
-		_property_count = get_int("get_properties_count");
-		_property_names.clear();
-		_properties.clear();
-		for (int i = 0; i < _property_count; i++)
-		{
-			// load desciption of properties for config dialog box
-			_property_names.push_back(get_string("get_property_description", "i", i));
+		load_properties();
 
-			// load default typed properties and saved config from ini file
-			PyObject* p = get("get_property", "i", i);
-			if (p != NULL)
-			{
-				if (PyBool_Check(p))
-				{
-					_properties.push_back((bool)PyObject_IsTrue(p));
-					_properties[i] = ini.get_bool(_module, std::to_string(i), std::get<bool>(_properties[i]));
-					set("set_property", "ii", i, (long)std::get<bool>(_properties[i]));
-				}
-				else if (PyLong_Check(p))
-				{
-					_properties.push_back((int)PyLong_AsLong(p));
-					_properties[i] = ini.get_int(_module, std::to_string(i), std::get<int>(_properties[i]));
-					set("set_property", "ii", i, std::get<int>(_properties[i]));
-				}
-				else if (PyFloat_Check(p))
-				{
-					_properties.push_back((float)PyFloat_AsDouble(p));
-					_properties[i] = ini.get_float(_module, std::to_string(i), std::get<float>(_properties[i]));
-					set("set_property", "if", i, std::get<float>(_properties[i]));
-				}
-				else if (PyUnicode_Check(p))
-				{
-					_properties.push_back(std::string(py_utf8(p)));
-					_properties[i] = ini.get_string(_module, std::to_string(i), std::get<std::string>(_properties[i]));
-					set("set_property", "is", i, (std::get<std::string>(_properties[i])).c_str());
-				}
-				else if (PyList_Check(p))
-				{
-					std::vector<std::string> values;
-					for (int i = 0; i < PyList_Size(p); i++)
-					{
-						if (PyUnicode_Check(PyList_GetItem(p, i)))
-							values.push_back(py_utf8(PyList_GetItem(p, i)));
-					}
-
-					values[0] = ini.get_string(_module, std::to_string(i), values[0]);
-					_properties.push_back(values);
-					set("set_property", "is", i, (std::get<std::vector<std::string>>(_properties[i])[0]).c_str());
-				}
-				Py_DECREF(p);
-			}
-		}
-
-		
 		_description = get_string("get_description");
 		_category = get_string("get_category");
 		_extention = get_string("get_extention");
@@ -312,31 +259,7 @@ bool Postpro::initialize(std::string module_path, std::string lang)
 
 void Postpro::finalize()
 {
-	IniFile ini;
-	for (int i = 0; i < _properties.size(); i++)
-	{
-			if (std::holds_alternative<bool>(_properties[i]))
-			{
-				ini.set(_module, std::to_string(i), std::get<bool>(_properties[i]));
-			}
-			else if (std::holds_alternative<int>(_properties[i]))
-			{
-				ini.set(_module, std::to_string(i), std::get<int>(_properties[i]));
-			}
-			else if (std::holds_alternative<float>(_properties[i]))
-			{
-				ini.set(_module, std::to_string(i), std::get<float>(_properties[i]));
-			}
-			else if (std::holds_alternative<std::string>(_properties[i]))
-			{
-				ini.set(_module, std::to_string(i), std::get<std::string>(_properties[i]));
-			}
-			else if (std::holds_alternative<std::vector<std::string>>(_properties[i]))
-			{
-				ini.set(_module, std::to_string(i), std::get<std::vector<std::string>>(_properties[i])[0]);
-			}
-	}
-	ini.write();
+	save_properties();
 
 	if (_py_post_object != NULL ) Py_CLEAR(_py_post_object);
 	if (_py_post_class != NULL) Py_CLEAR(_py_post_class);
@@ -352,108 +275,20 @@ bool Postpro::render_GUI()
 	if (_first_call)
 	{
 		// as ImGui menu is called for each frame, we have to load properties at the first call
-		// and we copy the properties into the properties_temp vector
-		// if ok button is pressed, properties_temp is then copied back to properties
+		// the dialog box edits a copy, copied back to the properties if the ok button is pressed
 		initialize(_module, _lang);
 		_first_call = false;
-		_properties_config.clear();
-		_properties_config.insert(_properties_config.begin(), _properties.begin(), _properties.end());
+		begin_properties();
 	}
 
-	ImGuiIO& io = ImGui::GetIO();
-	ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSize(ImVec2(350.0f, 100.0f + _property_count * 25));
-	ImGui::Begin((_description + "###POSTPRO").c_str(), 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
-	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
-	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
-	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
+	auto result = draw_properties();
 
-	for (int i = 0; i < _property_count; i++)
+	if (result != MessageBoxResult::None)
 	{
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(_property_names[i].c_str());
-		ImGui::TableSetColumnIndex(1);
-
-		ImGui::SetNextItemWidth(-1);
-		if (std::holds_alternative<bool>(_properties_config[i]))
-		{
-			bool value = std::get<bool>(_properties_config[i]);
-			if (ImGui::Checkbox((std::string("##PROPERTY_BOOL") + std::to_string(i)).c_str(), &value))
-			{
-				_properties_config[i] = value;
-			}
-		}
-		else if (std::holds_alternative<int>(_properties_config[i]))
-		{
-			int value = std::get<int>(_properties_config[i]);
-			if (ImGui::InputInt((std::string("##PROPERTY_INT") + std::to_string(i)).c_str(), &value))
-			{
-				_properties_config[i] = value;
-			}
-		}
-		else if (std::holds_alternative<float>(_properties_config[i]))
-		{
-			float value = std::get<float>(_properties_config[i]);
-			if (ImGui::InputFloat((std::string("##PROPERTY_FLOAT") + std::to_string(i)).c_str(), &value))
-			{
-				_properties_config[i] = value;
-			}
-		}
-		else if (std::holds_alternative<std::string>(_properties_config[i]))
-		{
-			std::string value = std::get<std::string>(_properties_config[i]);
-			char t[200];
-			sprintf_s(t, "%s", value.c_str());
-			if (ImGui::InputText((std::string("##PROPERTY_STRING") + std::to_string(i)).c_str(), t, 200))
-			{
-				_properties_config[i] = std::string(t);
-			}
-		}
-		else if (std::holds_alternative<std::vector<std::string>>(_properties_config[i]))
-		{
-			std::vector<std::string> values = std::get<std::vector<std::string>>(_properties_config[i]);
-			char t[200];
-			int index = 0, current=std::atoi(values[0].c_str());
-			for (int j = 1; j < values.size(); j++)
-			{
-				for (int k = 0; k < values[j].size(); k++)
-					t[index++] = values[j][k];
-				t[index++] = 0;
-			}
-			t[index++] = 0;
-			if (ImGui::Combo("##PROPERTY_COMBO", &current, t))
-			{
-				values[0] = std::to_string(current);
-				_properties_config[i] = values;
-			}
-		}
-	}
-
-	ImGui::EndTable();
-
-
-	ImGui::NewLine();
-	ImGuiStyle& style = ImGui::GetStyle();
-	auto windowWidth = ImGui::GetWindowSize().x;
-	auto textWidth = std::max(ImGui::CalcTextSize(Lang::l("OK")).x, ImGui::CalcTextSize(Lang::l("CANCEL")).x);
-	ImGui::SetCursorPosX((windowWidth - (2 * textWidth + style.ItemSpacing.x)) * 0.5f);
-	if (ImGui::Button(Lang::l("OK")))
-	{
+		// finalize frees python memory and saves properties into ini file
 		_first_call = true;
-		// ok is pressed so we copy temp config back to main config
-		_properties.clear();
-		_properties.insert(_properties.begin(), _properties_config.begin(), _properties_config.end());
-	}
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("CANCEL")))
-		_first_call = true;
-	ImGui::End();
-
-	// finalize_python frees python memory and saves properties into ini file
-	if (_first_call)
 		finalize();
+	}
 
 	return _first_call;
 }

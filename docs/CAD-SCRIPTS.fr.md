@@ -58,11 +58,15 @@ run()                               le script dessine et peut ouvrir une fenêtr
 | `get_category()` | aucun | chaîne | catégorie du menu, en général `'CAD'` |
 | `get_properties_count()` | aucun | nombre | nombre de paramètres du script |
 | `get_property_description(index)` | indice depuis 0 | chaîne | libellé du paramètre |
+| `get_property_key(index)` | indice depuis 0 | chaîne | optionnel : nom utilisé pour sauvegarder la valeur (par défaut : l'indice) |
+| `use_properties()` | aucun | `bool` | optionnel : `False` si le script affiche sa propre fenêtre (défaut `True`) |
 | `get_property(index)` | indice depuis 0 | `bool`, `int`, `float`, `str` ou `list` de `str` | valeur courante |
 | `set_property(index, value)` | indice, valeur | rien | reçoit la valeur sauvegardée au démarrage, ou la valeur modifiée |
 | `run()` | aucun | rien | crée la géométrie via `self.core` |
 
-Les propriétés sont sauvegardées par OpenPostPro d'une session à l'autre. Le script gère lui-même la fenêtre de saisie qu'il souhaite (l'exemple fourni construit une boîte `tkinter` dans `run()`, lit les valeurs, puis dessine). `use_properties()` et `configurate()` existent dans `oblong.py` mais ne sont pas appelées par l'application.
+Si `get_properties_count()` renvoie plus de 0, OpenPostPro affiche la boîte de propriétés (mêmes contrôles que pour les post-processeurs, voir POSTPROCESSOR.fr.md section 4) quand le script est choisi. **Ok** envoie les valeurs par `set_property` puis exécute le script ; **Annuler** l'arrête. Les valeurs sont sauvegardées par script et redonnées à l'appel suivant. Renvoyez un nom stable dans `get_property_key` pour que l'ajout ou le déplacement d'une propriété ne mélange jamais les valeurs sauvegardées.
+
+Un script peut aussi gérer sa propre fenêtre (par exemple `tkinter`, pour ouvrir un sélecteur de fichier) : renvoyez `False` dans `use_properties()` et aucune boîte n'est affichée ; `oblong.py` en est un exemple.
 
 ## 3. Appels du moteur (`self.core`)
 

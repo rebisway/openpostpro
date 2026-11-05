@@ -28,10 +28,7 @@
 class CadScript : public Script
 {
 private:
-	std::vector<std::variant<bool, int, float, std::string, std::vector<std::string>>> _properties;
-	std::vector<std::variant<bool, int, float, std::string, std::vector<std::string>>> _properties_config;
-	std::vector<std::string> _property_names;
-	bool _first_call = true;
+	glm::vec2 _mouse = glm::vec2(0, 0);		// mouse position kept while the dialog box is open
 
 	// postpro python class
 	PyObject* _py_script_module = nullptr;
@@ -49,7 +46,23 @@ public:
 	bool initialize(std::string module_path = "", std::string lang = "");
 	void finalize();
 
+	/// <summary>
+	/// Run the script with the saved properties
+	/// </summary>
 	std::string run(glm::vec2 mouse_pos = glm::vec2(0,0));
+
+	/// <summary>
+	/// Load the script and its properties before displaying the properties dialog box
+	/// </summary>
+	/// <returns>False if the script cannot be loaded</returns>
+	bool begin_dialog(glm::vec2 mouse_pos);
+
+	/// <summary>
+	/// Draw the properties dialog box for the current frame, the script is run when Ok is pressed
+	/// </summary>
+	/// <param name="output">Script output, filled when the result is Ok</param>
+	/// <returns>None while the dialog box is open</returns>
+	MessageBoxResult render_GUI(std::string& output);
 };
 
 #endif

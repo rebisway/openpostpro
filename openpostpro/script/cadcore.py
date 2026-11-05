@@ -67,8 +67,17 @@ class Cadcore:
     def get_description(self):
         return self.script.get_description()
 
+    # false if the script manages its own dialog box (default: the properties dialog box is displayed)
     def use_properties(self):
-        return self.script.use_properties()
+        if hasattr(self.script, 'use_properties'):
+            return self.script.use_properties()
+        return True
+
+    # name used to save the property value, it does not change with the language or the order (the index by default)
+    def get_property_key(self, index):
+        if hasattr(self.script, 'get_property_key'):
+            return self.script.get_property_key(index)
+        return str(index)
 	
     def get_properties_count(self):
         return self.script.get_properties_count()

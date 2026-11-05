@@ -20,10 +20,13 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <variant>
 
 // Forward declaration of the CPython object type, see python_api.h to call the CPython API
 struct _object;
 typedef struct _object PyObject;
+
+enum class MessageBoxResult;
 
 //////////////////////////////////////////////////////////////////////////////////
 // This is the main class to run python scripts within the main application		//
@@ -52,6 +55,15 @@ protected:
 	std::string _lang;
 	std::string _error;
 
+	// properties (parameters) of the script, edited with the properties dialog box
+	typedef std::variant<bool, int, float, std::string, std::vector<std::string>> PropertyValue;
+	int _property_count = 0;
+	bool _use_properties = true;					// false if the script manages its own dialog box
+	std::vector<PropertyValue> _properties;
+	std::vector<PropertyValue> _properties_config;	// working copy edited by the dialog box
+	std::vector<std::string> _property_names;		// texts displayed in the dialog box
+	std::vector<std::string> _property_keys;		// names used to save the values
+
 	PyObject* _py_core_module = nullptr;
 	PyObject* _py_core_class = nullptr;
 	PyObject* _py_core_object = nullptr;
@@ -62,6 +74,22 @@ protected:
 	/// </summary>
 	/// <returns></returns>
 	std::string error(std::string method);
+
+	/// <summary>
+	/// Read the properties from the python object, the saved values (ini file) replace the default ones
+	/// and are sent back to the python object
+	/// </summary>
+	void load_properties();
+
+	/// <summary>
+	/// Save the properties values into the ini file, each value is saved with the key of its property
+	/// </summary>
+	void save_properties();
+
+	/// <summary>
+	/// Send the property value to the python object
+	/// </summary>
+	void apply_property(int index);
 
 public:
 	////////////////////
@@ -100,6 +128,32 @@ public:
 	/// Static method. Return sys.path variable
 	/// </summary>
 	static std::vector<std::string> sys_path();
+
+	/// <summary>
+	/// Static method. True if python finds a module with this name (script, post-processor or library)
+	/// </summary>
+	static bool module_exists(std::string name);
+
+	/// <summary>
+	/// Static method. Compile a python source without running it
+	/// </summary>
+	/// <param name="source">Python code</param>
+	/// <param name="filename">Name used in the error messages</param>
+	/// <param name="line">Line of the error (from 1), 0 if unknown</param>
+	/// <param name="column">Column of the error (from 1), 0 if unknown</param>
+	/// <returns>The error message, empty if the code is correct</returns>
+	static std::string check_syntax(const std::string& source, const std::string& filename, int& line, int& column);
+
+	/// <summary>
+	/// Static method. Import again a module already loaded, to use its modified source
+	/// </summary>
+	/// <returns>The error message, empty if success</returns>
+	static std::string reload_module(const std::string& name);
+
+	/// <summary>
+	/// Static method. True if the file is one of those delivered with the application
+	/// </summary>
+	static bool is_delivered(const std::string& path);
 
 	/////////////////////////////////////
 	// Default core_path object access //
@@ -147,6 +201,28 @@ public:
 	/// </summary>
 	/// <returns></returns>
 	std::string error() { return _error; }
+
+	/// <summary>
+	/// True if the script has properties and uses the properties dialog box
+	/// </summary>
+	bool has_properties_dialog() { return _property_count > 0 && _use_properties; }
+
+	/// <summary>
+	/// True for the files delivered with the application: they are copied again at each start,
+	/// so any modification would be lost
+	/// </summary>
+	bool read_only();
+
+	/// <summary>
+	/// Prepare the dialog box, call it once before calling draw_properties for each frame
+	/// </summary>
+	void begin_properties();
+
+	/// <summary>
+	/// Draw the properties dialog box. When Ok is pressed, values are kept and sent to the python object
+	/// </summary>
+	/// <returns>None while the dialog box is open</returns>
+	MessageBoxResult draw_properties();
 
 	/// <summary>
 	/// Call a method from _py_core_object object and return the expected string result

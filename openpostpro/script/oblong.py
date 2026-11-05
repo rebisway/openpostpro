@@ -56,7 +56,7 @@ class Cadscript:
 	
 	# return if we use default configuration box for properties, otherwise method 'configurate' will be called
 	def use_properties(self):
-		return True
+		return False	# this script displays its own dialog box (tkinter)
 	
 	# return the number of properties (parameters)
 	def get_properties_count(self):

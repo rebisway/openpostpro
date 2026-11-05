@@ -112,12 +112,13 @@ def set_language(self, value):
 
 ## 4. Propriétés
 
-Les propriétés sont les paramètres du post-processeur. L'utilisateur les modifie dans le menu **Post-processeur / Configuration**. La boîte de dialogue se construit automatiquement d'après le nombre de propriétés, leurs libellés et leurs types : vous n'écrivez aucun code d'interface. OpenPostPro sauvegarde les valeurs lui-même et les redonne via `set_property` au démarrage suivant : le post-processeur ne stocke rien.
+Les propriétés sont les paramètres du post-processeur. L'utilisateur les modifie dans le menu **Post-processeur / Configuration**. La boîte de dialogue se construit automatiquement d'après le nombre de propriétés, leurs libellés et leurs types : vous n'écrivez aucun code d'interface. OpenPostPro sauvegarde les valeurs lui-même et les redonne via `set_property` au démarrage suivant : le post-processeur ne stocke rien. Les valeurs sont sauvegardées sous le nom renvoyé par `get_property_key` : renvoyez un nom stable pour chaque propriété, ainsi l'ajout ou le déplacement d'une propriété ne mélange jamais les valeurs sauvegardées (sans cela, l'indice est utilisé et une nouvelle propriété doit être ajoutée en dernier).
 
 | Méthode | Arguments | Retour | Rôle |
 |---|---|---|---|
 | `get_properties_count()` | aucun | nombre | nombre de propriétés |
 | `get_property_description(index)` | indice depuis 0 | chaîne | libellé de la propriété |
+| `get_property_key(index)` | indice depuis 0 | chaîne | optionnel : nom utilisé pour sauvegarder la valeur (par défaut : l'indice) |
 | `get_property(index)` | indice depuis 0 | voir ci-dessous | valeur courante ; son type détermine le contrôle |
 | `set_property(index, value)` | indice, valeur | rien | reçoit la valeur saisie par l'utilisateur |
 

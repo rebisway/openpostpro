@@ -112,12 +112,13 @@ def set_language(self, value):
 
 ## 4. Properties
 
-Properties are the parameters of the post-processor. The user edits them in the menu **Post-processor / Configuration**. The dialog is built automatically from the number of properties, their labels and their types: you write no interface code. OpenPostPro saves the values itself and gives them back through `set_property` at the next startup, so the post-processor stores nothing.
+Properties are the parameters of the post-processor. The user edits them in the menu **Post-processor / Configuration**. The dialog is built automatically from the number of properties, their labels and their types: you write no interface code. OpenPostPro saves the values itself and gives them back through `set_property` at the next startup, so the post-processor stores nothing. Values are saved under the name returned by `get_property_key`: return a stable name for each property, so adding or reordering properties never mixes the saved values (without it, the index is used and a new property must be added last).
 
 | Method | Arguments | Returns | Meaning |
 |---|---|---|---|
 | `get_properties_count()` | none | number | how many properties |
 | `get_property_description(index)` | index from 0 | string | label of the property |
+| `get_property_key(index)` | index from 0 | string | optional: name used to save the value (default: the index) |
 | `get_property(index)` | index from 0 | see below | current value; its type selects the control |
 | `set_property(index, value)` | index, value | nothing | receives the value edited by the user |
 

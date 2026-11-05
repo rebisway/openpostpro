@@ -101,6 +101,18 @@ class Postcore:
 	def get_property_description(self, index):
 		return self.postpro.get_property_description(index)
 
+	# optional in the post-processor: the name used to save the property value, the index by default
+	def get_property_key(self, index):
+		if hasattr(self.postpro, 'get_property_key'):
+			return self.postpro.get_property_key(index)
+		return str(index)
+
+	# optional in the post-processor: false if it manages its own dialog box
+	def use_properties(self):
+		if hasattr(self.postpro, 'use_properties'):
+			return self.postpro.use_properties()
+		return True
+
 	def get_property(self, index):
 		return self.postpro.get_property(index)
 		
