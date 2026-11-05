@@ -295,6 +295,7 @@ void ModCad::document_loaded()
 		}
 	}
 	_document->unselect_all();
+	_camera->center();
 }
 
 void ModCad::display(float left, float top, float width, float height)
