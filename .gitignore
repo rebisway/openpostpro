@@ -3,3 +3,5 @@ x64/
 Debug/
 Release/
 *.user
+__pycache__/
+*.pyc
