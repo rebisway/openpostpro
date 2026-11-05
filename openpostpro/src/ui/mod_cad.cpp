@@ -1467,6 +1467,7 @@ void ModCad::render_GUI()
 						cad_scale(value);
 					else if (_cad_creation == GraphicType::CadRotation)
 						cad_rotation(value);
+					_cad_creation = GraphicType::None;
 				}
 			}
 			catch (const std::exception&) {}
