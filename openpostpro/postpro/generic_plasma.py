@@ -66,7 +66,11 @@ class Postpro:
 		self.Language = {'en-us' : self.en_us, 'fr-fr' : self.fr_fr, 'es-es': self.es_es }
 	
 	def set_language(self, value):
-		self.lang = self.Language[value]
+		self.lang = self.Language.get(value, self.en_us)	# unknown language: English
+
+	# the unit of the document, 'mm' or 'inch', set by the application before the generation
+	def set_unit(self, unit):
+		self.unit = '1' if unit == 'inch' else '0'
 
 	#########################################
 	# default methods of the post-processor #
@@ -136,7 +140,7 @@ class Postpro:
 	
 	# return the number of properties (parameters)
 	def get_properties_count(self):
-		return 15
+		return 14
 	
 		# return the property description (the text displayed in the property box)
 	def get_property_description(self, index):
@@ -159,16 +163,14 @@ class Postpro:
 		elif index == 8:
 			return self.lang['relative']
 		elif index == 9:
-			return self.lang['unit']
-		elif index == 10:
 			return self.lang['init_zero']
-		elif index == 11:
+		elif index == 10:
 			return self.lang['plasma_start']
-		elif index == 12:
+		elif index == 11:
 			return self.lang['plasma_stop']
-		elif index == 13:
+		elif index == 12:
 			return self.lang['plasma_delay']
-		elif index == 14:
+		elif index == 13:
 			return self.lang['disable_z']
 
 	# return the property value
@@ -192,19 +194,14 @@ class Postpro:
 		elif index == 8:
 			return self.relative
 		elif index == 9:
-			selected = self.lang['millimeter']
-			if self.unit == 1:
-				selected = self.lang['inch']
-			return [self.unit, self.lang['millimeter'], self.lang['inch']]
-		elif index == 10:
 			return str(self.init_zero)
-		elif index == 11:
+		elif index == 10:
 			return str(self.plasma_start)
-		elif index == 12:
+		elif index == 11:
 			return str(self.plasma_stop)
-		elif index == 13:
+		elif index == 12:
 			return float(self.plasma_delay)
-		elif index == 14:
+		elif index == 13:
 			return self.disable_z
 		
 	# set the property value
@@ -232,16 +229,14 @@ class Postpro:
 		elif index == 8:
 			self.relative = val
 		elif index == 9:
-			self.unit = val
-		elif index == 10:
 			self.init_zero = str(val)
-		elif index == 11:
+		elif index == 10:
 			self.plasma_start = str(val)
-		elif index == 12:
+		elif index == 11:
 			self.plasma_stop = str(val)
-		elif index == 13:
+		elif index == 12:
 			self.plasma_delay = float(val)
-		elif index == 14:
+		elif index == 13:
 			self.disable_z = val
 	
 	##############################################

@@ -33,7 +33,7 @@ The engine hands itself to your class: it is `self.core`, set through `set_core(
 
 - Coordinates are numbers in drawing units (`float`).
 - `cw` of an arc is a boolean: `True` for clockwise.
-- Language codes: `en-us`, `fr-fr`, `es-es`.
+- Language codes: `en-us`, `en-uk`, `fr-fr`, `es-es`.
 
 ## 1. Life cycle of a run
 
@@ -52,7 +52,7 @@ run()                               the script draws and may open a dialog
 
 | Method | Arguments | Returns | Meaning |
 |---|---|---|---|
-| `set_language(value)` | `'en-us'`, `'fr-fr'` or `'es-es'` | nothing | selects the dictionary of interface strings |
+| `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` or `'es-es'` | nothing | selects the dictionary of interface strings |
 | `set_core(value)` | the engine | nothing | store it in `self.core`; do not modify |
 | `get_description()` | none | string | name shown in the Scripts menu |
 | `get_category()` | none | string | menu category, usually `'CAD'` |
@@ -109,7 +109,7 @@ class Cadscript:
 		self.Language = {'en-us': self.en_us, 'fr-fr': self.fr_fr, 'es-es': self.es_es}
 
 	def set_language(self, value):
-		self.lang = self.Language[value]
+		self.lang = self.Language.get(value, self.en_us)   # unknown language: English
 
 	def set_core(self, value):
 		self.core = value

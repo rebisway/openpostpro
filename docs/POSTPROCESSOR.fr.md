@@ -40,7 +40,7 @@ Tout déplacement ou changement de coordonnées doit passer par l'API du moteur 
 - `values` : liste de nombres, de même taille et dans le même ordre que `axes`.
 - Les nombres sont des `float` Python ; formatez-les vous-même (voir `n()` dans `generic_mill.py`).
 - La sortie est du texte, converti en UTF-8 et écrit en mode texte (sous Windows `\n` est écrit `\r\n`). Les fichiers binaires ne sont pas pris en charge par la chaîne retournée.
-- Codes de langue : `en-us`, `fr-fr`, `es-es`.
+- Codes de langue : `en-us`, `en-uk`, `fr-fr`, `es-es`.
 
 ### Écrire moins : les axes optionnels
 
@@ -80,13 +80,13 @@ Les groupes de perçage appellent `drilling`, `pecking`, `tapping` ou `boring` �
 
 | Méthode | Arguments | Retour | Rôle |
 |---|---|---|---|
-| `set_language(value)` | `'en-us'`, `'fr-fr'` ou `'es-es'` | rien | choisit le dictionnaire des textes de l'interface |
+| `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` ou `'es-es'` | rien | choisit le dictionnaire des textes de l'interface |
 | `get_description()` | aucun | chaîne | nom dans le menu **Post-processeur / Sélection / Catégorie / Description** |
 | `get_category()` | aucun | chaîne | catégorie du menu : `"MILL"`, `"PLASMA"`, ... |
 | `get_extention()` | aucun | chaîne | extension du fichier de sortie, sans le point (`'nc'`) |
 | `set_core(value)` | le moteur | rien | à mémoriser dans `self.core` ; ne pas modifier |
 
-Chaque langue est un dictionnaire, choisi par `set_language()` :
+Chaque langue est un dictionnaire, choisi par `set_language()`. L'application donne le code de la langue de l'interface ; une langue que votre fichier ne contient pas retombe sur l'anglais, donc une nouvelle langue ajoutée à l'application ne casse jamais un post-processeur :
 
 ```python
 self.en_us = {'description': 'My mill'}
@@ -94,7 +94,7 @@ self.fr_fr = {'description': 'Ma fraiseuse'}
 self.Language = {'en-us': self.en_us, 'fr-fr': self.fr_fr}
 
 def set_language(self, value):
-    self.lang = self.Language[value]
+    self.lang = self.Language.get(value, self.en_us)   # unknown language: English
 ```
 
 ## 3. Comportement de la machine
@@ -225,7 +225,7 @@ class Postpro:
 		self.Language = {'en-us': self.en_us, 'fr-fr': self.en_us, 'es-es': self.en_us}
 
 	def set_language(self, value):
-		self.lang = self.Language[value]
+		self.lang = self.Language.get(value, self.en_us)   # unknown language: English
 
 	def set_core(self, value):
 		self.core = value

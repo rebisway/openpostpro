@@ -33,7 +33,7 @@ Le moteur se transmet à votre classe : c'est `self.core`, renseigné par `set_c
 
 - Les coordonnées sont des nombres en unités du dessin (`float`).
 - `cw` d'un arc est un booléen : `True` pour le sens horaire.
-- Codes de langue : `en-us`, `fr-fr`, `es-es`.
+- Codes de langue : `en-us`, `en-uk`, `fr-fr`, `es-es`.
 
 ## 1. Déroulement d'une exécution
 
@@ -52,7 +52,7 @@ run()                               le script dessine et peut ouvrir une fenêtr
 
 | Méthode | Arguments | Retour | Rôle |
 |---|---|---|---|
-| `set_language(value)` | `'en-us'`, `'fr-fr'` ou `'es-es'` | rien | choisit le dictionnaire des textes de l'interface |
+| `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` ou `'es-es'` | rien | choisit le dictionnaire des textes de l'interface |
 | `set_core(value)` | le moteur | rien | à mémoriser dans `self.core` ; ne pas modifier |
 | `get_description()` | aucun | chaîne | nom affiché dans le menu Scripts |
 | `get_category()` | aucun | chaîne | catégorie du menu, en général `'CAD'` |
@@ -109,7 +109,7 @@ class Cadscript:
 		self.Language = {'en-us': self.en_us, 'fr-fr': self.fr_fr, 'es-es': self.es_es}
 
 	def set_language(self, value):
-		self.lang = self.Language[value]
+		self.lang = self.Language.get(value, self.en_us)   # unknown language: English
 
 	def set_core(self, value):
 		self.core = value

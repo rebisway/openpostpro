@@ -59,7 +59,11 @@ class Postpro:
 		self.Language = {'en-us' : self.en_us, 'fr-fr' : self.fr_fr, 'es-es': self.es_es }
 	
 	def set_language(self, value):
-		self.lang = self.Language[value]
+		self.lang = self.Language.get(value, self.en_us)	# unknown language: English
+
+	# the unit of the document, 'mm' or 'inch', set by the application before the generation
+	def set_unit(self, unit):
+		self.unit = '1' if unit == 'inch' else '0'
 
 	#########################################
 	# default methods of the post-processor #
@@ -129,7 +133,7 @@ class Postpro:
 	
 	# return the number of properties (parameters)
 	def get_properties_count(self):
-		return 10
+		return 9
 	
 		# return the property description (the text displayed in the property box)
 	def get_property_description(self, index):
@@ -151,8 +155,6 @@ class Postpro:
 			return self.lang['post_data']
 		elif index == 8:
 			return self.lang['relative']
-		elif index == 9:
-			return self.lang['unit']
 
 	# return the property value
 	def get_property(self, index):
@@ -174,11 +176,6 @@ class Postpro:
 			return self.post_data
 		elif index == 8:
 			return self.relative
-		elif index == 9:
-			selected = self.lang['millimeter']
-			if self.unit == 1:
-				selected = self.lang['inch']
-			return [self.unit, self.lang['millimeter'], self.lang['inch']]
 		
 	# set the property value
 	def set_property(self, index, val):
@@ -204,8 +201,6 @@ class Postpro:
 			self.post_data = val
 		elif index == 8:
 			self.relative = val
-		elif index == 9:
-			self.unit = val
 	
 	##############################################
 	#              Helper definitions            #

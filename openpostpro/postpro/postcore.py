@@ -55,6 +55,11 @@ class Postcore:
 	def set_language(self, value):
 		self.postpro.set_language(value)
 
+	# unit of the document ('mm' or 'inch'), optional for the post-processor
+	def set_unit(self, unit):
+		if hasattr(self.postpro, 'set_unit'):
+			self.postpro.set_unit(unit)
+
 	def get_description(self):
 		return self.postpro.get_description()
 

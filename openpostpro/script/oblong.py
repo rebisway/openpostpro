@@ -32,7 +32,7 @@ class Cadscript:
 		self.Language = {'en-us' : self.en_us, 'fr-fr' : self.fr_fr, 'es-es': self.es_es }
 	
 	def set_language(self, value):
-		self.lang = self.Language[value]
+		self.lang = self.Language.get(value, self.en_us)	# unknown language: English
 
 	#########################################
 	# default methods of the post-processor #
