@@ -24,7 +24,8 @@
 enum class PocketMode
 {
 	Zigzag,
-	Offset
+	Offset,
+	Spiral
 };
 
 class Pocket : public Toolpath
@@ -37,6 +38,7 @@ private:
 	float _stepover = 0.0f;
 	float _angle = 0.0f;
 	bool _contours = true;
+	bool _outward = false;
 
 public:
 	GraphicType type() override { return GraphicType::CamPocket; }
@@ -62,11 +64,17 @@ public:
 	bool contours() { return _contours; }
 	void contours(bool value);
 
+	// spiral roughing direction: from the inside to the outside when true (finishing passes are always last)
+	bool outward() { return _outward; }
+	void outward(bool value);
+
 	bool climb() { return _climb; }
 	void climb(bool value) { _climb = value; }
 
 	std::vector<Curve> zigzag(std::vector<Curve>& curves);
 	std::vector<Curve> offset(std::vector<Curve>& curves);
+	// chains concentric loops into continuous spirals (outside to inside)
+	std::vector<Curve> spiral(std::vector<Curve> loops);
 	std::vector<Curve> merge(std::vector<Curve>& curves);
 
 	void update() override;

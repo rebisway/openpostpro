@@ -73,6 +73,8 @@ void Follow::properties()
 		float length = start_point_length();
 		if (property_slider(Lang::l("TOOLPATH_START_LENGTH"), "##TOOLPATH_START_LENGTH", length, 0, _original[0].length()))
 			start_point_length(length);
+
+		tabs_properties(_original[0]);
 	}
 }
 
@@ -105,6 +107,9 @@ std::string Follow::write()
 	result += WN(_start_point_length);
 	result += WN(_start_point_offset);
 	result += WB(_cw);
+	result += WN(_tabs_count);
+	result += WN(_tabs_length);
+	result += WN(_tabs_height);
 
 	return result;
 }
@@ -174,6 +179,11 @@ void Follow::read(std::string value, float version)
 	// older data have no direction
 	if (ref + 1 < data.size())
 		RB(_cw, ref + 1);
+
+	// older data have no tabs
+	RF(_tabs_count, ref + 2);
+	RF(_tabs_length, ref + 3);
+	RF(_tabs_height, ref + 4);
 
 	update();
 }

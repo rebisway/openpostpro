@@ -56,6 +56,9 @@ protected:
 	float _tabs_height = 0;
 
 	void generate_startpoint(std::vector<Curve>& curves);
+	// splits a closed curve to flag the moves which are tabs (tabs_count tabs of tabs_length, evenly spread)
+	Curve generate_tabs(Curve& curve);
+	void tabs_properties(const Curve& curve);
 	void generate_data(std::vector<Curve>& curves);
 	void generate_deco(std::vector<Curve>& curves);
 

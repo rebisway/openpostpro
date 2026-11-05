@@ -204,3 +204,7 @@ UNIT_INCH=Inch
 DEFAULT_UNIT=Default unit
 DRAWING_CONVERT_TO_INCH=Convert the drawing to inches
 DRAWING_CONVERT_TO_MM=Convert the drawing to millimeters
+TABS_COUNT=Tabs count
+TABS_LENGTH=Tabs length
+TABS_HEIGHT=Tabs height
+SPIRAL_OUTWARD=Outward

@@ -204,3 +204,7 @@ UNIT_INCH=Inch
 DEFAULT_UNIT=Standaardeenheid
 DRAWING_CONVERT_TO_INCH=Tekening naar inches omrekenen
 DRAWING_CONVERT_TO_MM=Tekening naar millimeters omrekenen
+TABS_COUNT=Aantal tabs
+TABS_LENGTH=Lengte van de tabs
+TABS_HEIGHT=Hoogte van de tabs
+SPIRAL_OUTWARD=Naar buiten

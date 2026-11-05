@@ -204,3 +204,7 @@ UNIT_INCH=Zoll
 DEFAULT_UNIT=Standardeinheit
 DRAWING_CONVERT_TO_INCH=Zeichnung in Zoll umrechnen
 DRAWING_CONVERT_TO_MM=Zeichnung in Millimeter umrechnen
+TABS_COUNT=Anzahl der Haltestege
+TABS_LENGTH=Länge der Haltestege
+TABS_HEIGHT=Höhe der Haltestege
+SPIRAL_OUTWARD=Nach außen

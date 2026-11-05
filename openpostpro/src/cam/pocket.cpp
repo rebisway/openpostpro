@@ -32,6 +32,15 @@ void Pocket::mode(PocketMode value)
 	}
 }
 
+void Pocket::outward(bool value)
+{
+	if (value != _outward)
+	{
+		_outward = value;
+		compute();
+	}
+}
+
 void Pocket::stepover(float value)
 {
 	if (value != _stepover)
@@ -596,6 +605,132 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 	return result;
 }
 
+std::vector<Curve> Pocket::spiral(std::vector<Curve> loops)
+{
+	std::vector<Curve> result;
+	if (loops.empty())
+		return result;
+
+	// circles become closed curves of two arcs
+	for (Curve& c : loops)
+	{
+		if (c.size() > 0 && c[0].type == SegmentType::Circle)
+		{
+			Curve arcs;
+			glm::vec2 center = c[0].center;
+			float r = c[0].radius;
+			arcs.add(center + glm::vec2(r, 0), center, r, c[0].cw);
+			arcs.add(center - glm::vec2(r, 0), center, r, c[0].cw);
+			arcs.add(center + glm::vec2(r, 0), center, r, c[0].cw);
+			arcs.level(c.level());
+			c = arcs;
+		}
+		c.close();
+	}
+
+	// the same curve, starting at its vertex k (the last point of a closed curve is its first one)
+	auto rotate = [](Curve& c, int k)
+	{
+		Curve out;
+		int n = (int)c.size();
+		for (int i = k; i < n - 1; i++)
+			out.push_back(c[i]);
+		for (int i = 0; i < k; i++)
+			out.push_back(c[i]);
+		out.push_back(Segment(c[k].point));
+		out.level(c.level());
+		return out;
+	};
+
+	// links longer than that start a new spiral (another island of the pocket)
+	const float max_link = radius() * 6.0f;
+
+	// point at a distance along a closed curve
+	auto point_at = [](Curve& c, float d)
+	{
+		for (size_t k = 0; k + 1 < c.size(); k++)
+		{
+			if (d <= c[k].length || k + 2 == c.size())
+				return c[k].coordinates_at(glm::clamp(d, 0.0f, c[k].length), c[k + 1].point);
+			d -= c[k].length;
+		}
+		return c.front().point;
+	};
+
+	// a chain is a list of loops, from the outside to the inside, each one starting near the end of the previous one
+	std::vector<std::vector<Curve>> chains;
+	chains.push_back(std::vector<Curve>{ rotate(loops.front(), 0) });
+	loops.erase(loops.begin());
+
+	while (!loops.empty())
+	{
+		glm::vec2 end = chains.back().back().back().point;
+		float best = std::numeric_limits<float>::max();
+		int best_loop = 0, best_vertex = 0;
+		for (int i = 0; i < (int)loops.size(); i++)
+		{
+			for (int k = 0; k < (int)loops[i].size() - 1; k++)
+			{
+				float d = glm::distance(end, loops[i][k].point);
+				if (d < best)
+				{
+					best = d;
+					best_loop = i;
+					best_vertex = k;
+				}
+			}
+		}
+
+		Curve next = rotate(loops[best_loop], best_vertex);
+		loops.erase(loops.begin() + best_loop);
+
+		if (best <= max_link)
+			chains.back().push_back(next);
+		else
+			chains.push_back(std::vector<Curve>{ next });
+	}
+
+	// each turn of the spiral moves progressively from a loop to the next one : the point at the fraction t of the turn is the
+	// blend (1 - t) / t of the points at the fraction t of the two loops
+	if (_outward)
+		for (std::vector<Curve>& chain : chains)
+			std::reverse(chain.begin(), chain.end());
+
+	const float sample = glm::max(radius() / 2.0f, 0.05f);
+	for (std::vector<Curve>& chain : chains)
+	{
+		Curve path;
+
+		// going inwards, the spiral starts with a full turn on the outer loop (going outwards, it ends with it)
+		if (!_outward && chain.size() > 1)
+			for (Segment& s : chain.front())
+				path.push_back(s);
+
+		for (size_t i = 0; i + 1 < chain.size(); i++)
+		{
+			Curve& a = chain[i];
+			Curve& b = chain[i + 1];
+			float la = a.length(), lb = b.length();
+			int count = glm::clamp((int)glm::ceil(glm::max(la, lb) / sample), 16, 4000);
+			for (int n = 0; n < count; n++)
+			{
+				float t = (float)n / count;
+				glm::vec2 pa = point_at(a, t * la), pb = point_at(b, t * lb);
+				path.push_back(Segment(pa * (1.0f - t) + pb * t));
+			}
+		}
+
+		// the last loop is followed as it is
+		Curve& last = chain.back();
+		for (Segment& s : last)
+			path.push_back(s);
+		path.level(last.level());
+		result.push_back(path);
+	}
+
+	return result;
+}
+
 std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 {
 	// a pocket which can not be computed (offsets that touch each other exactly for instance) must not freeze the application :
@@ -827,6 +962,8 @@ void Pocket::update()
 					process = zigzag(finish);
 				else if (_mode == PocketMode::Offset)
 					process = offset(finish);
+				else if (_mode == PocketMode::Spiral)
+					process = spiral(offset(finish));
 			}
 
 
@@ -872,7 +1009,7 @@ std::vector<Curve> Pocket::coordinates()
 void Pocket::properties()
 {
 	int mode_index = (int)_mode;
-	if (property_combo(Lang::l("MODE"), "##MODE", mode_index, { "Zigzag", "Offset" }))
+	if (property_combo(Lang::l("MODE"), "##MODE", mode_index, { "Zigzag", "Offset", "Spiral" }))
 		modify([&] { mode((PocketMode)mode_index); });
 
 	float finishing_value = _finishing;
@@ -893,6 +1030,12 @@ void Pocket::properties()
 		if (property_bool(Lang::l("CONTOURS"), "##CONTOURS", contours_value))
 			modify([&] { contours(contours_value); });
 	}
+	else if (_mode == PocketMode::Spiral)
+	{
+		bool outward_value = _outward;
+		if (property_bool(Lang::l("SPIRAL_OUTWARD"), "##SPIRAL_OUTWARD", outward_value))
+			modify([&] { outward(outward_value); });
+	}
 }
 
 std::string Pocket::write()
@@ -909,7 +1052,8 @@ std::string Pocket::write()
 		WN(_stepover) +
 		WN(_angle) +
 		WB(_climb) +
-		WB(_contours);
+		WB(_contours) +
+		WB(_outward);
 
 	auto ref = references();
 	result += WS(std::string("[#REF_IDS#]"));
@@ -956,6 +1100,8 @@ void Pocket::read(std::string value, float version)
 	if (data.size() > 11 && data[11] != "[#REF_IDS#]")
 	{
 		RB(_contours, 11);
+		if (data.size() > 12 && data[12] != "[#REF_IDS#]")
+			RB(_outward, 12);
 	}
 
 	int ref = -1;

@@ -17,6 +17,7 @@
 
 #include "toolpath.h"
 #include <config.h>
+#include <lang.h>
 
 
 std::vector<int> Toolpath::references()
@@ -181,7 +182,8 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 				next = next + 1;
 			}
 
-			if (segment_pos > 0 && index > 0)
+			// the left part of the split segment closes the curve, whatever the index of the segment
+			if (segment_pos > 0)
 				output.push_back(segments.front());
 
 			output.push_back(segments.back());
@@ -189,9 +191,16 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 			// we have reconstructed a rotated version of _original[0] starting from _start_point_length
 			// we just need to add the right segment at the curve begining
 
+			output = generate_tabs(output);
+
 			if (_start_point_type != StartPointType::normal)
 			{
-				auto angle = geometry::oriented_angle(output[1].point, output[0].point);
+				// direction of the toolpath at its first point, the tangent when the first segment is an arc
+				float angle;
+				if (output[0].type == SegmentType::Arc)
+					angle = geometry::oriented_angle(output[0].point, output[0].center) + (output[0].cw ? -glm::half_pi<float>() : glm::half_pi<float>());
+				else
+					angle = geometry::oriented_angle(output[1].point, output[0].point);
 				auto source = geometry::position(geometry::oriented_angle(angle + glm::half_pi<float>()), _start_point_offset, output[0].point);
 
 				if (_start_point_inside != output.inside(source))
@@ -215,6 +224,96 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 			_computed.push_back(output);
 		}
 	}
+	else if (start_point_allowed())
+	{
+		// several curves : no start point, but the closed ones keep their tabs
+		for (Curve& c : curves)
+			if (c.closed())
+				c = generate_tabs(c);
+	}
+}
+
+Curve Toolpath::generate_tabs(Curve& curve)
+{
+	int count = (int)_tabs_count;
+	if (!tabs_allowed() || count <= 0 || _tabs_length <= 0 || _tabs_height <= 0 || curve.size() < 2 || !curve.closed())
+		return curve;
+
+	float total = curve.length();
+	float spacing = total / count;
+	float tab = glm::min(_tabs_length, spacing * 0.9f);
+	if (tab <= 0)
+		return curve;
+
+	// boundaries along the curve : each tab is centred in its own part of the curve
+	std::vector<std::pair<float, float>> ranges;
+	for (int i = 0; i < count; i++)
+	{
+		float start = i * spacing + (spacing - tab) / 2.0f;
+		ranges.push_back(std::make_pair(start, start + tab));
+	}
+	auto in_tab = [&](float p)
+	{
+		for (auto& r : ranges)
+			if (p >= r.first && p <= r.second)
+				return true;
+		return false;
+	};
+
+	const float eps = 0.0001f;
+	Curve result;
+	float pos = 0;
+	for (size_t i = 0; i + 1 < curve.size(); i++)
+	{
+		Segment current = curve[i];
+		glm::vec2 end = curve[i + 1].point;
+		float length = current.length;
+		float from = pos;
+		float to = pos + length;
+
+		while (true)
+		{
+			// next boundary strictly inside the remaining part of the segment
+			float boundary = to + 1;
+			for (auto& r : ranges)
+			{
+				if (r.first > from + eps && r.first < to - eps) boundary = glm::min(boundary, r.first);
+				if (r.second > from + eps && r.second < to - eps) boundary = glm::min(boundary, r.second);
+			}
+
+			if (boundary > to)
+			{
+				current.tab = in_tab((from + to) / 2.0f);
+				result.push_back(current);
+				break;
+			}
+
+			auto parts = current.split_at(boundary - from, end);
+			parts[0].tab = in_tab((from + boundary) / 2.0f);
+			result.push_back(parts[0]);
+			current = parts[1];
+			from = boundary;
+		}
+		pos = to;
+	}
+	result.push_back(curve.back());
+	result.length();
+	return result;
+}
+
+void Toolpath::tabs_properties(const Curve& curve)
+{
+	int count = (int)_tabs_count;
+	if (property_int(Lang::l("TABS_COUNT"), "##TABS_COUNT", count))
+		modify([&] { tabs_count((float)glm::max(count, 0)); });
+
+	float length = _tabs_length;
+	if (property_float(Lang::l("TABS_LENGTH"), "##TABS_LENGTH", length))
+		modify([&] { tabs_length(glm::max(length, 0.0f)); });
+
+	float height = _tabs_height;
+	if (property_float(Lang::l("TABS_HEIGHT"), "##TABS_HEIGHT", height))
+		modify([&] { tabs_height(glm::max(height, 0.0f)); });
 }
 
 void Toolpath::generate_data(std::vector<Curve>& curves)

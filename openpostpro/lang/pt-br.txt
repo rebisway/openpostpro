@@ -204,3 +204,7 @@ UNIT_INCH=Polegada
 DEFAULT_UNIT=Unidade padrão
 DRAWING_CONVERT_TO_INCH=Converter o desenho para polegadas
 DRAWING_CONVERT_TO_MM=Converter o desenho para milímetros
+TABS_COUNT=Número de abas
+TABS_LENGTH=Comprimento das abas
+TABS_HEIGHT=Altura das abas
+SPIRAL_OUTWARD=Para fora

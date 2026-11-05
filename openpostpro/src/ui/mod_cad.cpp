@@ -1442,7 +1442,7 @@ void ModCad::render_GUI()
 		ImGui::Begin("##POCKET_BOX_SELECTION", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 		_last_size = ImGui::GetWindowSize();
 
-		const char* items[]{ "Zigzag", "Offset"};
+		const char* items[]{ "Zigzag", "Offset", "Spiral" };
 		int selected_item = -1;
 		if (ImGui::ListBox("##POCKET_LIST", &selected_item, items, IM_ARRAYSIZE(items)))
 		{

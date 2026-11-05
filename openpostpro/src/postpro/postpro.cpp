@@ -803,13 +803,22 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 
 								auto from = c.front();
 								auto next = c.begin() + 1;
+								float last_z = z;
+								// tabs keep the tool at the tab height, with a vertical move at their boundaries
+								const float tab_z = g->depth() + t->tabs_height();
 
 								while (next != c.end())
 								{
+									float seg_z = from.tab ? std::max(z, tab_z) : z;
+									if (seg_z != last_z)
+									{
+										output += linear(glm::vec3(from.point, seg_z));
+										last_z = seg_z;
+									}
 									if (from.type == SegmentType::Line)
-										output += linear(glm::vec3((*next).point, z));
+										output += linear(glm::vec3((*next).point, seg_z));
 									else
-										output += circular(glm::vec3((*next).point, z), from.center, from.cw);
+										output += circular(glm::vec3((*next).point, seg_z), from.center, from.cw);
 									from = (*next);
 									next = std::next(next);
 								}

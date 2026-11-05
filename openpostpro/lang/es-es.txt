@@ -204,3 +204,7 @@ UNIT_INCH=Pulgada
 DEFAULT_UNIT=Unidad predeterminada
 DRAWING_CONVERT_TO_INCH=Convertir el dibujo a pulgadas
 DRAWING_CONVERT_TO_MM=Convertir el dibujo a milímetros
+TABS_COUNT=Número de pestañas
+TABS_LENGTH=Longitud de las pestañas
+TABS_HEIGHT=Altura de las pestañas
+SPIRAL_OUTWARD=Hacia fuera

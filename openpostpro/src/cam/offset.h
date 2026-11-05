@@ -35,6 +35,7 @@ public:
 	void interior(bool value) { _interior = value; }
 	
 	bool start_point_allowed() override { return true; }
+	bool tabs_allowed() override { return true; }
 
 	void update() override;
 	void scaled() override;

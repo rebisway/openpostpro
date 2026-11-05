@@ -104,15 +104,16 @@ glm::vec2 Segment::coordinates_at(float length, glm::vec2 dst)
 		return geometry::position(dst, length, point);
 	case SegmentType::Arc:
 		a = length / radius;
-		a1 = geometry::oriented_angle(point, dst, center, cw);
+		// start angle of the arc, then moved along the arc by the requested length
+		a1 = geometry::oriented_angle(point, center);
 		if (cw)
 			a = geometry::oriented_angle(a1 - a);
 		else
 			a = geometry::oriented_angle(a1 + a);
-		return glm::vec2(glm::cos(a), glm::sin(a)) + center;
+		return glm::vec2(glm::cos(a), glm::sin(a)) * radius + center;
 	case SegmentType::Circle:
 		a = length / radius;
-		return glm::vec2(glm::cos(a), glm::sin(a)) + center;
+		return glm::vec2(glm::cos(a), glm::sin(a)) * radius + center;
 	}
 
 	return glm::vec2();

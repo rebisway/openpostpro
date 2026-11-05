@@ -69,6 +69,8 @@ void Offset::properties()
 		float length = start_point_length();
 		if (property_slider(Lang::l("TOOLPATH_START_LENGTH"), "##TOOLPATH_START_LENGTH", length, 0, _original[0].length()))
 			start_point_length(length);
+
+		tabs_properties(_original[0]);
 	}
 }
 
@@ -108,6 +110,9 @@ std::string Offset::write()
 	result += WN((int)_start_point_type);
 	result += WN(_start_point_length);
 	result += WN(_start_point_offset);
+	result += WN(_tabs_count);
+	result += WN(_tabs_length);
+	result += WN(_tabs_height);
 
 	return result;
 }
@@ -199,6 +204,11 @@ void Offset::read(std::string value, float version)
 	RI(stype, ref); _start_point_type = (StartPointType)stype;
 	RF(_start_point_length, ref++);
 	RF(_start_point_offset, ref);
+
+	// older data have no tabs
+	RF(_tabs_count, ref + 1);
+	RF(_tabs_length, ref + 2);
+	RF(_tabs_height, ref + 3);
 
 	update();
 }

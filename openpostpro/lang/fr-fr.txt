@@ -208,3 +208,7 @@ UNIT_INCH=Pouce
 DEFAULT_UNIT=Unité par défaut
 DRAWING_CONVERT_TO_INCH=Convertir le dessin en pouces
 DRAWING_CONVERT_TO_MM=Convertir le dessin en millimètres
+TABS_COUNT=Nombre d'attaches
+TABS_LENGTH=Longueur des attaches
+TABS_HEIGHT=Hauteur des attaches
+SPIRAL_OUTWARD=Vers l'extérieur

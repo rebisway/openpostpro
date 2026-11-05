@@ -52,6 +52,8 @@ public:
 	std::list<Segment>::iterator next;
 	bool excluded = false;
 	int index = -1;
+	// the move starting at this point is a tab (holding bridge): the tool stays above the tab height
+	bool tab = false;
 
 #ifdef _DEBUG
 	float perimeter = 0;

@@ -204,3 +204,7 @@ UNIT_INCH=Pollice
 DEFAULT_UNIT=Unità predefinita
 DRAWING_CONVERT_TO_INCH=Converti il disegno in pollici
 DRAWING_CONVERT_TO_MM=Converti il disegno in millimetri
+TABS_COUNT=Numero di linguette
+TABS_LENGTH=Lunghezza delle linguette
+TABS_HEIGHT=Altezza delle linguette
+SPIRAL_OUTWARD=Verso l'esterno
