@@ -34,6 +34,8 @@ class Cadcore:
     def __init__(self):
         self.mouse_x = 0.0
         self.mouse_y = 0.0
+        self.unit = 'mm'
+        self.selection = []
         self.output = ''
 
     def set_script(self, script):
@@ -41,6 +43,14 @@ class Cadcore:
 
     def set_language(self, value):
         self.script.set_language(value)
+
+    # unit of the document, 'mm' or 'inch'
+    def set_unit(self, unit):
+        self.unit = unit
+
+    # shapes selected when the script is called: a list of dictionaries, see the CAD scripts guide
+    def set_selection(self, selection):
+        self.selection = selection
 
     def set_mouse(self, x, y):
         self.mouse_x = float(x)
@@ -57,6 +67,23 @@ class Cadcore:
         if cw:
             clock = 1
         self.output += 'A:' + str(x1) + ':' + str(y1) + ':' + str(cx) + ':' + str(cy) + ':' + str(x2) + ':' + str(y2) + ':' + str(clock) + '\n'
+
+    # modify the parameters of a selected shape: a shape keeps its type (a line stays a line)
+    def modify_line(self, id, x1, y1, x2, y2):
+        self.output += 'M:' + str(id) + ':L:' + str(x1) + ':' + str(y1) + ':' + str(x2) + ':' + str(y2) + '\n'
+
+    def modify_circle(self, id, x, y, r):
+        self.output += 'M:' + str(id) + ':C:' + str(x) + ':' + str(y) + ':' + str(r) + '\n'
+
+    def modify_arc(self, id, x1, y1, cx, cy, x2, y2, cw):
+        clock = 0
+        if cw:
+            clock = 1
+        self.output += 'M:' + str(id) + ':A:' + str(x1) + ':' + str(y1) + ':' + str(cx) + ':' + str(cy) + ':' + str(x2) + ':' + str(y2) + ':' + str(clock) + '\n'
+
+    # delete a shape
+    def remove(self, id):
+        self.output += 'D:' + str(id) + '\n'
 
     def get_output(self):
         return self.output

@@ -928,11 +928,11 @@ void Application::render_menu()
 							if (_scripts[i]->has_properties_dialog())
 							{
 								// the script runs when the properties dialog box is validated
-								if (_scripts[i]->begin_dialog(mouse))
+								if (_scripts[i]->begin_dialog(mouse, _document))
 									_current_script = _scripts[i];
 							}
 							else
-								insert(_scripts[i]->run(mouse));
+								insert(_scripts[i]->run(mouse, _document));
 						}
 						ImGui::EndMenu();
 					}
@@ -1328,6 +1328,11 @@ void Application::insert(std::string content)
 	auto lines = stringex::split(content, '\n');
 
 	Logger::log("Mouse (" + std::to_string(cad->mouse().x) + ";" + std::to_string(cad->mouse().y) + ")");
+
+	// the whole output of a script is undone in one step
+	bool record = std::any_of(lines.begin(), lines.end(), [](const std::string& l) { return l.size() > 0; });
+	if (record)
+		History::begin_undo_record();
 	for (auto l : lines)
 	{
 		if (l.size() > 0)
@@ -1336,6 +1341,8 @@ void Application::insert(std::string content)
 			cad->insert(l);
 		}
 	}
+	if (record)
+		History::end_undo_record();
 
 }
 

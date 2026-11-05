@@ -79,6 +79,51 @@ A script can also manage its own window (for example `tkinter`, to open a file d
 
 Use it as the origin of the shape.
 
+### Unit and selection
+
+| Attribute | Type | Meaning |
+|---|---|---|
+| `self.core.unit` | `str` | unit of the document, `'mm'` or `'inch'`: all the coordinates are in this unit |
+| `self.core.selection` | `list` of `dict` | the shapes selected when the script is chosen (toolpaths are not listed) |
+
+The selection is read when the script is chosen in the menu: it does not change while the properties dialog box is open. It is empty if nothing is selected. Each shape is a dictionary with the keys `id` (unique number of the shape in the document) and `type`, then the keys of its type. Points are tuples `(x, y)`.
+
+| `type` | Other keys |
+|---|---|
+| `'line'` | `p1`, `p2` |
+| `'circle'` | `center`, `radius` |
+| `'arc'` | `start`, `center`, `stop`, `cw` (`True` for clockwise), `radius` |
+| `'point'` | `p1` |
+| `'ellipse'` | `center`, `major`, `minor`, `start`, `stop`, `angle` (angles in radians) |
+| `'polyline'` | `points` (list of tuples), `mode` (`'polyline'`, `'bspline'`, `'natural_cubic'`, `'lagrange'`, `'catmull'` or `'bezier'`), `closed` |
+| `'spline'` | `segments` (list of dictionaries), `closed` |
+| `'text'` | `p1`, `text`, `family`, `height`, `inter`, `bold`, `italic` |
+
+The segments of a spline are dictionaries with `type` (`'line'`, `'arc'` or `'circle'`) and `point`. A segment starts at its `point` and ends at the `point` of the next one; for an arc or a circle, `center`, `radius` and `cw` give its curve.
+
+```python
+for shape in self.core.selection:
+	if shape['type'] == 'line':
+		x1, y1 = shape['p1']
+		x2, y2 = shape['p2']
+		self.core.circle((x1 + x2) / 2, (y1 + y2) / 2, 2.0)
+```
+
+`mark_middles.py` is a complete example of a script that reads the selection.
+
+### Modifying and deleting
+
+| Call | Effect |
+|---|---|
+| `self.core.modify_line(id, x1, y1, x2, y2)` | changes the points of a line |
+| `self.core.modify_circle(id, x, y, r)` | changes the center and the radius of a circle |
+| `self.core.modify_arc(id, x1, y1, cx, cy, x2, y2, cw)` | changes the start, the center, the end and the direction of an arc |
+| `self.core.remove(id)` | deletes a shape |
+
+`id` is the `id` key of a shape of `self.core.selection`. A modification changes the parameters only: a line stays a line, and the shape keeps its `id`, its layer and its toolpaths. Applying `modify_circle` to the id of a line is refused and written to the log. Other types (point, ellipse, polyline, spline, text) cannot be modified yet. Deleting a shape does not delete the toolpaths that use it.
+
+All the changes, the new shapes included, are undone in one step. `scale_circles.py` is an example.
+
 ### Drawing
 
 | Call | Arguments | Effect |

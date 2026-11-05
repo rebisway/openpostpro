@@ -79,6 +79,51 @@ Un script peut aussi gérer sa propre fenêtre (par exemple `tkinter`, pour ouvr
 
 À utiliser comme origine de la forme.
 
+### Unité et sélection
+
+| Attribut | Type | Rôle |
+|---|---|---|
+| `self.core.unit` | `str` | unité du document, `'mm'` ou `'inch'` : toutes les coordonnées sont dans cette unité |
+| `self.core.selection` | `list` de `dict` | les formes sélectionnées quand le script est choisi (les usinages ne sont pas listés) |
+
+La sélection est lue quand le script est choisi dans le menu : elle ne change pas tant que la boîte de propriétés est ouverte. Elle est vide si rien n'est sélectionné. Chaque forme est un dictionnaire avec les clés `id` (numéro unique de la forme dans le document) et `type`, puis les clés de son type. Les points sont des tuples `(x, y)`.
+
+| `type` | Autres clés |
+|---|---|
+| `'line'` | `p1`, `p2` |
+| `'circle'` | `center`, `radius` |
+| `'arc'` | `start`, `center`, `stop`, `cw` (`True` pour le sens horaire), `radius` |
+| `'point'` | `p1` |
+| `'ellipse'` | `center`, `major`, `minor`, `start`, `stop`, `angle` (angles en radians) |
+| `'polyline'` | `points` (liste de tuples), `mode` (`'polyline'`, `'bspline'`, `'natural_cubic'`, `'lagrange'`, `'catmull'` ou `'bezier'`), `closed` |
+| `'spline'` | `segments` (liste de dictionnaires), `closed` |
+| `'text'` | `p1`, `text`, `family`, `height`, `inter`, `bold`, `italic` |
+
+Les segments d'une spline sont des dictionnaires avec `type` (`'line'`, `'arc'` ou `'circle'`) et `point`. Un segment commence à son `point` et finit au `point` du suivant ; pour un arc ou un cercle, `center`, `radius` et `cw` donnent sa courbure.
+
+```python
+for shape in self.core.selection:
+	if shape['type'] == 'line':
+		x1, y1 = shape['p1']
+		x2, y2 = shape['p2']
+		self.core.circle((x1 + x2) / 2, (y1 + y2) / 2, 2.0)
+```
+
+`mark_middles.py` est un exemple complet de script qui lit la sélection.
+
+### Modifier et supprimer
+
+| Appel | Effet |
+|---|---|
+| `self.core.modify_line(id, x1, y1, x2, y2)` | change les points d'une ligne |
+| `self.core.modify_circle(id, x, y, r)` | change le centre et le rayon d'un cercle |
+| `self.core.modify_arc(id, x1, y1, cx, cy, x2, y2, cw)` | change le début, le centre, la fin et le sens d'un arc |
+| `self.core.remove(id)` | supprime une forme |
+
+`id` est la clé `id` d'une forme de `self.core.selection`. Une modification ne change que les paramètres : une ligne reste une ligne, et la forme garde son `id`, son calque et ses usinages. Appliquer `modify_circle` à l'id d'une ligne est refusé et écrit dans le log. Les autres types (point, ellipse, polyligne, spline, texte) ne sont pas encore modifiables. Supprimer une forme ne supprime pas les usinages qui l'utilisent.
+
+Tous les changements, nouvelles formes comprises, s'annulent en une seule fois. `scale_circles.py` en est un exemple.
+
 ### Dessin
 
 | Appel | Arguments | Effet |

@@ -38,6 +38,9 @@ private:
 private:
 	void set_cadscript();
 
+	// send the mouse position, the unit and the selection of the document to the script
+	void set_context(glm::vec2 mouse_pos, Document* doc);
+
 public:
 	std::string category() { return _category; }
 	std::string description() { return _description; }
@@ -49,13 +52,13 @@ public:
 	/// <summary>
 	/// Run the script with the saved properties
 	/// </summary>
-	std::string run(glm::vec2 mouse_pos = glm::vec2(0,0));
+	std::string run(glm::vec2 mouse_pos = glm::vec2(0,0), Document* doc = nullptr);
 
 	/// <summary>
 	/// Load the script and its properties before displaying the properties dialog box
 	/// </summary>
 	/// <returns>False if the script cannot be loaded</returns>
-	bool begin_dialog(glm::vec2 mouse_pos);
+	bool begin_dialog(glm::vec2 mouse_pos, Document* doc = nullptr);
 
 	/// <summary>
 	/// Draw the properties dialog box for the current frame, the script is run when Ok is pressed
