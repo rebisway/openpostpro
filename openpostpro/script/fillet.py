@@ -22,23 +22,11 @@
 #  - lines: the lines that share an end are shortened, the arcs are added. The lines keep their id.
 #  - splines made of lines only: modified in place, they keep their id.
 #  - polylines: they cannot hold an arc, so they are replaced by a spline (new id, same layer).
+# The geometry helpers are in geom.py.
 # A corner is left sharp if the radius does not fit in the length of its sides.
 
 import math
-
-EPS = 0.0001
-
-
-def _sub(a, b):
-	return (a[0] - b[0], a[1] - b[1])
-
-
-def _dist(a, b):
-	return math.hypot(a[0] - b[0], a[1] - b[1])
-
-
-def _same(a, b):
-	return abs(a[0] - b[0]) < EPS and abs(a[1] - b[1]) < EPS
+from geom import EPS, sub as _sub, distance as _dist, same as _same
 
 
 class Cadscript:
