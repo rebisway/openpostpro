@@ -232,3 +232,17 @@ class Cadscript:
 ```
 
 For a script with its own input window, see `script/oblong.py`: it builds a `tkinter` dialog in `run()`, reads the values, then calls `compute()` to emit lines and arcs.
+
+## 5. Geometry library (`geom`)
+
+`geom.py` is a library file (no `class Cadscript`): write `import geom`. Points are tuples `(x, y)`, angles are in degrees (counter-clockwise from X). Functions that can fail return `None` or an empty list.
+
+| Group | Functions |
+|---|---|
+| Numbers | `EPS`, `almost_equal`, `normalize_angle` |
+| Vectors | `add`, `sub`, `scale`, `dot`, `cross`, `length`, `distance`, `same`, `normalize`, `lerp`, `angle`, `angle_between`, `rotate(p, center, a)`, `mirror(p, p1, p2)` |
+| Lines | `line_intersection`, `segment_intersection`, `project_on_line`, `point_segment_distance`, `offset_line(p1, p2, d)` (positive d = left of the direction) |
+| Circles, arcs | `arc_point`, `circle_from_3_points`, `arc_angles(center, start, end, cw)` (start, end, signed sweep), `arc_length`, `circle_line_intersection`, `circle_circle_intersection`, `tangent_points` |
+| Polygons | `bounding_box`, `polygon_area` (signed), `is_ccw`, `is_closed`, `polyline_length`, `offset_polyline(points, d, closed)` (sharp corners) |
+
+Example: `geom.rotate((10, 0), (0, 0), 90)` returns `(0.0, 10.0)`.

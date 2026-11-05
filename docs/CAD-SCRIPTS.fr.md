@@ -232,3 +232,17 @@ class Cadscript:
 ```
 
 Pour un script avec sa propre fenêtre de saisie, voir `script/oblong.py` : il construit une boîte `tkinter` dans `run()`, lit les valeurs, puis appelle `compute()` pour produire lignes et arcs.
+
+## 5. Bibliothèque de géométrie (`geom`)
+
+`geom.py` est un fichier bibliothèque (sans `class Cadscript`) : écrivez `import geom`. Les points sont des tuples `(x, y)`, les angles sont en degrés (sens anti-horaire depuis X). Les fonctions qui peuvent échouer renvoient `None` ou une liste vide.
+
+| Groupe | Fonctions |
+|---|---|
+| Nombres | `EPS`, `almost_equal`, `normalize_angle` |
+| Vecteurs | `add`, `sub`, `scale`, `dot`, `cross`, `length`, `distance`, `same`, `normalize`, `lerp`, `angle`, `angle_between`, `rotate(p, center, a)`, `mirror(p, p1, p2)` |
+| Droites | `line_intersection`, `segment_intersection`, `project_on_line`, `point_segment_distance`, `offset_line(p1, p2, d)` (d positif = à gauche du sens) |
+| Cercles, arcs | `arc_point`, `circle_from_3_points`, `arc_angles(center, start, end, cw)` (début, fin, balayage signé), `arc_length`, `circle_line_intersection`, `circle_circle_intersection`, `tangent_points` |
+| Polygones | `bounding_box`, `polygon_area` (signée), `is_ccw`, `is_closed`, `polyline_length`, `offset_polyline(points, d, closed)` (coins vifs) |
+
+Exemple : `geom.rotate((10, 0), (0, 0), 90)` renvoie `(0.0, 10.0)`.
