@@ -2971,7 +2971,8 @@ std::vector<Segment> Curve::search(geometry::rectangle bounds)
 	// searching will then be a tree branch comparison
 	if (!_tree.created())
 	{
-		_tree.create(this->bounds(), 0, glm::min<int>(255, (int)size() / 4));
+		// float precision does not allow to divide more, deeper nodes would only be copies of their parents
+		_tree.create(this->bounds(), 0, glm::min<int>(16, (int)size() / 4));
 		for (Segment p : *this)
 			_tree.add(p, p.bounds);
 	}

@@ -47,6 +47,7 @@ private:
 	bool _created = false;
 
 	void check_children();
+	void collect(geometry::rectangle& bounds, std::vector<T>& result);
 
 public:
 	bool created() { return _created; }
@@ -145,31 +146,26 @@ inline void QuadNode<T>::add(T data, geometry::rectangle& bounds)
 }
 
 template<class T>
-inline std::vector<T> QuadNode<T>::search(geometry::rectangle& bounds)
+inline void QuadNode<T>::collect(geometry::rectangle& bounds, std::vector<T>& result)
 {
-	std::vector<T> result;
-
 	if (_bounds.contains(bounds) || _bounds.intersect(bounds) || bounds.contains(_bounds)) {
-		if (_children.size() == 4) {
-			auto c0 = _children[0].search(bounds);
-			result.insert(result.end(), c0.begin(), c0.end());
+		if (_children.size() == 4)
+			for (QuadNode<T>& c : _children)
+				c.collect(bounds, result);
 
-			auto c1 = _children[1].search(bounds);
-			result.insert(result.end(), c1.begin(), c1.end());
-
-			auto c2 = _children[2].search(bounds);
-			result.insert(result.end(), c2.begin(), c2.end());
-
-			auto c3 = _children[3].search(bounds);
-			result.insert(result.end(), c3.begin(), c3.end());
-		}
-		for (int i = 0; i < _objects_bounds.size(); i++) {
-			geometry::rectangle r = _objects_bounds[i];
+		for (size_t i = 0; i < _objects_bounds.size(); i++) {
+			geometry::rectangle& r = _objects_bounds[i];
 			if (r.contains(bounds) || r.intersect(bounds) || bounds.contains(r))
 				result.push_back(_objects[i]);
 		}
 	}
+}
 
+template<class T>
+inline std::vector<T> QuadNode<T>::search(geometry::rectangle& bounds)
+{
+	std::vector<T> result;
+	collect(bounds, result);
 	return result;
 }
 
