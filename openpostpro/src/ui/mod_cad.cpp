@@ -393,7 +393,7 @@ void ModCad::left_button_up() {
 	_magnet_shapes.clear();
 	_modification_started = false;
 
-	if (_cad_creation == GraphicType::None || _cad_creation == GraphicType::CadSymmetry || _cad_creation != GraphicType::CadRotation)
+	if (_cad_creation == GraphicType::None || _cad_creation == GraphicType::CadSymmetry)
 	{
 		std::vector<Shape*> selection;
 		// cursor is not over a shape, so we are looking for every shapes inside the region
