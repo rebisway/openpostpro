@@ -32,6 +32,8 @@ private:
 	TextEditor editor;
 
 	double _last_modify;
+		bool _dirty = false;		// the text was changed since it was loaded or saved
+
 public:
 	ModOutput(Window* window);
 
@@ -55,6 +57,8 @@ public:
 	void copy() override;
 	void paste() override;
 	void remove() override;
+
+	bool save() override;
 
 	void render_GUI() override;
 };

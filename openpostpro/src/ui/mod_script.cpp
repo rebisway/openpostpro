@@ -22,6 +22,7 @@
 #include "lang.h"
 #include <imgui.h>
 #include <config.h>
+#include <script.h>
 
 ModScript::ModScript(Window* window) : Module(window)
 {
@@ -66,11 +67,75 @@ void ModScript::load(std::string path)
 	{
 		_path = path;
 		_title = std::filesystem::path(_path).filename().string();
+		_read_only = Script::is_delivered(path);
 	}
 	else
 	{
 		_path = _data = _title = "";
+		_read_only = false;
 	}
+	editor.SetReadOnly(_read_only);
+	_dirty = false;
+	editor.SetErrorMarkers(TextEditor::ErrorMarkers());
+}
+
+bool ModScript::save()
+{
+	if (_path.empty())
+		return false;
+
+	// a delivered file has nothing to save
+	if (_read_only)
+		return true;
+
+	try
+	{
+		_data = editor.GetText();
+		file::write_all_text(_path, _data);
+		_output_file_time = std::filesystem::last_write_time(_path);	// avoids reloading our own modification
+		_dirty = false;
+		_title = std::filesystem::path(_path).filename().string();
+		Logger::log("File [" + _path + "] saved");
+	}
+	catch (const std::exception& e)
+	{
+		Logger::error("Writing file (" + _path + ") [" + e.what() + "]");
+	}
+
+	return true;
+}
+
+void ModScript::compile()
+{
+	if (_path.empty())
+		return;
+
+	if (_dirty)
+		save();
+
+	auto name = std::filesystem::path(_path).filename().string();
+	int line = 0, column = 0;
+	auto error = Script::check_syntax(editor.GetText(), name, line, column);
+
+	if (!error.empty())
+	{
+		Logger::error("Compilation failed: " + name + " line " + std::to_string(line) + " -> " + error);
+		if (line > 0)
+		{
+			// the line is marked and the cursor goes to the error
+			TextEditor::ErrorMarkers markers;
+			markers[line] = error;
+			editor.SetErrorMarkers(markers);
+			editor.SetCursorPosition(TextEditor::Coordinates(line - 1, column > 0 ? column - 1 : 0));
+		}
+		return;
+	}
+
+	editor.SetErrorMarkers(TextEditor::ErrorMarkers());
+	Logger::log("Compilation succeeded: " + name);
+
+	if (on_compiled)
+		on_compiled(_path);
 }
 
 void ModScript::unload()
@@ -148,6 +213,7 @@ void ModScript::render_GUI()
 			_data = file::read_all_text(_path);
 
 			editor.SetText(_data);
+			_dirty = false;
 			editor.SetPalette(config.display_style == 2 ? TextEditor::GetLightPalette() : TextEditor::GetDarkPalette());
 
 			Logger::log("File [" + _path + "] loaded");
@@ -160,6 +226,22 @@ void ModScript::render_GUI()
 	ImGui::SetNextWindowSize(ImVec2(_width, _height));
 	
 	ImGui::Begin("MOD_SCRIPT_WINDOW", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+
+	ImGui::BeginDisabled(_read_only || !_dirty);
+	if (ImGui::Button(Lang::l("FILE_SAVE")))
+		save();
+	ImGui::EndDisabled();
+	ImGui::SameLine();
+	ImGui::BeginDisabled(_path.empty());
+	if (ImGui::Button(Lang::l("COMPILE")))
+		compile();
+	ImGui::EndDisabled();
+	if (_read_only)
+	{
+		ImGui::SameLine();
+		ImGui::TextDisabled("%s", Lang::l("READ_ONLY_FILE"));
+	}
+
 	ImGui::BeginChild("MOD_SCRIPT_SCROLLING");
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
@@ -175,6 +257,7 @@ void ModScript::render_GUI()
 
 	if (_modified = editor.IsTextChanged())
 	{
+		_dirty = true;
 		_title = "*" + std::filesystem::path(_path).filename().string();
 	}
 }

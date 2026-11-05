@@ -22,6 +22,7 @@
 
 #include "module.h"
 #include <filesystem>
+#include <functional>
 
 #include "window.h"
 #include <IMGUI_third/ImGuiColorTextEdit/TextEditor.h>
@@ -34,6 +35,8 @@ private:
 
 	double _last_modify;
 	bool _modified = false;
+	bool _dirty = false;		// the text was changed since it was loaded or saved
+	bool _read_only = false;	// delivered files cannot be modified, they are copied again at each start
 	std::string _path;
 	std::string _data;
 
@@ -41,6 +44,12 @@ public:
 	bool modified() { return _modified; }
 	std::string path() { return _path; }
 	std::string data() { return _data; }
+
+	// called with the path of the script when its compilation succeeded
+	std::function<void(const std::string&)> on_compiled;
+
+	bool save() override;
+	void compile();
 
 	ModScript(Window* window);
 

@@ -30,5 +30,8 @@ namespace dialog
 {
 	bool open_file_dialog(std::string initial_path, std::string& result, std::string filter_name = "", std::string filter_pattern = "");
 	bool save_file_dialog(std::string initial_path, std::string& result, std::string filter_name = "", std::string filter_pattern = "");
+
+	// open a folder in the file explorer of the system
+	void open_folder(std::string path);
 };
 #endif

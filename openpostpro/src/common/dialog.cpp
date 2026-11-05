@@ -21,6 +21,7 @@
 #ifdef _WIN32
 #include <Windows.h>
 #include <shobjidl.h>
+#include <shellapi.h>
 
 namespace dialog
 {
@@ -121,6 +122,27 @@ namespace dialog
         }
 
         return SUCCEEDED(hr);
+    }
+
+    void open_folder(std::string path)
+    {
+        auto wide = stringex::to_wide_char(path);
+        ShellExecuteW(NULL, L"open", wide.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    }
+}
+#else
+#include <cstdlib>
+
+namespace dialog
+{
+    void open_folder(std::string path)
+    {
+#ifdef __APPLE__
+        std::string command = "open \"" + path + "\" &";
+#else
+        std::string command = "xdg-open \"" + path + "\" &";
+#endif
+        std::system(command.c_str());
     }
 }
 #endif

@@ -54,6 +54,9 @@ public:
 	virtual bool modified() { return _modified; }
 	virtual void modified(bool value) { _modified = value; }
 
+	// save the file edited by the module, false if the module has no file to save
+	virtual bool save() { return false; }
+
 	virtual bool show() { return _show; }
 	virtual void show(bool value) { _show = value; }
 

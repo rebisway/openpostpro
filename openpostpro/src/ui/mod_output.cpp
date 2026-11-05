@@ -121,6 +121,31 @@ void ModOutput::remove()
 	editor.Delete();
 }
 
+bool ModOutput::save()
+{
+	if (_document == NULL || _document->output().empty() || !std::filesystem::exists(_document->output()))
+		return false;
+
+	if (_dirty)
+	{
+		auto path = _document->output();
+		try
+		{
+			file::write_all_text(path, editor.GetText());
+			_output_file_time = std::filesystem::last_write_time(path);	// avoids reloading our own modification
+			_dirty = false;
+			_title = std::filesystem::path(path).filename().string();
+			Logger::log("File [" + path + "] saved");
+		}
+		catch (const std::exception& e)
+		{
+			Logger::error("Writing file (" + path + ") [" + e.what() + "]");
+		}
+	}
+
+	return true;
+}
+
 void ModOutput::render_GUI()
 {
 	if (_document == NULL)
@@ -138,6 +163,7 @@ void ModOutput::render_GUI()
 				auto text = file::read_all_text(_document->output());
 
 				editor.SetText(text);
+				_dirty = false;
 				editor.SetPalette(config.display_style == 2 ? TextEditor::GetLightPalette() : TextEditor::GetDarkPalette());
 
 				_title = std::filesystem::path(_document->output()).filename().string();
@@ -162,6 +188,7 @@ void ModOutput::render_GUI()
 		ImGui::EndChild();
 		ImGui::End();
 
+		_dirty = _dirty || editor.IsTextChanged();
 		if (_modified = editor.IsTextChanged())
 		{
 			_title = "*" + std::filesystem::path(_document->output()).filename().string();

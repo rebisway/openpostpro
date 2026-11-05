@@ -65,6 +65,14 @@ private:
 	Postpro* _current_postpro = nullptr;
 
 	std::vector<CadScript*> _scripts;
+	bool _display_clone = false;			// dialog box to clone the current post-processor
+	std::string _clone_name;
+	std::string _clone_description;
+	std::string _clone_error;			// key of the error text
+	std::string _clone_source;			// file to clone
+	bool _clone_script = false;			// true for a cad script, false for a post-processor
+	bool _save_requested = false;		// CTRL+S pressed, handled when the interface is drawn
+	CadScript* _current_script = nullptr;	// script whose properties dialog box is displayed
 
 public:
 	Application(std::string title);
@@ -89,6 +97,13 @@ public:
 	void onRenderGUI() override;
 
 	void render_menu();
+
+	Postpro* load_postpro(const std::string& file);	// load a post-processor file, null if it fails
+	CadScript* load_cad_script(const std::string& file);	// load a cad script file, null if it fails
+	std::string clone();							// clone the file _clone_source, returns the key of the error text if it fails
+	void save_current();							// save the file edited by the current module, or the document
+
+	void reload_script(const std::string& path);	// use again a script after its compilation
 
 	void new_document();
 	void load_file(std::string path);

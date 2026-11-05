@@ -17,6 +17,7 @@
 
 #include "application.h"
 #include <filesystem>
+#include <regex>
 #include <exception>
 
 #include <imgui.h>
@@ -128,7 +129,9 @@ void Application::initialize()
 	_modules.push_back(new ModCad(this));
 	_modules.push_back(new ModOutput(this));
 	_modules.push_back(new ModLog(this));
-	_modules.push_back(new ModScript(this));
+	auto script_module = new ModScript(this);
+	script_module->on_compiled = [this](const std::string& path) { reload_script(path); };
+	_modules.push_back(script_module);
 	_current_module = _modules[0];
 	// parameters (simple and effective...)
 
@@ -222,30 +225,9 @@ void Application::initialize()
 		}
 		for (const auto& entry : std::filesystem::directory_iterator(path))
 		{
-			auto path = entry.path().string();
-			if (entry.path().extension() == ".py" && !stringex::end_with(path, "postcore.py"))
-			{
-				Postpro* p = new Postpro();
-
-				try {
-					if (p->initialize(entry.path().string(), Lang::getName()))
-					{
-						_postpros.push_back(p);
-						Logger::log("Loading post-processor " + entry.path().filename().string());
-						p->finalize();
-					}
-					else
-					{
-						Logger::error("Loading post-processor " + entry.path().filename().string() + " -> " + std::string(p->error()));
-						p->finalize();
-						delete p;
-					}
-				}
-				catch (const std::exception& e)
-				{
-					Logger::error("Loading post-processor " + entry.path().filename().string() + " -> " + std::string(e.what()));
-				}
-			}
+			auto file = entry.path().string();
+			if (entry.path().extension() == ".py" && !stringex::end_with(file, "postcore.py"))
+				load_postpro(file);
 		}
 		if (_postpros.size() > 0)
 		{
@@ -279,30 +261,170 @@ void Application::initialize()
 		}
 		for (const auto& entry : std::filesystem::directory_iterator(path))
 		{
-			auto path = entry.path().string();
-			if (entry.path().extension() == ".py" && !stringex::end_with(path, "cadcore.py"))
-			{
-				CadScript* p = new CadScript();
+			auto file = entry.path().string();
+			if (entry.path().extension() == ".py" && !stringex::end_with(file, "cadcore.py"))
+				load_cad_script(file);
+		}
+	}
+}
 
-				try {
-					if (p->initialize(entry.path().string(), Lang::getName()))
-					{
-						_scripts.push_back(p);
-						Logger::log("Loading post-processor " + entry.path().filename().string());
-						p->finalize();
-					}
-					else
-					{
-						Logger::error("Loading post-processor " + entry.path().filename().string() + " -> " + std::string(p->error()));
-						p->finalize();
-						delete p;
-					}
-				}
-				catch (const std::exception& e)
-				{
-					Logger::error("Loading post-processor " + entry.path().filename().string() + " -> " + std::string(e.what()));
-				}
-			}
+Postpro* Application::load_postpro(const std::string& file)
+{
+	auto name = std::filesystem::path(file).filename().string();
+	Postpro* p = new Postpro();
+
+	try
+	{
+		if (p->initialize(file, Lang::getName()))
+		{
+			_postpros.push_back(p);
+			Logger::log("Loading post-processor " + name);
+			p->finalize();
+			return p;
+		}
+		Logger::error("Loading post-processor " + name + " -> " + std::string(p->error()));
+		p->finalize();
+	}
+	catch (const std::exception& e)
+	{
+		Logger::error("Loading post-processor " + name + " -> " + std::string(e.what()));
+	}
+
+	delete p;
+	return nullptr;
+}
+
+CadScript* Application::load_cad_script(const std::string& file)
+{
+	auto name = std::filesystem::path(file).filename().string();
+	CadScript* p = new CadScript();
+
+	try
+	{
+		if (p->initialize(file, Lang::getName()))
+		{
+			_scripts.push_back(p);
+			Logger::log("Loading script " + name);
+			p->finalize();
+			return p;
+		}
+		Logger::error("Loading script " + name + " -> " + std::string(p->error()));
+		p->finalize();
+	}
+	catch (const std::exception& e)
+	{
+		Logger::error("Loading script " + name + " -> " + std::string(e.what()));
+	}
+
+	delete p;
+	return nullptr;
+}
+
+std::string Application::clone()
+{
+	// the name is a python module name
+	static const std::regex valid_name("^[A-Za-z_][A-Za-z0-9_]*$");
+	if (_clone_source.empty() || !std::regex_match(_clone_name, valid_name))
+		return "CLONE_ERR_NAME";
+
+	// the module must not hide another one, including the python libraries
+	Script::run_python("import importlib\nimportlib.invalidate_caches()");
+	if (Script::module_exists(_clone_name))
+		return "CLONE_ERR_EXISTS";
+
+	// the description of each language of the copy is replaced
+	auto description = stringex::replace(_clone_description, "\\", "\\\\");
+	description = stringex::replace(description, "'", "\\'");
+	description = stringex::replace(description, "$", "$$");
+	static const std::regex description_key("('description'\\s*:\\s*)'[^']*'");
+	auto text = std::regex_replace(file::read_all_text(_clone_source), description_key, "$1'" + description + "'");
+
+	auto path = environment::combine_path(environment::combine_path(environment::application_data_path(), _clone_script ? "script" : "postpro"), _clone_name + ".py");
+	file::write_all_text(path, text);
+
+	Script::run_python("import importlib\nimportlib.invalidate_caches()");
+
+	std::string loaded;
+	if (_clone_script)
+	{
+		auto p = load_cad_script(path);
+		if (p == nullptr)
+			return "CLONE_ERR_LOAD";
+		loaded = p->path();
+	}
+	else
+	{
+		auto p = load_postpro(path);
+		if (p == nullptr)
+			return "CLONE_ERR_LOAD";
+
+		// the clone is selected
+		_current_postpro = p;
+		config.postpro = p->module();
+		loaded = p->path();
+	}
+
+	// the clone is opened in the editor
+	auto m = module("MOD_SCRIPT");
+	m->load(loaded);
+	m->show(true);
+	m->selected(true);
+
+	return "";
+}
+
+void Application::save_current()
+{
+	// the module edits its own file (script, output), otherwise the document is saved
+	if (_current_module->save())
+		return;
+
+	if (std::filesystem::exists(_document->path()))
+		save_file(_document->path());
+	else
+	{
+		std::string path = "";
+		if (dialog::save_file_dialog("", path, "OpenPostPro", "*.opp"))
+		{
+			if (!stringex::end_with(path, ".opp"))
+				path += ".opp";
+			save_file(path);
+		}
+	}
+}
+
+void Application::reload_script(const std::string& path)
+{
+	auto name = std::filesystem::path(path).stem().string();
+
+	auto error = Script::reload_module(name);
+	if (!error.empty())
+	{
+		Logger::error("Reloading " + name + " -> " + error);
+		return;
+	}
+
+	// the description, the category and the properties are read again
+	for (auto p : _postpros)
+	{
+		if (p->path() == path)
+		{
+			if (p->initialize(path, Lang::getName()))
+				Logger::log("Post-processor " + name + " reloaded");
+			else
+				Logger::error("Reloading " + name + " -> " + std::string(p->error()));
+			p->finalize();
+		}
+	}
+	for (auto s : _scripts)
+	{
+		if (s->path() == path)
+		{
+			if (s->initialize(path, Lang::getName()))
+				Logger::log("Script " + name + " reloaded");
+			else
+				Logger::error("Reloading " + name + " -> " + std::string(s->error()));
+			s->finalize();
 		}
 	}
 }
@@ -413,6 +535,13 @@ void Application::onLeave()
 void Application::onKeyPressed(int key, int scancode, int action, int mods)
 {
 	Window::onKeyPressed(key, scancode, action, mods);
+
+	// CTRL+S saves the file edited by the current module, or the document
+	if (action == GLFW_PRESS && key == GLFW_KEY_S && (mods & GLFW_MOD_CONTROL))
+	{
+		_save_requested = true;
+		return;
+	}
 
 	bool throw_module = !ImGui::IsWindowFocused(ImGuiHoveredFlags_AnyWindow);
 
@@ -603,18 +732,7 @@ void Application::render_menu()
 			}
 			if (ImGui::MenuItem(Lang::l("FILE_SAVE"), "CTRL+S", false)) 
 			{
-				if (std::filesystem::exists(_document->path()))
-					save_file(_document->path());
-				else
-				{
-					std::string path = "", p;
-					if (dialog::save_file_dialog("", path, "OpenPostPro", "*.opp"))
-					{
-						if (!stringex::end_with(path, ".opp"))
-							path += ".opp";
-						save_file(path);
-					}
-				}
+				save_current();
 			}
 			if (ImGui::MenuItem(Lang::l("FILE_SAVE_AS"), NULL, false)) 
 			{
@@ -745,16 +863,36 @@ void Application::render_menu()
 				m->selected(true);
 			}
 			ImGui::Separator();
-			if (ImGui::MenuItem(Lang::l("POST_CONFIG")))
+			// the configuration needs properties, the delivered post-processors cannot be edited (they are copied again at each start)
+			bool configure = _current_postpro != nullptr && _current_postpro->has_properties_dialog();
+			bool edit = _current_postpro != nullptr && !_current_postpro->read_only();
+			if (configure && ImGui::MenuItem(Lang::l("POST_CONFIG")))
 			{
 				_display_postpro_preferences = true;
 			}
-			if (ImGui::MenuItem(Lang::l("POST_EDIT")))
+			if (configure && edit)
+				ImGui::Separator();
+			if (edit && ImGui::MenuItem(Lang::l("POST_EDIT")))
 			{
 				auto m = module("MOD_SCRIPT");
 				m->load(_current_postpro->path());
 				m->show(true);
 				m->selected(true);
+			}
+			if (configure || edit)
+				ImGui::Separator();
+			if (_current_postpro != nullptr && ImGui::MenuItem(Lang::l("POST_CLONE")))
+			{
+				_clone_source = _current_postpro->path();
+				_clone_script = false;
+				_clone_name = _current_postpro->module() + "_custom";
+				_clone_description = _current_postpro->description();
+				_clone_error = "";
+				_display_clone = true;
+			}
+			if (ImGui::MenuItem(Lang::l("POST_OPEN_FOLDER")))
+			{
+				dialog::open_folder(environment::combine_path(environment::application_data_path(), "postpro"));
 			}
 			ImGui::Separator();
 			if (ImGui::BeginMenu(Lang::l("POST_SELECT")))
@@ -786,11 +924,61 @@ void Application::render_menu()
 					{
 						if (ImGui::MenuItem(Lang::l(_scripts[i]->description())))
 						{
-							insert(_scripts[i]->run( ((ModCad*)module("MOD_CAD"))->mouse()));
+							auto mouse = ((ModCad*)module("MOD_CAD"))->mouse();
+							if (_scripts[i]->has_properties_dialog())
+							{
+								// the script runs when the properties dialog box is validated
+								if (_scripts[i]->begin_dialog(mouse))
+									_current_script = _scripts[i];
+							}
+							else
+								insert(_scripts[i]->run(mouse));
 						}
 						ImGui::EndMenu();
 					}
 				}
+				// the delivered scripts are copied again at each start: only the files of the user can be edited
+				bool editable = false;
+				for (auto script : _scripts)
+					editable = editable || !script->read_only();
+
+				ImGui::Separator();
+				if (editable && ImGui::BeginMenu(Lang::l("SCRIPT_EDIT")))
+				{
+					for (auto script : _scripts)
+					{
+						ImGui::PushID(script);
+						if (!script->read_only() && ImGui::MenuItem(Lang::l(script->description())))
+						{
+							auto m = module("MOD_SCRIPT");
+							m->load(script->path());
+							m->show(true);
+							m->selected(true);
+						}
+						ImGui::PopID();
+					}
+					ImGui::EndMenu();
+				}
+				if (!_scripts.empty() && ImGui::BeginMenu(Lang::l("SCRIPT_CLONE")))
+				{
+					for (auto script : _scripts)
+					{
+						ImGui::PushID(script);
+						if (ImGui::MenuItem(Lang::l(script->description())))
+						{
+							_clone_source = script->path();
+							_clone_script = true;
+							_clone_name = script->module() + "_custom";
+							_clone_description = script->description();
+							_clone_error = "";
+							_display_clone = true;
+						}
+						ImGui::PopID();
+					}
+					ImGui::EndMenu();
+				}
+				if (ImGui::MenuItem(Lang::l("SCRIPT_OPEN_FOLDER")))
+					dialog::open_folder(environment::combine_path(environment::application_data_path(), "script"));
 				//ImGui::EndMenu();
 			}
 			ImGui::EndMenu();
@@ -945,6 +1133,57 @@ void Application::render_menu()
 			{
 				_display_postpro_preferences = false;
 			}
+		}
+	}
+
+	if (_save_requested)
+	{
+		_save_requested = false;
+		save_current();
+	}
+
+	if (_display_clone)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+		ImGui::Begin((Lang::t(_clone_script ? "SCRIPT_CLONE" : "POST_CLONE") + "###CLONE").c_str(), 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+
+		char name[64], description[128];
+		snprintf(name, sizeof(name), "%s", _clone_name.c_str());
+		snprintf(description, sizeof(description), "%s", _clone_description.c_str());
+
+		ImGui::SetNextItemWidth(300.0f);
+		if (ImGui::InputText(Lang::l("CLONE_NAME"), name, sizeof(name)))
+			_clone_name = name;
+		ImGui::SetNextItemWidth(300.0f);
+		if (ImGui::InputText(Lang::l("CLONE_DESCRIPTION"), description, sizeof(description)))
+			_clone_description = description;
+
+		if (!_clone_error.empty())
+			ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", Lang::l(_clone_error));
+
+		ImGui::NewLine();
+		if (ImGui::Button(Lang::l("OK")))
+		{
+			_clone_error = clone();
+			if (_clone_error.empty())
+				_display_clone = false;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button(Lang::l("CANCEL")))
+			_display_clone = false;
+		ImGui::End();
+	}
+
+	if (_current_script != nullptr)
+	{
+		std::string output;
+		auto result = _current_script->render_GUI(output);
+		if (result != MessageBoxResult::None)
+		{
+			_current_script = nullptr;
+			if (result == MessageBoxResult::Ok)
+				insert(output);
 		}
 	}
 }
