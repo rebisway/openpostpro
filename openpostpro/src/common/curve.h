@@ -54,6 +54,8 @@ public:
 	int index = -1;
 	// the move starting at this point is a tab (holding bridge): the tool stays above the tab height
 	bool tab = false;
+	// index of the tab this move belongs to (-1 if none)
+	int tab_index = -1;
 
 #ifdef _DEBUG
 	float perimeter = 0;

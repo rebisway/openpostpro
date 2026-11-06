@@ -207,4 +207,6 @@ DRAWING_CONVERT_TO_MM=Convertir el dibujo a milímetros
 TABS_COUNT=Número de pestañas
 TABS_LENGTH=Longitud de las pestañas
 TABS_HEIGHT=Altura de las pestañas
+TABS_SELECTED=Selected tab
+TABS_POSITION=Tab position
 SPIRAL_OUTWARD=Hacia fuera

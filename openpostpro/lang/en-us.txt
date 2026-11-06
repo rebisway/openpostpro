@@ -207,4 +207,6 @@ DRAWING_CONVERT_TO_MM=Convert the drawing to millimeters
 TABS_COUNT=Tabs count
 TABS_LENGTH=Tabs length
 TABS_HEIGHT=Tabs height
+TABS_SELECTED=Selected tab
+TABS_POSITION=Tab position
 SPIRAL_OUTWARD=Outward

@@ -207,4 +207,6 @@ DRAWING_CONVERT_TO_MM=Converti il disegno in millimetri
 TABS_COUNT=Numero di linguette
 TABS_LENGTH=Lunghezza delle linguette
 TABS_HEIGHT=Altezza delle linguette
+TABS_SELECTED=Selected tab
+TABS_POSITION=Tab position
 SPIRAL_OUTWARD=Verso l'esterno

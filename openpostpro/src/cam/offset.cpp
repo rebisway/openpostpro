@@ -37,6 +37,7 @@ void Offset::update()
 
 	generate_startpoint(_computed);
 	generate_data(_computed);
+	generate_tabs_deco(_computed);
 	generate_deco(_computed);
 }
 
@@ -113,6 +114,7 @@ std::string Offset::write()
 	result += WN(_tabs_count);
 	result += WN(_tabs_length);
 	result += WN(_tabs_height);
+	result += tabs_write();
 
 	return result;
 }
@@ -209,6 +211,7 @@ void Offset::read(std::string value, float version)
 	RF(_tabs_count, ref + 1);
 	RF(_tabs_length, ref + 2);
 	RF(_tabs_height, ref + 3);
+	tabs_read(data, ref + 4);
 
 	update();
 }

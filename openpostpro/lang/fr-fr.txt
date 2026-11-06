@@ -211,4 +211,6 @@ DRAWING_CONVERT_TO_MM=Convertir le dessin en millimètres
 TABS_COUNT=Nombre d'attaches
 TABS_LENGTH=Longueur des attaches
 TABS_HEIGHT=Hauteur des attaches
+TABS_SELECTED=Attache sélectionnée
+TABS_POSITION=Position de l'attache
 SPIRAL_OUTWARD=Vers l'extérieur

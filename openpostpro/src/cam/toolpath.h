@@ -54,10 +54,22 @@ protected:
 	float _tabs_count = 0;
 	float _tabs_length = 0;
 	float _tabs_height = 0;
+	// position of the center of each tab, in length along the curve (independent of the start point)
+	std::vector<float> _tabs_positions;
+	int _tab_selected = 0;
+	float _tabs_total = 0;
+	Buffer* _tab_buffer = nullptr;
+	// end index in the buffer and index of the tab of each drawn part
+	std::vector<std::pair<int, int>> _tab_indices;
 
 	void generate_startpoint(std::vector<Curve>& curves);
 	// splits a closed curve to flag the moves which are tabs (tabs_count tabs of tabs_length, evenly spread)
-	Curve generate_tabs(Curve& curve);
+	// positions: the tabs are at _tabs_positions (single closed curve), otherwise they are evenly spread.
+	// offset: length of the curve which has been moved to the start of the curve.
+	Curve generate_tabs(Curve& curve, float offset = 0, bool positions = false);
+	// evenly spread positions when the number of tabs changed
+	void tabs_init_positions(float total);
+	void generate_tabs_deco(std::vector<Curve>& curves);
 	void tabs_properties(const Curve& curve);
 	void generate_data(std::vector<Curve>& curves);
 	void generate_deco(std::vector<Curve>& curves);
@@ -103,6 +115,13 @@ public:
 
 	void tabs_height(float value);
 	float tabs_height() { return _tabs_height; }
+
+	void tab_position(int index, float value);
+	// text of the positions for write() and reading them back
+	std::string tabs_write();
+	void tabs_read(const std::vector<std::string>& data, int index);
+	// draws the tabs over the toolpath, with their own colors
+	void draw_tabs(glm::vec4 color, glm::vec4 selected_color);
 	
 	virtual int closed_curves() { return 0; }
 

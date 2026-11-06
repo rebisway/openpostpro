@@ -211,6 +211,9 @@ void Group::draw()
 				_render->set_uniform("inner_color", cc);
 			lc = cc;
 			f->draw();
+			// the tabs are drawn over the toolpath, the selected one of the selected toolpath is highlighted
+			f->draw_tabs(config.tabsCamColor, config.selectedTabCamColor);
+			_render->set_uniform("inner_color", cc);
 		}
 	}
 }

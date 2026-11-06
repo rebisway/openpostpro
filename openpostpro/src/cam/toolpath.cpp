@@ -77,6 +77,8 @@ void Toolpath::tabs_count(float value)
 	if (_tabs_count != value)
 	{
 		_tabs_count = value;
+		_tabs_positions.clear();		// evenly spread again
+		_tab_selected = 0;
 		compute();
 	}
 }
@@ -99,11 +101,39 @@ void Toolpath::tabs_height(float value)
 	}
 }
 
+void Toolpath::tab_position(int index, float value)
+{
+	if (index >= 0 && index < (int)_tabs_positions.size() && _tabs_positions[index] != value)
+	{
+		_tabs_positions[index] = value;
+		compute();
+	}
+}
+
+std::string Toolpath::tabs_write()
+{
+	std::string result = WN(_tabs_positions.size());
+	for (float p : _tabs_positions)
+		result += WN(p);
+	return result;
+}
+
+void Toolpath::tabs_read(const std::vector<std::string>& data, int index)
+{
+	_tabs_positions.clear();
+	int count = 0;
+	// older data have no positions: the tabs are evenly spread
+	RI(count, index);
+	for (int i = 0; i < count && index + 1 + i < (int)data.size(); i++)
+		_tabs_positions.push_back(std::stof(data[index + 1 + i]));
+}
+
 Toolpath::Toolpath(Renderer* r) : Graphic(r)
 {
 	std::vector<glm::vec3> vertices{ glm::vec3(0.0f, 0.0f, 0.0f) };
 	_data_buffer = r->create_buffer(vertices);
 	_deco_buffer = r->create_buffer(vertices);
+	_tab_buffer = r->create_buffer(vertices);
 }
 
 Toolpath::~Toolpath()
@@ -112,6 +142,11 @@ Toolpath::~Toolpath()
 	{
 		delete _data_buffer;
 		_data_buffer = nullptr;
+	}
+	if (_tab_buffer != nullptr)
+	{
+		delete _tab_buffer;
+		_tab_buffer = nullptr;
 	}
 	if (_tree != nullptr)
 	{
@@ -191,7 +226,7 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 			// we have reconstructed a rotated version of _original[0] starting from _start_point_length
 			// we just need to add the right segment at the curve begining
 
-			output = generate_tabs(output);
+			output = generate_tabs(output, _start_point_length, true);
 
 			if (_start_point_type != StartPointType::normal)
 			{
@@ -233,7 +268,17 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 	}
 }
 
-Curve Toolpath::generate_tabs(Curve& curve)
+void Toolpath::tabs_init_positions(float total)
+{
+	int count = (int)_tabs_count;
+	if ((int)_tabs_positions.size() == count)
+		return;
+	_tabs_positions.clear();
+	for (int i = 0; i < count; i++)
+		_tabs_positions.push_back((i + 0.5f) * total / count);
+}
+
+Curve Toolpath::generate_tabs(Curve& curve, float offset, bool positions)
 {
 	int count = (int)_tabs_count;
 	if (!tabs_allowed() || count <= 0 || _tabs_length <= 0 || _tabs_height <= 0 || curve.size() < 2 || !curve.closed())
@@ -245,19 +290,44 @@ Curve Toolpath::generate_tabs(Curve& curve)
 	if (tab <= 0)
 		return curve;
 
-	// boundaries along the curve : each tab is centred in its own part of the curve
-	std::vector<std::pair<float, float>> ranges;
+	if (positions)
+	{
+		_tabs_total = total;
+		tabs_init_positions(total);
+	}
+
+	// ranges along the curve (start, end, index of the tab). Without positions, each tab is centred in its own part of the curve.
+	// A tab which crosses the start or the end of the curve is cut in two ranges.
+	struct Range { float first; float second; int index; };
+	std::vector<Range> ranges;
 	for (int i = 0; i < count; i++)
 	{
-		float start = i * spacing + (spacing - tab) / 2.0f;
-		ranges.push_back(std::make_pair(start, start + tab));
+		float center = positions ? _tabs_positions[i] - offset : (i + 0.5f) * spacing;
+		center = std::fmod(center, total);
+		if (center < 0)
+			center += total;
+		float start = center - tab / 2.0f;
+		float end = center + tab / 2.0f;
+		if (start < 0)
+		{
+			ranges.push_back({ start + total, total, i });
+			ranges.push_back({ 0, end, i });
+		}
+		else if (end > total)
+		{
+			ranges.push_back({ start, total, i });
+			ranges.push_back({ 0, end - total, i });
+		}
+		else
+			ranges.push_back({ start, end, i });
 	}
+	// index of the tab at the position p, -1 if none
 	auto in_tab = [&](float p)
 	{
 		for (auto& r : ranges)
 			if (p >= r.first && p <= r.second)
-				return true;
-		return false;
+				return r.index;
+		return -1;
 	};
 
 	const float eps = 0.0001f;
@@ -283,13 +353,15 @@ Curve Toolpath::generate_tabs(Curve& curve)
 
 			if (boundary > to)
 			{
-				current.tab = in_tab((from + to) / 2.0f);
+				current.tab_index = in_tab((from + to) / 2.0f);
+				current.tab = current.tab_index >= 0;
 				result.push_back(current);
 				break;
 			}
 
 			auto parts = current.split_at(boundary - from, end);
-			parts[0].tab = in_tab((from + boundary) / 2.0f);
+			parts[0].tab_index = in_tab((from + boundary) / 2.0f);
+			parts[0].tab = parts[0].tab_index >= 0;
 			result.push_back(parts[0]);
 			current = parts[1];
 			from = boundary;
@@ -314,6 +386,26 @@ void Toolpath::tabs_properties(const Curve& curve)
 	float height = _tabs_height;
 	if (property_float(Lang::l("TABS_HEIGHT"), "##TABS_HEIGHT", height))
 		modify([&] { tabs_height(glm::max(height, 0.0f)); });
+
+	// each tab can be moved on its own: choose it, then slide it along the curve
+	if (count > 0)
+	{
+		float total = _tabs_total > 0 ? _tabs_total : const_cast<Curve&>(curve).length();
+		tabs_init_positions(total);
+		_tab_selected = glm::clamp(_tab_selected, 0, (int)_tabs_positions.size() - 1);
+
+		int selected = _tab_selected + 1;
+		if (property_int(Lang::l("TABS_SELECTED"), "##TABS_SELECTED", selected))
+		{
+			_tab_selected = glm::clamp(selected, 1, (int)_tabs_positions.size()) - 1;
+			compute();
+		}
+
+		// the undo step of a slider is pushed by the helper
+		float position = _tabs_positions[_tab_selected];
+		if (property_slider(Lang::l("TABS_POSITION"), "##TABS_POSITION", position, 0, total))
+			tab_position(_tab_selected, position);
+	}
 }
 
 void Toolpath::generate_data(std::vector<Curve>& curves)
@@ -458,6 +550,56 @@ void Toolpath::generate_deco(std::vector<Curve>& curves)
 		}
 		
 		_deco_buffer->flush(vertices);
+	}
+}
+
+void Toolpath::generate_tabs_deco(std::vector<Curve>& curves)
+{
+	_tab_indices.clear();
+	std::vector<glm::vec3> vertices;
+
+	for (auto& c : curves)
+	{
+		int open = -1;		// index of the tab being drawn, -1 if none
+		for (size_t i = 0; i + 1 < c.size(); i++)
+		{
+			const Segment& from = c[i];
+			const Segment& to = c[i + 1];
+			int index = from.tab ? from.tab_index : -1;
+			if (index != open)
+			{
+				if (open != -1)
+					_tab_indices.push_back(std::make_pair((int)vertices.size(), open));
+				open = index;
+				if (open != -1)
+					vertices.push_back(geometry::v3(from.point));
+			}
+			if (open == -1 || from.type == SegmentType::Circle)
+				continue;
+			if (from.type == SegmentType::Line)
+				vertices.push_back(geometry::v3(to.point));
+			else
+			{
+				auto v = geometry::arc(from.point, from.center, to.point, from.cw, 1 / _render->camera()->scale());
+				for (size_t k = 1; k < v.size(); k++)
+					vertices.push_back(geometry::v3(v[k]));
+			}
+		}
+		if (open != -1)
+			_tab_indices.push_back(std::make_pair((int)vertices.size(), open));
+	}
+	if (!vertices.empty())
+		_tab_buffer->flush(vertices);
+}
+
+void Toolpath::draw_tabs(glm::vec4 color, glm::vec4 selected_color)
+{
+	int from = 0;
+	for (auto& part : _tab_indices)
+	{
+		_render->set_uniform("inner_color", part.second == _tab_selected && selected() ? selected_color : color);
+		_tab_buffer->draw(_render->pr_line_strip(), from, part.first - from);
+		from = part.first;
 	}
 }
 

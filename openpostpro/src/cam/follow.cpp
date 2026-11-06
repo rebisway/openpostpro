@@ -30,6 +30,7 @@ void Follow::update()
 	_computed.insert(_computed.begin(), _original.begin(), _original.end());
 	generate_startpoint(_computed);
 	generate_data(_computed);
+	generate_tabs_deco(_computed);
 	generate_deco(_computed);
 }
 
@@ -110,6 +111,7 @@ std::string Follow::write()
 	result += WN(_tabs_count);
 	result += WN(_tabs_length);
 	result += WN(_tabs_height);
+	result += tabs_write();
 
 	return result;
 }
@@ -184,6 +186,7 @@ void Follow::read(std::string value, float version)
 	RF(_tabs_count, ref + 2);
 	RF(_tabs_length, ref + 3);
 	RF(_tabs_height, ref + 4);
+	tabs_read(data, ref + 5);
 
 	update();
 }

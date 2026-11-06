@@ -207,4 +207,6 @@ DRAWING_CONVERT_TO_MM=Converter o desenho para milímetros
 TABS_COUNT=Número de abas
 TABS_LENGTH=Comprimento das abas
 TABS_HEIGHT=Altura das abas
+TABS_SELECTED=Selected tab
+TABS_POSITION=Tab position
 SPIRAL_OUTWARD=Para fora

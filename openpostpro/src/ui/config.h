@@ -86,6 +86,8 @@ public:
 	glm::vec4 groupColor = glm::vec4(0.173f, 0.271f, 0.631f, 1.0f);
 	glm::vec4 selectedCadColor = glm::vec4(0.0f, 0.8f, 0.0f, 1.0f);
 	glm::vec4 selectedCamColor = glm::vec4(1.0f, 1.1f, 1.0f, 1.0f);
+	glm::vec4 tabsCamColor = glm::vec4(1.0f, 0.6f, 0.0f, 1.0f);
+	glm::vec4 selectedTabCamColor = glm::vec4(1.0f, 0.0f, 0.3f, 1.0f);
 
 	std::map<std::string, glm::vec4> colors;
 	std::vector<std::string> dxfColorNames;
