@@ -12,3 +12,8 @@ tests/cpp/*.exe
 
 # Personal project tracking, not versioned
 state.md
+
+# Temporary working files
+dump3.txt
+local_changes.patch
+split_patches/
