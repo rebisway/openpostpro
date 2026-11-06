@@ -334,6 +334,13 @@ void ModCad::left_button_down() {
 	_left_mouse_pos = _last_mouse_pos;
 	_left_mouse_mag = _magnet_point;
 
+	// a double click is two clicks close in time and in position
+	double now = glfwGetTime();
+	glm::vec2 screen(_camera->xpos(), _camera->ypos());
+	_double_click = now - _last_click_time < 0.4 && glm::distance(screen, _last_click_screen) < 8.0f;
+	_last_click_time = now;
+	_last_click_screen = screen;
+
 	if (_cad_creation == GraphicType::None && _shape_hovered != nullptr)
 	{
 		if (_shape_hovered->type() == GraphicType::Point)
@@ -359,7 +366,15 @@ void ModCad::left_button_down() {
 	{
 		if (_construction_shape != nullptr)	// if true then new shape is fully constructed
 		{
-			if (_construction_shape->point(_magnet_point))
+			if (_double_click && _construction_shape->type() == GraphicType::Polyline && ((Polyline*)_construction_shape)->mode() != PolylineMode::Bezier)
+			{
+				// double click: the polyline is validated and ends at the point of the first click. The second click, which
+				// is a little moved, is ignored. With less than two points placed there is nothing to validate
+				if (((Polyline*)_construction_shape)->points().size() > 2)
+					construct_shape();
+				_last_click_time = 0;
+			}
+			else if (_construction_shape->point(_magnet_point))
 			{
 				construct_shape();
 				// depending on shape type, we may start another one of same type
@@ -713,12 +728,20 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 	updateCursor();
 }
 
+bool ModCad::polyline_in_progress()
+{
+	return _cad_creation == GraphicType::Polyline && _construction_shape != nullptr && _construction_shape->type() == GraphicType::Polyline &&
+		((Polyline*)_construction_shape)->mode() != PolylineMode::Bezier && ((Polyline*)_construction_shape)->points().size() > 2;
+}
+
 // called when left button is down
 void ModCad::right_button_down() {
 	_right_down = true;
 	_camera->mouseRightDown();
+	_right_down_screen = glm::vec2(_camera->xpos(), _camera->ypos());
 	_mode_selection = false;
-	if (_cad_creation != GraphicType::None && _construction_shape != nullptr)
+	// a polyline which is being drawn is not cancelled: the right button validates it (see right_button_up)
+	if (_cad_creation != GraphicType::None && _construction_shape != nullptr && !polyline_in_progress())
 	{
 		delete _construction_shape;
 		_construction_shape = nullptr;
@@ -731,6 +754,19 @@ void ModCad::right_button_down() {
 // called when left button is down
 void ModCad::right_button_up() {
 	_right_down = false;
+
+	if (polyline_in_progress())
+	{
+		// a click of the right button validates the polyline, the tool stays active. If the mouse moved, it was a move of the
+		// view: the polyline goes on
+		_camera->mouseRightUp();
+		if (glm::distance(glm::vec2(_camera->xpos(), _camera->ypos()), _right_down_screen) < 4.0f)
+			construct_shape();
+		updateCursor();
+		_magnet_shapes.clear();
+		return;
+	}
+
 	_cad_creation = GraphicType::None;
 	reset_display_boxes();
 	_camera->mouseRightUp();
@@ -1403,31 +1439,7 @@ void ModCad::render_GUI()
 		}
 		ImGui::End();
 
-		// display the buttons 'Add' and 'Close' for polyline creation
-		if (_construction_shape != nullptr && ((Polyline*)_construction_shape)->mode() != PolylineMode::Bezier)
-		{
-			ImGuiIO& io = ImGui::GetIO();
-			ImGuiWindowFlags wf = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
-			ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y - 50.0f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-			ImGui::Begin("##APPROVING", 0, wf);
-			if (ImGui::Button(Lang::l("ADD")))
-			{
-				if (((Polyline*)_construction_shape)->points().size() > 2)
-				{
-					construct_shape();
-				}
-			}
-			ImGui::SameLine();
-			if (ImGui::Button(Lang::l("CLOSE")))
-			{
-				((Polyline*)_construction_shape)->points().clear();
-				delete _construction_shape;
-				_construction_shape = nullptr;
-				_cad_creation = GraphicType::None;
-				_display_poly_box = false;
-			}
-			ImGui::End();
-		}
+		// a polyline is validated with a double click or the right button, and a second right click ends the tool
 	}
 
 	if (_display_chamfer_box)

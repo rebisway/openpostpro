@@ -68,6 +68,13 @@ private:
 	bool _start_moving = false;
 	Shape* _shape_hovered = nullptr;
 	glm::vec2 _last_mouse_pos = glm::vec2();
+	// double click detection (in pixels: the mouse always moves a little between the two clicks)
+	double _last_click_time = 0;
+	glm::vec2 _last_click_screen = glm::vec2();
+	bool _double_click = false;
+	glm::vec2 _right_down_screen = glm::vec2();
+	// true while a polyline (not a Bezier) with at least two points placed is being drawn
+	bool polyline_in_progress();
 	glm::vec2 _left_mouse_pos = glm::vec2();
 	glm::vec2 _left_mouse_mag = glm::vec2();
 	bool _mode_selection = false;
