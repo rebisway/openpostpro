@@ -4,7 +4,7 @@
 
 OpenPostPro brings together a lightweight 2D drawing environment, CAM operations, and configurable Python post-processors. Import a DXF drawing or create geometry directly in the application, prepare machining or cutting operations, then generate output adapted to your machine through a post-processor.
 
-The project is in an **early development stage**. Some geometry and toolpath algorithms still need improvement, so generated output should always be checked carefully before being used on a real machine.
+The current version is **0.5**. The project is still in an **early development stage**: it is usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
 
 ![OpenPostPro](https://github.com/user-attachments/assets/fc224d77-bbef-4d37-98aa-c54a5e4b89e1)
 
@@ -13,36 +13,45 @@ The project is in an **early development stage**. Some geometry and toolpath alg
 OpenPostPro includes tools to create and edit 2D geometry directly:
 
 - Points, lines, circles, arcs, ellipses, polylines, splines, and text
-- Geometric transformations such as offset, symmetry, scaling, and rotation
-- Chamfer operations
-- Boolean operations to combine, subtract, or intersect supported shapes
-- DXF import for supported drawing entities, including lines, points, circles, arcs, ellipses, polylines, splines, and text
+- Geometric transformations such as offset, mirror, scale, rotation, and moving the origin
+- **Extend**: prolongs a line or an arc, from the end nearest to the mouse, up to the nearest other entity, with a preview of the result under the mouse
+- **Cut**: splits lines, arcs, circles, polylines, and ellipses at the clicked point (the magnet stays active) or at the crossing of the shapes under the click
+- Chamfer and fillet (CAD scripts), cut at intersections, and boolean operations to combine, subtract, or intersect supported shapes
+- DXF import for supported drawing entities, including lines, points, circles, arcs, ellipses, elliptical arcs, polylines, splines, and text
+- Document unit (millimetres or inches), with the conversion of an imported DXF or of the whole drawing
+- Layers, undo and redo, and a magnet to snap to the points of the drawing
 
 ## 🐍 Python scripting for CAD
-OpenPostPro also supports Python scripts at the CAD level. Scripts can create geometry directly inside the application, making it possible to automate repetitive work or generate complex shapes parametrically instead of drawing every element by hand.
+OpenPostPro also supports Python scripts at the CAD level. Scripts can create or modify geometry directly inside the application, making it possible to automate repetitive work or generate complex shapes parametrically instead of drawing every element by hand. They receive the current selection, the position of the mouse and the unit of the document, can show a properties dialog, and each run is undone in a single step.
 
-For example, the project includes a demo script that generates oblong holes (slots). Scripts can be adapted or written to create the specific elements your design requires.
+The application ships with a library of scripts, grouped by category in the **Scripts** menu:
 
-This CAD scripting capability is separate from Python post-processors: CAD scripts generate drawing geometry, while post-processors translate CAM operations into machine-specific output.
+- **Generation**: rectangle, hexagon, star, oblong hole, wheel spokes, exterior involute gear, airfoil from a coordinate file, grid of holes
+- **Geometry and modification**: linear and polar arrays, fillet, chamfer, center of gravity, scale of circles
+- **Import**: bitmap tracing with the external program Potrace
+- **Examples**: small scripts to start from (middle of lines, rectangle...)
+
+The delivered scripts are read-only: use **Clone** to make your own editable copy, with a built-in editor that checks the syntax and shows the Python traceback in the log. Scripts are separate from post-processors: CAD scripts generate drawing geometry, while post-processors translate CAM operations into machine-specific output.
 
 Guide: [Writing a CAD script](docs/CAD-SCRIPTS.en.md) · [Écrire un script CAO](docs/CAD-SCRIPTS.fr.md)
 
 ## ⚙️ CAM operations
 
-Create toolpath operations from your drawing, including:
+Create toolpath operations from your drawing, grouped by tool, with the depth, the pass depth, and the feeds set per group:
 
 - **Follow** — follow selected geometry
 - **Offset** — create interior or exterior offsets
-- **Pocket** — generate pocketing toolpaths
+- **Pocket** — generate pocketing toolpaths, with three strategies: zigzag (scan lines at any angle, adjustable stepover, with or without the contour), concentric offsets, and spiral (inward or outward). Finishing passes are machined last, and islands are respected
 - **Drilling** — configure drilling cycles, including peck drilling, tapping, and boring options
 - **Spiral** — create spiral toolpaths
 - **Move to** — add a positioning move
+- **Tabs** (holding bridges) on closed follow and offset paths, with independent positions that can be moved with a slider, and a choice of the start point of the path
 
-CAM operations have configurable parameters. Because this is an early release, the results, especially outline and offset calculations, may not be reliable for every shape or machining situation.
+CAM operations have configurable parameters. Because the project is still young, the results, especially outline, offset, and pocket calculations, may not be reliable for every shape or machining situation.
 
 ## 🧩 Python post-processors
 
-Post-processors are written in Python, making machine-output customization accessible without changing the C++ application.
+Post-processors are written in Python, making machine-output customization accessible without changing the C++ application. They can be cloned and edited from the application.
 
 Guide: [Writing a post-processor](docs/POSTPROCESSOR.en.md) · [Écrire un post-processeur](docs/POSTPROCESSOR.fr.md)
 
@@ -57,7 +66,7 @@ These are generic starting points, not guaranteed profiles for every controller.
 
 ## 🌍 Interface and technology
 
-The interface language is managed through key/value files in `openpostpro/lang`. English, French, and Spanish language resources are included.
+The interface language is managed through key/value files in `openpostpro/lang`. English (UK and US), French, Spanish, German, Italian, Dutch, and Brazilian Portuguese are included, and the language and unit are chosen at the first start. The log can be docked at the bottom of the window, and **Help → About** shows the version and the build date.
 
 OpenPostPro is written in **C++20** and uses:
 
@@ -70,24 +79,33 @@ OpenPostPro is written in **C++20** and uses:
 
 ## 🖥️ Running on Windows
 
-The current project files and bundled runtime libraries target Windows.
+The current project files and bundled runtime libraries target Windows. A ready-to-use archive (`OpenPostPro-v<version>-win64.zip`) is published in the **Releases** section of the repository: unzip it anywhere and run `openpostpro.exe`.
 
 You need:
 - **Python 3.12 or later**, installed with **"Add Python to PATH"** checked. OpenPostPro does not ship Python: `python3.dll` is found through the PATH, and without it Windows reports "python3.dll was not found" at startup. The same installation provides the standard library and tkinter (used by some CAD scripts).
 - The **Microsoft Visual C++ x64 Redistributable**
 
-Download or clone the repository, then run the application using a compatible build. The project includes a Visual Studio solution at `openpostpro/openpostpro.sln`.
-
-When compiling, the `copy_libs_output.bat` script copies the required runtime resources into the output directory, including fonts, language files, post-processors, scripts, textures, and shaders.
+You can also build the application yourself. The project includes a Visual Studio solution at `openpostpro/openpostpro.sln`.
 
 ## 🛠️ Building from source
 
 1. Install Visual Studio with C++ desktop development tools, and Python 3.12 or later (with "Add Python to PATH"). The Python headers and `python3.lib` are taken from the repository (`src/third/python`, `lib/python`).
 2. Open `openpostpro/openpostpro.sln`.
-3. Build the solution for the appropriate x64 configuration.
-4. Ensure the required resource folders and runtime libraries are present beside the executable. The included `copy_libs_output.bat` handles copying the project resources as configured by the solution.
+3. Build the solution for the appropriate x64 configuration (Debug adds a **Debug** menu with development functions; Release does not).
+4. The `copy_libs_output.bat` script, run by the solution after the build, copies the required runtime resources beside the executable: fonts, language files, post-processors, scripts, textures, shaders, and `freetype.dll`.
+
+The version number, the build number, and the build date shown in the About window are in `openpostpro/src/common/version.h` (the date is the compilation date).
 
 The source contains relatively few Windows-specific parts, and Linux or macOS builds may be possible, but **neither has been tested yet**.
+
+## ✅ Tests
+
+The tests check the parts that are the most delicate: the geometry used by the offsets, the pockets, and the cut and extend tools, and the CAD scripts.
+
+- **Python** (CAD scripts and their geometry library): `python tests/run_tests.py`
+- **C++** (geometry, pockets, extend and cut), built with Visual Studio's compiler and run without any window: see the header of each file in `tests/cpp` for what it checks, build it with the matching `build_*.bat`, then run the `.exe`. The exit code is 0 when everything passes.
+
+Run them after any change to the geometry code (`curve.cpp`, `geometry.cpp`, `pocket.cpp`, the cut and extend files).
 
 ## 🐧 Linux and macOS
 
@@ -95,7 +113,7 @@ OpenPostPro is designed with cross-platform compatibility in mind, with very few
 
 ## 🚧 Project status
 
-OpenPostPro is an early release built as an independent open-source project. The main priority for future improvement is the robustness and precision of geometry and outline calculations. Some algorithms currently use floating-point precision and need further work.
+OpenPostPro is version 0.5, an independent open-source project. The main priority for future improvement remains the robustness and precision of geometry and outline calculations (offsets and pockets on difficult shapes); some algorithms still use floating-point precision and need further work. The format of the document files may still change before a 1.0 version.
 
 Please treat generated toolpaths and machine code as output that requires verification. Simulate or inspect the program and check machine settings, tool definitions, clearances, feeds, and speeds before running it on physical equipment.
 
