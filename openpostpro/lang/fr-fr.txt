@@ -228,3 +228,5 @@ ABOUT=À propos d'OpenPostPro
 VERSION=Version
 BUILD=Build
 BUILD_DATE=Compilé le
+LOCKED=Verrouillé
+LOCKED_NOT_DELETED=Les formes d'un calque verrouillé ne sont pas supprimées.

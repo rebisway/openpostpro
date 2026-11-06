@@ -224,3 +224,5 @@ ABOUT=Sobre o OpenPostPro
 VERSION=Versão
 BUILD=Build
 BUILD_DATE=Compilado em
+LOCKED=Bloqueado
+LOCKED_NOT_DELETED=As formas de uma camada bloqueada não são apagadas.

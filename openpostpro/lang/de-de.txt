@@ -224,3 +224,5 @@ ABOUT=Über OpenPostPro
 VERSION=Version
 BUILD=Build
 BUILD_DATE=Erstellt am
+LOCKED=Gesperrt
+LOCKED_NOT_DELETED=Die Formen einer gesperrten Ebene werden nicht gelöscht.

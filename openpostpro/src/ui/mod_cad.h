@@ -215,6 +215,8 @@ public:
 	void cad_extend(glm::vec2 point);
 	// cut: the shapes under the click are cut at the clicked point (magnet applied) or at their crossing
 	void cad_cut(glm::vec2 mouse, glm::vec2 snapped);
+	// true if the shape is on a locked layer: it can not be modified, moved, deleted, cut or extended
+	bool is_locked(Shape* shape);
 	int extend_find(glm::vec2 point, Shape*& target, bool& at_start, glm::vec2& result);
 	void extend_preview(glm::vec2 point);
 	void cad_symmetry();

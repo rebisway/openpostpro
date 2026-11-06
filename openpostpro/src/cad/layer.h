@@ -27,6 +27,9 @@ private:
 	std::vector<Shape*> _shapes;
 	glm::vec4 _color;
 	bool _visible = true;
+	// a locked layer can not be modified: its shapes can not be moved, edited, deleted, cut or extended. They stay visible,
+	// can be selected (to machine them) and the magnets work on them
+	bool _locked = false;
 
 public:
 	std::vector<Shape*>& shapes() { return _shapes; }
@@ -34,6 +37,8 @@ public:
 	void color(glm::vec4 color) { _color = color; }
 	bool visible() { return _visible; }
 	void visible(bool value) { _visible = value; }
+	bool locked() { return _locked; }
+	void locked(bool value) { _locked = value; }
 	GraphicType type() override { return GraphicType::Layer; }
 
 	void add(Shape* value);

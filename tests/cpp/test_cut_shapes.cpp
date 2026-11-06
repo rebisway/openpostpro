@@ -246,6 +246,30 @@ int main()
 		}
 	}
 
+	std::puts("locked layer");
+	{
+		Layer locked_layer(&renderer);
+		locked_layer.add(line(&renderer, 0, 0, 10, 10));
+		locked_layer.locked(true);
+		Layer free_layer(&renderer);
+		Line* free = line(&renderer, 0, 10, 10, 0);
+		free_layer.add(free);
+		std::vector<Layer*> layers = { &locked_layer, &free_layer };
+
+		// the locked line is never cut
+		Layer alone(&renderer);
+		alone.add(line(&renderer, 0, 0, 100, 0));
+		alone.locked(true);
+		std::vector<Layer*> alone_layers = { &alone };
+		CHECK(cad_cut::find(alone_layers, glm::vec2(40, 0), glm::vec2(40, 0)).empty(), "a locked line is not cut");
+
+		// but it gives the crossing: the free line is cut there
+		auto cuts = cad_cut::find(layers, glm::vec2(5.1f, 5.1f), glm::vec2(5.1f, 5.1f));
+		CHECK(cuts.size() == 1 && cuts[0].shape == free, "only the free line is cut at the crossing");
+		if (cuts.size() == 1)
+			CHECK_POINT(cuts[0].point, 5, 5, "at the crossing with the locked line");
+	}
+
 	std::puts("hidden layer");
 	{
 		Layer layer(&renderer);

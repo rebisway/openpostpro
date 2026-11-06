@@ -305,6 +305,8 @@ std::vector<Shape*> cad_cut::split_shape(Shape* shape, glm::vec2 cut)
 std::vector<cad_cut::Cut> cad_cut::find(std::vector<Layer*>& layers, glm::vec2 mouse, glm::vec2 snapped)
 {
 	std::vector<Shape*> under;
+	// the shapes of a locked layer are used to find a crossing, but they are never cut
+	std::vector<bool> locked;
 	for (auto layer = layers.rbegin(); layer != layers.rend(); ++layer)
 	{
 		if (!(*layer)->visible())
@@ -315,7 +317,10 @@ std::vector<cad_cut::Cut> cad_cut::find(std::vector<Layer*>& layers, glm::vec2 m
 			if (!cuttable(shape))
 				continue;
 			if ((shape->bounds().contains(mouse) && shape->is_over(mouse)) || (shape->bounds().contains(snapped) && shape->is_over(snapped)))
+			{
 				under.push_back(shape);
+				locked.push_back((*layer)->locked());
+			}
 		}
 	}
 
@@ -347,15 +352,12 @@ std::vector<cad_cut::Cut> cad_cut::find(std::vector<Layer*>& layers, glm::vec2 m
 
 	for (size_t i = 0; i < under.size(); i++)
 	{
+		if (locked[i])
+			continue;
 		Cut cut;
 		cut.shape = under[i];
-		if (crossing)
-		{
-			// the crossing is on the first two shapes, the others are cut where they are nearest to it
-			if (!nearest(curves[i], point, cut.point))
-				continue;
-		}
-		else if (!nearest(curves[i], point, cut.point))
+		// at a crossing, the shapes which are not the first two are cut where they are nearest to it
+		if (!nearest(curves[i], point, cut.point))
 			continue;
 		result.push_back(cut);
 	}

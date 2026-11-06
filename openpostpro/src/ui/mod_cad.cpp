@@ -668,7 +668,11 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 				auto a = _shape_hovered->modification();
 				// mouse over an anchor so the shape is in modification mode
 				// otherwise the shape is in moving mode
-				if (a != nullptr)
+				if (a != nullptr && is_locked(_shape_hovered))
+				{
+					// the shape is on a locked layer: its anchors can not be moved
+				}
+				else if (a != nullptr)
 				{
 					if (!_modification_started)	modify = _shape_hovered->write(); // for history modification record, stores original value
 
@@ -680,7 +684,7 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 					auto m = glm::translate(glm::vec3(diff.x, diff.y, 1.0f));
 					for (Graphic* g : _document->selected())
 					{
-						if (g->shape())
+						if (g->shape() && !is_locked((Shape*)g))
 						{
 							if (!_modification_started)
 								modify += ((Shape*)g)->write() + "\n"; // for history modification record, stores original value
@@ -697,7 +701,8 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 				if (!_modification_started)
 				{
 					_modification_started = true;
-					History::undo(HistoryActionType::Modify, modify);
+					if (!modify.empty())
+						History::undo(HistoryActionType::Modify, modify);
 				}
 			}
 		}
@@ -977,6 +982,9 @@ void ModCad::render_GUI()
 					else
 						hflags |= ImGuiTreeNodeFlags_Selected; // otherwise we display node as selected
 				}
+				// a locked layer is marked in the list (the id of the node stays the name of the layer)
+				if (l->locked() && !(l->selected() && _f2))
+					name = l->name() + " (" + Lang::t("LOCKED") + ")###" + l->name();
 
 				if (ImGui::TreeNodeEx(name.c_str(), hflags))
 				{
@@ -1570,7 +1578,13 @@ void ModCad::render_GUI()
 	// display the properties of selected element
 	for (Graphic* graphic : _document->selected())
 	{
+		// the properties of a shape on a locked layer can be read, not edited
+		bool locked = graphic->shape() && is_locked((Shape*)graphic);
+		if (locked)
+			ImGui::BeginDisabled();
 		graphic->ui();
+		if (locked)
+			ImGui::EndDisabled();
 	}
 
 	_window->pop_font();
@@ -2023,7 +2037,11 @@ void ModCad::cut()
 {
 	copy();
 
-	std::vector<Graphic*> graphics(_document->selected());
+	// the shapes of a locked layer are copied but stay in the drawing
+	std::vector<Graphic*> graphics;
+	for (Graphic* g : _document->selected())
+		if (!(g->shape() && is_locked((Shape*)g)))
+			graphics.push_back(g);
 
 	std::string clip = "";
 
@@ -2153,8 +2171,14 @@ void ModCad::remove()
 {
 	std::vector graphics(_document->selected());
 	std::string undo = "";
+	int locked = 0;
 	for (Graphic* g : graphics)
 	{
+		if (g->shape() && is_locked((Shape*)g))
+		{
+			locked++;
+			continue;
+		}
 		if (g->shape())
 		{
 			Layer* l = _document->layer(((Shape*)g)->parent());
@@ -2176,9 +2200,20 @@ void ModCad::remove()
 			}
 		}
 	}
-	_document->selected().clear();
+	// what has been deleted is not selected any more, the locked shapes stay selected
+	auto& selection = _document->selected();
+	selection.erase(std::remove_if(selection.begin(), selection.end(), [&](Graphic* g) { return !(g->shape() && is_locked((Shape*)g)); }), selection.end());
+	if (locked > 0)
+		Logger::log(Lang::t("LOCKED_NOT_DELETED"));
 	if (!undo.empty())
 		History::undo(HistoryActionType::Delete, undo.substr(0, undo.size() - 1));
+}
+
+// true if the shape is on a locked layer
+bool ModCad::is_locked(Shape* shape)
+{
+	Layer* layer = _document->layer(shape->parent());
+	return layer != nullptr && layer->locked();
 }
 
 void ModCad::add_layer()
@@ -3821,6 +3856,12 @@ void ModCad::insert(std::string code)
 			return;
 		}
 
+		if (layer->locked())
+		{
+			Logger::error("Script: shape " + data[1] + " is on a locked layer, it is not deleted");
+			return;
+		}
+
 		History::undo(HistoryActionType::Delete, s->write());
 		s->selected(false);
 		auto& selection = _document->selected();
@@ -3856,6 +3897,11 @@ void ModCad::insert(std::string code)
 		if (shape->type() != type)
 		{
 			Logger::error("Script: shape " + data[1] + " keeps its type, cannot apply " + kind);
+			return;
+		}
+		if (is_locked(shape))
+		{
+			Logger::error("Script: shape " + data[1] + " is on a locked layer, it is not modified");
 			return;
 		}
 	}

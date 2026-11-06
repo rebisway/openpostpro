@@ -198,6 +198,18 @@ void Layer::ui()
 	ImGui::TableNextRow();
 	ImGui::TableSetColumnIndex(0);
 	ImGui::Spacing();
+	ImGui::Text(Lang::l("LOCKED"));
+	ImGui::TableSetColumnIndex(1);
+	ImGui::PushItemWidth(-FLT_MIN);
+	bool l = _locked;
+	if (ImGui::Checkbox("##LOCKED", &l))
+	{
+		locked(l);
+	}
+
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+	ImGui::Spacing();
 	ImGui::Text(Lang::l("COLOR"));
 	ImGui::TableSetColumnIndex(1);
 	ImGui::PushItemWidth(-FLT_MIN);
@@ -233,7 +245,8 @@ std::string Layer::write()
 		std::to_string(id()) + ';' +
 		_name + ';' +
 		geometry::to_string(_color, 0, ':') + ';' +
-		std::to_string(_visible);
+		std::to_string(_visible) + ';' +
+		std::to_string(_locked);
 
 	return result;
 }
@@ -241,12 +254,14 @@ std::string Layer::write()
 void Layer::read(std::string value, float version)
 {
 	auto data = stringex::split(value, ';');
-	if (data.size() == 5)
+	// 5 fields in the files written before the lock existed
+	if (data.size() == 5 || data.size() == 6)
 	{
 		// data[0] = type
 		_id = (unsigned int)std::stoi(data[1]);
 		_name = data[2];
 		_color = geometry::from_string(data[3], ':');
 		_visible = (bool)std::stoi(data[4]);
+		_locked = data.size() == 6 && (bool)std::stoi(data[5]);
 	}
 }

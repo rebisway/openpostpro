@@ -98,6 +98,25 @@ int main()
 	CHECK(status == 2 && target == l, "line found");
 	CHECK_POINT(result, -10, 0, "the line stops on the arc");
 
+	std::puts("locked layer");
+	{
+		// the locked wall still stops a free line, but a locked line is not prolonged
+		Layer locked_layer(&renderer);
+		locked_layer.add(line(&renderer, 15, -10, 15, 10));
+		Layer free_layer(&renderer);
+		Line* free = line(&renderer, 0, 0, 10, 0);
+		free_layer.add(free);
+		std::vector<Layer*> layers3 = { &locked_layer, &free_layer };
+		status = cad_extend::find(layers3, glm::vec2(9, 0), target, at_start, result);
+		CHECK(status == 2 && target == free, "a free line is prolonged up to a locked wall");
+		CHECK_POINT(result, 15, 0, "it stops on the locked wall");
+
+		locked_layer.locked(false);
+		free_layer.locked(true);
+		status = cad_extend::find(layers3, glm::vec2(9, 0), target, at_start, result);
+		CHECK(status == 0, "a line of a locked layer is not prolonged");
+	}
+
 	std::printf("%d checks, %d failed\n", g_run, g_fail);
 	return g_fail ? 1 : 0;
 }

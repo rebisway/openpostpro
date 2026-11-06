@@ -224,3 +224,5 @@ ABOUT=About OpenPostPro
 VERSION=Version
 BUILD=Build
 BUILD_DATE=Built on
+LOCKED=Locked
+LOCKED_NOT_DELETED=The shapes on a locked layer are not deleted.

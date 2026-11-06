@@ -86,7 +86,8 @@ int cad_extend::find(std::vector<Layer*>& layers, glm::vec2 point, Shape*& targe
 	target = nullptr;
 	for (auto layer = layers.rbegin(); target == nullptr && layer != layers.rend(); ++layer)
 	{
-		if (!(*layer)->visible())
+		// the shapes of a locked layer are never prolonged (they still stop the others)
+		if (!(*layer)->visible() || (*layer)->locked())
 			continue;
 		for (auto s = (*layer)->shapes().rbegin(); target == nullptr && s != (*layer)->shapes().rend(); ++s)
 			if ((*s)->bounds().contains(point) && (*s)->is_over(point))
