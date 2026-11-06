@@ -735,8 +735,14 @@ Curve cad::to_curve(std::vector<Shape*> shapes)
 		}
 	}
 
-	if (shapes.size() > 1 && shapes.front()->first() == shapes.back()->last())
+	if (shapes.size() > 1 && glm::distance(shapes.front()->first(), shapes.back()->last()) < geometry::ERR_FLOAT2)
 		curve.close();
+	else if (!shapes.empty() && (shapes.back()->type() == GraphicType::Line || shapes.back()->type() == GraphicType::Arc))
+	{
+		// open chain: a line or an arc only gives its start, its end is the start of the next one. The last one has none, so it
+		// is added (without it the last segment is lost, or an arc is drawn to the wrong point)
+		curve.add(shapes.back()->last());
+	}
 
 	return curve;
 }

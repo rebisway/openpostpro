@@ -3001,6 +3001,10 @@ std::vector<Shape*> ModCad::look_for_siblings(Shape* s)
 
 	if (s->type() == GraphicType::Line || s->type() == GraphicType::Arc || s->type() == GraphicType::Polyline)
 	{
+		// two ends are the same point under this distance: the drawings imported from a DXF are rarely exact (a gap of 0.001
+		// is common), and a contour which does not close can not be machined. The ends of the lines are moved onto each other.
+		const float tolerance = geometry::ERR_FLOAT2;
+
 		std::vector<Shape*> shapes;
 		for (Shape* shape : _document->layer(s->parent())->shapes())
 			if (shape != s && (shape->type() == GraphicType::Line || shape->type() == GraphicType::Arc || shape->type() == GraphicType::Polyline))
@@ -3013,43 +3017,33 @@ std::vector<Shape*> ModCad::look_for_siblings(Shape* s)
 			std::vector<Shape*>::iterator it = shapes.begin();
 			while(it != shapes.end())
 			{
-				if ((*it)->last() == right)
-					(*it)->reverse();
-				else if (geometry::distance((*it)->last(), right) < geometry::ERR_FLOAT6)
+				if (geometry::distance((*it)->last(), right) < tolerance)
 				{
 					if ((*it)->type() == GraphicType::Line)
 						((Line*)(*it))->p2(right);
 					(*it)->reverse();
 				}
 
-				if ((*it)->first() == left)
-					(*it)->reverse();
-				else if (geometry::distance((*it)->first(), left) < geometry::ERR_FLOAT6)
+				if (geometry::distance((*it)->first(), left) < tolerance)
 				{
 					if ((*it)->type() == GraphicType::Line)
 						((Line*)(*it))->p1(left);
 					(*it)->reverse();
 				}
 
-				if ((*it)->first() == right)
+				if (geometry::distance((*it)->first(), right) < tolerance)
 				{
 					right = (*it)->last();
 					result.push_back((*it));
 					shapes.erase(it);
 					it = shapes.begin();
 				}
-				else if ((*it)->last() == left)
+				else if (geometry::distance((*it)->last(), left) < tolerance)
 				{
 					left = (*it)->first();
 					result.insert(result.begin(), (*it));
 					shapes.erase(it);
 					it = shapes.begin();
-				}
-				else if (geometry::distance((*it)->first(), left) < geometry::ERR_FLOAT6)
-				{
-					if ((*it)->type() == GraphicType::Line)
-						((Line*)(*it))->p1(left);
-					(*it)->reverse();
 				}
 				else
 					it++;
