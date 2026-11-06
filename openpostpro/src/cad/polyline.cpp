@@ -55,6 +55,26 @@ Shape* Polyline::clone()
 }
 
 
+bool Polyline::last_placed(glm::vec2& value)
+{
+	if (done() || _points.size() < 2)
+		return false;
+	value = _points[_points.size() - 2];
+	return true;
+}
+
+void Polyline::remove_repeated_last()
+{
+	if (done() || _points.size() < 2)
+		return;
+	// _points ends with the moving point, the placed points are before it
+	glm::vec2 moving = _points.back();
+	_points.pop_back();
+	while (_points.size() > 1 && glm::distance(_points[_points.size() - 1], _points[_points.size() - 2]) < 0.0001f)
+		_points.pop_back();
+	_points.push_back(moving);
+}
+
 void Polyline::points(std::vector<glm::vec2> points)
 {
 	//if (done())

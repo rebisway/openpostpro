@@ -204,6 +204,12 @@ void ModCad::selecting(Shape* shape)
 /// 
 /// ***************************************************************************************************
 
+bool ModCad::polyline_click_repeated()
+{
+	glm::vec2 last;
+	return ((Polyline*)_construction_shape)->last_placed(last) && glm::distance(last, _magnet_point) < 0.0001f;
+}
+
 void ModCad::construct_shape()
 {
 	ArcMode _arc_mode = ArcMode::Center;
@@ -374,7 +380,11 @@ void ModCad::left_button_down() {
 			{
 				// double click: the polyline is validated and ends at the point of the first click. The second click, which
 				// is a little moved, is ignored. With less than two points placed there is nothing to validate
-				if (((Polyline*)_construction_shape)->points().size() > 2)
+				{
+						// (the first click of the double click may have placed a point on the previous one)
+						((Polyline*)_construction_shape)->remove_repeated_last();
+					}
+					if (((Polyline*)_construction_shape)->points().size() > 2)
 					construct_shape();
 				_last_click_time = 0;
 			}
@@ -388,7 +398,11 @@ void ModCad::left_button_down() {
 			{
 				// a click on the start of the segment would make a segment of length zero
 			}
-			else if (_construction_shape->point(_magnet_point))
+			else if (_construction_shape->type() == GraphicType::Polyline && ((Polyline*)_construction_shape)->mode() != PolylineMode::Bezier && polyline_click_repeated())
+				{
+					// a click on the last placed point would add the same point twice
+				}
+				else if (_construction_shape->point(_magnet_point))
 			{
 				construct_shape();
 				// depending on shape type, we may start another one of same type
@@ -1159,6 +1173,11 @@ void ModCad::render_GUI()
 				for (Group* g : _document->groups())
 					g->scaled();
 			}
+
+			// computes the toolpaths again from their shapes (the selected ones, or all of them)
+			ImGui::SameLine();
+			if (set_shortcut("CAM_REFRESH", ImVec2(15, 15)))
+				cam_refresh();
 
 			_tab_flags = 0;
 			for (Group* g : _document->groups())
@@ -4149,6 +4168,59 @@ void ModCad::cam_follow()
 				}
 			}
 	}
+}
+
+void ModCad::cam_refresh()
+{
+	// the toolpaths to update: the selected ones, the ones of the selected groups, or all of them
+	std::vector<Graphic*> saved = _document->selected();
+	std::vector<Toolpath*> targets;
+	for (Graphic* g : saved)
+	{
+		if (g->toolpath())
+			targets.push_back((Toolpath*)g);
+		else if (g->type() == GraphicType::Group)
+			for (Toolpath* t : ((Group*)g)->toolpaths())
+				targets.push_back(t);
+	}
+	if (targets.empty())
+		for (Group* g : _document->groups())
+			for (Toolpath* t : g->toolpaths())
+				targets.push_back(t);
+
+	int updated = 0;
+	for (Toolpath* t : targets)
+	{
+		// the shapes it was made from (drills and old data have no reference)
+		std::vector<Graphic*> shapes;
+		for (int id : t->references())
+			for (Layer* l : _document->layers())
+			{
+				Shape* s = l->shape((unsigned int)id);
+				if (s != nullptr)
+				{
+					shapes.push_back(s);
+					break;
+				}
+			}
+		if (shapes.empty())
+			continue;
+
+		_document->unselect_all();
+		_document->select(shapes);
+		TreeCurve* tree = cad_tree();	// takes the neighbours of the shapes, like the creation of the toolpath
+		if (tree->size() > 0)
+		{
+			t->refresh(tree);
+			updated++;
+		}
+		else
+			delete tree;
+	}
+
+	_document->unselect_all();
+	_document->select(saved);
+	Logger::log(Lang::t("CAM_REFRESH_DONE") + " " + std::to_string(updated));
 }
 
 void ModCad::cam_offset(bool interior)

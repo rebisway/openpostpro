@@ -246,7 +246,11 @@ public:
 	bool set_shortcut(std::string code, ImVec2 size, bool active = false);
 	void cam_moveto();
 	void cam_drill();
+	// the click would place the polyline point on the previous one
+	bool polyline_click_repeated();
 	void cam_follow();
+	// computes the selected toolpaths again (all of them without selection) from their referenced shapes, which may have been modified
+	void cam_refresh();
 	void cam_offset(bool interior);
 	void cam_pocket(PocketMode mode);
 	void cam_spiral();

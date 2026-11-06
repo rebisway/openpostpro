@@ -48,6 +48,10 @@ public:
 	//properties
 	std::vector<glm::vec2> points() { return _points; }
 	void points(std::vector<glm::vec2> points);
+	// during the creation: the last placed point (the one before the moving point)
+	bool last_placed(glm::vec2& value);
+	// during the creation: removes the last placed points which are on the previous one (a point placed twice at the same place)
+	void remove_repeated_last();
 	PolylineMode mode() { return _mode; }
 	void mode(PolylineMode value) { if (value != _mode) { _mode = value; if (_points.size() > 2) update(); } }
 
