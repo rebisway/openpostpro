@@ -75,6 +75,9 @@ private:
 	glm::vec2 _right_down_screen = glm::vec2();
 	// true while a polyline (not a Bezier) with at least two points placed is being drawn
 	bool polyline_in_progress();
+	// true while a chain of segments is being drawn and the start of the next segment is placed
+	bool line_in_progress();
+	void restart_line();
 	glm::vec2 _left_mouse_pos = glm::vec2();
 	glm::vec2 _left_mouse_mag = glm::vec2();
 	bool _mode_selection = false;

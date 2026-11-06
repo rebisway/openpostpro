@@ -374,12 +374,24 @@ void ModCad::left_button_down() {
 					construct_shape();
 				_last_click_time = 0;
 			}
+			else if (_double_click && line_in_progress())
+			{
+				// double click: the chain of segments ends. The second click, which is a little moved, is ignored
+				restart_line();
+				_last_click_time = 0;
+			}
+			else if (line_in_progress() && glm::distance(((Line*)_construction_shape)->p1(), _magnet_point) < 0.0001f)
+			{
+				// a click on the start of the segment would make a segment of length zero
+			}
 			else if (_construction_shape->point(_magnet_point))
 			{
 				construct_shape();
 				// depending on shape type, we may start another one of same type
 				if (_construction_shape != nullptr && _construction_shape->type() == GraphicType::Polyline && ((Polyline*)_construction_shape)->mode() != PolylineMode::Bezier)
 					_construction_shape->point(_magnet_point);
+				else if (_construction_shape != nullptr && _construction_shape->type() == GraphicType::Line)
+					_construction_shape->point(_magnet_point);	// the next segment starts where the previous one ends
 			}
 		}
 		else if (_cad_creation == GraphicType::CadOrigin)
@@ -734,14 +746,28 @@ bool ModCad::polyline_in_progress()
 		((Polyline*)_construction_shape)->mode() != PolylineMode::Bezier && ((Polyline*)_construction_shape)->points().size() > 2;
 }
 
+// true while a chain of segments is being drawn and the start of the next segment is placed
+bool ModCad::line_in_progress()
+{
+	return _cad_creation == GraphicType::Line && _construction_shape != nullptr && _construction_shape->type() == GraphicType::Line &&
+		((Line*)_construction_shape)->p1() != geometry::vec2_empty;
+}
+
+// drops the segment which is being drawn and starts again with no point placed
+void ModCad::restart_line()
+{
+	delete _construction_shape;
+	_construction_shape = new Line(_render);
+}
+
 // called when left button is down
 void ModCad::right_button_down() {
 	_right_down = true;
 	_camera->mouseRightDown();
 	_right_down_screen = glm::vec2(_camera->xpos(), _camera->ypos());
 	_mode_selection = false;
-	// a polyline which is being drawn is not cancelled: the right button validates it (see right_button_up)
-	if (_cad_creation != GraphicType::None && _construction_shape != nullptr && !polyline_in_progress())
+	// a polyline or a chain of segments which is being drawn is not cancelled: the right button ends it (see right_button_up)
+	if (_cad_creation != GraphicType::None && _construction_shape != nullptr && !polyline_in_progress() && !line_in_progress())
 	{
 		delete _construction_shape;
 		_construction_shape = nullptr;
@@ -755,13 +781,19 @@ void ModCad::right_button_down() {
 void ModCad::right_button_up() {
 	_right_down = false;
 
-	if (polyline_in_progress())
+	if (polyline_in_progress() || line_in_progress())
 	{
-		// a click of the right button validates the polyline, the tool stays active. If the mouse moved, it was a move of the
-		// view: the polyline goes on
+		// a click of the right button validates the polyline, or ends the chain of segments (the segment which is being drawn
+		// is dropped). The tool stays active, a second right click ends it. If the mouse moved, it was a move of the view:
+		// the drawing goes on
 		_camera->mouseRightUp();
 		if (glm::distance(glm::vec2(_camera->xpos(), _camera->ypos()), _right_down_screen) < 4.0f)
-			construct_shape();
+		{
+			if (polyline_in_progress())
+				construct_shape();
+			else
+				restart_line();
+		}
 		updateCursor();
 		_magnet_shapes.clear();
 		return;
@@ -812,7 +844,8 @@ void ModCad::key_pressed(int key, int scancode, int action, int mods)
 		}
 		else if (key == GLFW_KEY_SPACE ) // Space bar pressed, used for ending polyline construction
 		{
-			if (_cad_creation != GraphicType::None)
+			// only a polyline is validated by the space bar: a segment which has only its start would be a segment of length zero
+			if (polyline_in_progress())
 				construct_shape();
 
 			config.field_space_toggled = !config.field_space_toggled;
