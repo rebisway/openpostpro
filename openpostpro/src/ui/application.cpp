@@ -1095,9 +1095,13 @@ void Application::render_menu()
 					m->selected(true);
 			}
 
-#ifdef _DEBUG
-			ImGui::Separator();
+			ImGui::EndMenu();
+		}
 
+#ifdef _DEBUG
+		// development functions, not compiled in release builds
+		if (ImGui::BeginMenu(Lang::l("DEBUG")))
+		{
 			if (ImGui::MenuItem(Lang::l("TEST")))
 			{
 				//Script::add_module_path(environment::application_path());
@@ -1106,27 +1110,36 @@ void Application::render_menu()
 				//set_value(10);
 				//value = get_value();
 				//Logger::log("Value read " + std::to_string(value));
-
+	
 				//auto path = stringex::replace(environment::application_path() + "postcallback.dll", "\\", "/");
-
+	
 				//auto s = std::string("import sys\n") +
 				//	std::string("import ctypes\n\n") +
 				//	std::string("post = ctypes.CDLL(\"" + path + "\")\n") +
 				//	std::string("post.set_value(30)");
-
+	
 				//PyObject* py_module = PyImport_ImportModule("ctypes");
 				//PyObject* py_post = PyObject_CallMethod(py_module, "CDLL", "s", path.c_str());
 				//PyObject* py_val = PyObject_CallMethod(py_post, "set_value", "i", 35);
-
+	
 				////Script::run_python(s);
 				//s = Script::python_error();
-
+	
 				//value = get_value();
 				//Logger::log("Value read " + std::to_string(value));
 			}
-#endif
+
+			ImGui::Separator();
+
+			auto cad = (ModCad*)module("MOD_CAD");
+			if (ImGui::MenuItem(Lang::l("DRAWING_DEBUG_OFFSET")))
+				cad->debug_offset();
+			if (ImGui::MenuItem(Lang::l("DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE")))
+				cad->debug_convert_toolpath_to_spline();
+
 			ImGui::EndMenu();
 		}
+#endif
 
 
 

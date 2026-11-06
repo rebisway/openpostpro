@@ -40,6 +40,11 @@ private:
 	Buffer* _b_decoration = NULL;
 	Buffer* _b_selection = NULL;
 	Buffer* _b_magnet = NULL;
+	// preview of the extend tool: the part which would be added to the line or arc under the mouse
+	Buffer* _b_extend = NULL;
+	bool _extend_preview = false;
+	Shape* _extend_target = nullptr;
+	bool _extend_at_start = false;
 	std::vector<int> _dec_indices;
 	
 	std::vector<glm::vec2> _magnets;
@@ -197,10 +202,19 @@ public:
 	void set_reference_to_text();
 	std::vector<Shape*> look_for_siblings(Shape* s);
 	void connect_shapes();
+#ifdef _DEBUG
+	// development helpers, called from the Debug menu
+	void debug_offset();
+	void debug_convert_toolpath_to_spline();
+#endif
 	void info(std::vector<Shape*> shapes);
 	void cad_offset(float value);
 	void cad_weiler(int code);
 	void cad_origin();
+	// extend: the line or arc under the point is prolonged from its nearest end up to the nearest other entity
+	void cad_extend(glm::vec2 point);
+	int extend_find(glm::vec2 point, Shape*& target, bool& at_start, glm::vec2& result);
+	void extend_preview(glm::vec2 point);
 	void cad_symmetry();
 	void cad_scale(float value);
 	void cad_rotation(float value);

@@ -79,6 +79,7 @@ enum class GraphicType
 	CadRotation   = 305,
 	CadSChamfer   = 306,
 	CadRChamfer   = 307,
+	CadExtend     = 308,
 	CamStartpoint = 401,
 	CamTab		  = 402
 };

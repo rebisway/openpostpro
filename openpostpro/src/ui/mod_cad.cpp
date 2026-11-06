@@ -35,6 +35,7 @@
 #include <strings.h>
 #include <clipboard.h>
 #include <cad.h>
+#include <extend_shape.h>
 #include <moveTo.h>
 #include <follow.h>
 #include <offset.h>
@@ -80,6 +81,7 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["CAD_SCALE"] = _render->load_texture("scale.png");
 	_textures["CAD_ROTATION"] = _render->load_texture("rotation.png");
 	_textures["CAD_CHAMFER"] = _render->load_texture("chamfer.png");
+	_textures["CAD_EXTEND"] = _render->load_texture("extend.png");
 	_textures["CAM_MOVETO"] = _render->load_texture("move_to.png");
 	_textures["CAM_DRILL"] = _render->load_texture("drill.png");
 	_textures["CAM_FOLLOW"] = _render->load_texture("follow.png");
@@ -97,6 +99,7 @@ ModCad::~ModCad()
 	delete _b_decoration;
 	delete _b_selection;
 	delete _b_magnet;
+	delete _b_extend;
 	delete _b_axe;
 	delete _render;
 	delete _camera;
@@ -342,7 +345,11 @@ void ModCad::left_button_down() {
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	// if we are constructing a new shape
-	if (_cad_creation != GraphicType::None && _cad_creation != GraphicType::CadSymmetry && _cad_creation != GraphicType::CadRotation)
+	if (_cad_creation == GraphicType::CadExtend)
+	{
+		cad_extend(_last_mouse_pos);
+	}
+	else if (_cad_creation != GraphicType::None && _cad_creation != GraphicType::CadSymmetry && _cad_creation != GraphicType::CadRotation)
 	{
 		if (_construction_shape != nullptr)	// if true then new shape is fully constructed
 		{
@@ -466,7 +473,8 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	_magnet_point = _magnet_point_v = _magnet_point_h = _last_mouse_pos;
-	if (!_disable_magnet && (_left_down || (_cad_creation != GraphicType::None && _cad_creation != GraphicType::CadSymmetry)))
+	// no magnet with the extend tool: the cursor must stay on the shape to prolong, not jump to its end or center points
+	if (!_disable_magnet && (_left_down || (_cad_creation != GraphicType::None && _cad_creation != GraphicType::CadSymmetry && _cad_creation != GraphicType::CadExtend)))
 	{
 		if (!_mode_selection)
 		{
@@ -581,6 +589,9 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 		// we can be in CONSTRUCTION
 		if (_construction_shape != nullptr)
 			_construction_shape->move(_magnet_point);
+
+		if (_cad_creation == GraphicType::CadExtend)
+			extend_preview(_last_mouse_pos);
 
 		updateMagnet();
 	}
@@ -887,6 +898,12 @@ void ModCad::render_frame()
 	{
 		_render->set_uniform("inner_color", config.decorationColor);
 		_b_magnet->draw(GL_LINES);
+	}
+
+	if (_cad_creation == GraphicType::CadExtend && _extend_preview && _b_extend != nullptr)
+	{
+		_render->set_uniform("inner_color", config.decorationColor);
+		_b_extend->draw(GL_LINES);
 	}
 
 	if (_mode_selection)
@@ -1274,6 +1291,18 @@ void ModCad::render_GUI()
 			_btn_pos = ImGui::GetCursorScreenPos();
 			_display_chamfer_box = true;
 		}
+	}
+
+	if (set_shortcut("CAD_EXTEND", ImVec2(20, 20)))
+	{
+		// no selection needed: the shape to prolong is the one which is clicked
+		reset_display_boxes();
+		// the shape which was being drawn with the previous tool must not catch the clicks
+		delete _construction_shape;
+		_construction_shape = nullptr;
+		_extend_preview = false;
+		_extend_target = nullptr;
+		_cad_creation = GraphicType::CadExtend;
 	}
 
 	ImGui::NewLine();
@@ -1686,72 +1715,6 @@ void ModCad::render_menu()
 				}*/
 			}
 
-			if (ImGui::MenuItem(Lang::l("DRAWING_DEBUG_OFFSET")))
-			{
-				auto shapes = look_for_siblings((Shape*)_document->selected()[0]);
-				std::vector<Shape*> splines;
-
-				float o = -6.4f;
-				if (shapes[0]->type() == GraphicType::Text)
-				{
-					auto coordinates = ((Text*)shapes[0])->coordinates();
-					int count = 0;
-					for (std::vector<glm::vec2> points : coordinates)
-					{
-						Spline* s = cad::to_spline(points, _render);
-						if (s->size() > 1 && count == 3)
-						{
-							s->offset(o);
-							splines.push_back(s);
-						}
-						count++;
-					}
-				}
-				else
-				{
-					Spline* s = cad::to_spline(shapes, _render);
-
-					if (s != nullptr)
-					{
-						s->offset(o);
-						splines.push_back(s);
-					}
-				}
-				if (splines.size() > 0)
-				{
-					History::begin_undo_record();
-					remove(shapes);
-					for (Shape* s : splines)
-					{
-						_document->current_layer()->add(s);
-						History::undo(HistoryActionType::Add, s->write());
-					}
-					History::end_undo_record();
-					select(splines);
-				}
-			}
-			if (ImGui::MenuItem(Lang::l("DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE")))
-			{
-				if ((Shape*)_document->selected()[0]->toolpath())
-				{
-					Toolpath* t = (Toolpath*)(Shape*)_document->selected()[0];
-					std::vector<Shape*> splines;
-					History::begin_undo_record();
-					for (Curve& c : t->coordinates())
-					{
-						Spline* s = new Spline(_render);
-						s->add(c);
-						s->done(true);
-						s->compute();
-						_document->current_layer()->add(s);
-						splines.push_back(s);
-						History::undo(HistoryActionType::Add, s->write());
-					}
-					History::end_undo_record();
-					_document->current_group()->remove(t);
-					select(splines);
-				}
-			}
 			//if (ImGui::MenuItem(Lang::l("DRAWING_CONVERT_TO_SPLINE")))
 			//{
 			//	auto shapes = look_for_siblings((Shape*)_document->selected()[0]);
@@ -2957,6 +2920,80 @@ std::vector<Shape*> ModCad::look_for_siblings(Shape* s)
 	return result;
 }
 
+#ifdef _DEBUG
+// development helpers, called from the Debug menu (debug build only)
+void ModCad::debug_offset()
+{
+	if (_document->selected().empty() || !_document->selected()[0]->shape())
+		return;
+
+	auto shapes = look_for_siblings((Shape*)_document->selected()[0]);
+	std::vector<Shape*> splines;
+
+	float o = -6.4f;
+	if (shapes[0]->type() == GraphicType::Text)
+	{
+		auto coordinates = ((Text*)shapes[0])->coordinates();
+		int count = 0;
+		for (std::vector<glm::vec2> points : coordinates)
+		{
+			Spline* s = cad::to_spline(points, _render);
+			if (s->size() > 1 && count == 3)
+			{
+				s->offset(o);
+				splines.push_back(s);
+			}
+			count++;
+		}
+	}
+	else
+	{
+		Spline* s = cad::to_spline(shapes, _render);
+
+		if (s != nullptr)
+		{
+			s->offset(o);
+			splines.push_back(s);
+		}
+	}
+	if (splines.size() > 0)
+	{
+		History::begin_undo_record();
+		remove(shapes);
+		for (Shape* s : splines)
+		{
+			_document->current_layer()->add(s);
+			History::undo(HistoryActionType::Add, s->write());
+		}
+		History::end_undo_record();
+		select(splines);
+	}
+}
+
+void ModCad::debug_convert_toolpath_to_spline()
+{
+	if (_document->selected().empty() || !_document->selected()[0]->toolpath())
+		return;
+
+	Toolpath* t = (Toolpath*)(Shape*)_document->selected()[0];
+	std::vector<Shape*> splines;
+	History::begin_undo_record();
+	for (Curve& c : t->coordinates())
+	{
+		Spline* s = new Spline(_render);
+		s->add(c);
+		s->done(true);
+		s->compute();
+		_document->current_layer()->add(s);
+		splines.push_back(s);
+		History::undo(HistoryActionType::Add, s->write());
+	}
+	History::end_undo_record();
+	_document->current_group()->remove(t);
+	select(splines);
+}
+#endif
+
 void ModCad::connect_shapes()
 {
 	float precision = geometry::ERR_FLOAT3;
@@ -3313,6 +3350,102 @@ void ModCad::cad_weiler(int code)
 		select(off_splines);
 	}
 	Logger::log("cad_offset process time (ms): " + std::to_string(std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - t).count()));
+}
+
+// what a click at this point would extend: 0 if there is no line or arc under the point, 1 if nothing stops the
+// prolongation, 2 if found (see cad_extend::find)
+int ModCad::extend_find(glm::vec2 point, Shape*& target, bool& at_start, glm::vec2& result)
+{
+	return cad_extend::find(_document->layers(), point, target, at_start, result);
+}
+
+void ModCad::cad_extend(glm::vec2 point)
+{
+	Shape* target = nullptr;
+	bool at_start = false;
+	glm::vec2 result;
+	int status = extend_find(point, target, at_start, result);
+
+	_extend_preview = false;
+	_extend_target = nullptr;
+
+#ifdef _DEBUG
+	// development trace of what the click found
+	Logger::log("extend: click (" + std::to_string(point.x) + ";" + std::to_string(point.y) + ") status " + std::to_string(status));
+	if (target != nullptr && target->type() == GraphicType::Arc)
+	{
+		Arc* a = (Arc*)target;
+		Logger::log("extend: arc start (" + std::to_string(a->start().x) + ";" + std::to_string(a->start().y) + ") stop (" + std::to_string(a->stop().x) + ";" + std::to_string(a->stop().y) +
+			") center (" + std::to_string(a->center().x) + ";" + std::to_string(a->center().y) + ") radius " + std::to_string(a->radius()) + " cw " + std::to_string(a->cw()) + " at_start " + std::to_string(at_start));
+	}
+#endif
+
+	if (status == 0)
+	{
+		Logger::log(Lang::t("CAD_EXTEND_SELECT"));
+		return;
+	}
+	if (status == 1)
+	{
+		Logger::log(Lang::t("CAD_EXTEND_NONE"));
+		return;
+	}
+
+	History::undo(HistoryActionType::Modify, target->write()); // stores the original value
+	if (at_start)
+		target->first(result);
+	else
+		target->last(result);
+}
+
+// preview of the prolongation under the mouse: the part which would be added, drawn over the drawing
+void ModCad::extend_preview(glm::vec2 point)
+{
+	Shape* target = nullptr;
+	bool at_start = false;
+	glm::vec2 result;
+
+	// the same line or arc, with the same end, gives the same preview: it is not computed again at each mouse move
+	if (_extend_target != nullptr && _extend_target->is_over(point))
+	{
+		bool start = glm::distance(point, _extend_target->first()) <= glm::distance(point, _extend_target->last());
+		if (start == _extend_at_start)
+			return;
+	}
+
+	int status = extend_find(point, target, at_start, result);
+	_extend_target = target;
+	_extend_at_start = at_start;
+	_extend_preview = status == 2;
+	if (status != 2)
+		return;
+
+	std::vector<glm::vec3> vertices;
+	std::vector<glm::vec2> path;
+	if (target->type() == GraphicType::Line)
+		path = { at_start ? target->first() : target->last(), result };
+	else
+	{
+		Arc* arc = (Arc*)target;
+		path = at_start ? geometry::arc(result, arc->center(), arc->start(), arc->cw()) : geometry::arc(arc->stop(), arc->center(), result, arc->cw());
+	}
+	for (size_t i = 0; i + 1 < path.size(); i++)
+	{
+		vertices.push_back(glm::vec3(path[i], 0.0f));
+		vertices.push_back(glm::vec3(path[i + 1], 0.0f));
+	}
+
+	// a cross on the point reached
+	float size = ANCHOR_SIZE / _camera->scale();
+	vertices.push_back(glm::vec3(result.x - size, result.y - size, 0.0f));
+	vertices.push_back(glm::vec3(result.x + size, result.y + size, 0.0f));
+	vertices.push_back(glm::vec3(result.x - size, result.y + size, 0.0f));
+	vertices.push_back(glm::vec3(result.x + size, result.y - size, 0.0f));
+
+	if (_b_extend == nullptr)
+		_b_extend = _render->create_buffer(vertices);
+	else
+		_b_extend->flush(vertices);
 }
 
 void ModCad::cad_origin()
