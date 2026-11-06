@@ -13,6 +13,11 @@
 //   - a pocket smaller than the tool gives no path;
 //   - zigzag scan lines are spaced by the stepover; finishing is the last pass, at the tool radius.
 //
+// Debug runtime:
+//   build_pocket.bat compiles with the debug runtime (/MDd), whose checks stop the program on a misuse of the standard
+//   containers, such as the comparison of the iterators of two different lists. The release runtime does not check it:
+//   a pocket which "works" in release can break in the debug build of the application (gears.opp, radius 7).
+//
 // How it works:
 //   The real Pocket::update() is run without any window or OpenGL: TestRenderer below is a renderer which
 //   draws nothing. The shapes are put in a curve tree the same way the application does (ModCad::cad_tree()).
