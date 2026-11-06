@@ -36,6 +36,7 @@
 #include <clipboard.h>
 #include <cad.h>
 #include <extend_shape.h>
+#include <cut_shape.h>
 #include <moveTo.h>
 #include <follow.h>
 #include <offset.h>
@@ -82,6 +83,7 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["CAD_ROTATION"] = _render->load_texture("rotation.png");
 	_textures["CAD_CHAMFER"] = _render->load_texture("chamfer.png");
 	_textures["CAD_EXTEND"] = _render->load_texture("extend.png");
+	_textures["CAD_CUT"] = _render->load_texture("cut.png");
 	_textures["CAM_MOVETO"] = _render->load_texture("move_to.png");
 	_textures["CAM_DRILL"] = _render->load_texture("drill.png");
 	_textures["CAM_FOLLOW"] = _render->load_texture("follow.png");
@@ -348,6 +350,10 @@ void ModCad::left_button_down() {
 	if (_cad_creation == GraphicType::CadExtend)
 	{
 		cad_extend(_last_mouse_pos);
+	}
+	else if (_cad_creation == GraphicType::CadCut)
+	{
+		cad_cut(_last_mouse_pos, _magnet_point);
 	}
 	else if (_cad_creation != GraphicType::None && _cad_creation != GraphicType::CadSymmetry && _cad_creation != GraphicType::CadRotation)
 	{
@@ -1303,6 +1309,15 @@ void ModCad::render_GUI()
 		_extend_preview = false;
 		_extend_target = nullptr;
 		_cad_creation = GraphicType::CadExtend;
+	}
+
+	if (set_shortcut("CAD_CUT", ImVec2(20, 20)))
+	{
+		// no selection needed: the shapes cut are the ones under the click. The magnet stays active to aim at a precise point
+		reset_display_boxes();
+		delete _construction_shape;
+		_construction_shape = nullptr;
+		_cad_creation = GraphicType::CadCut;
 	}
 
 	ImGui::NewLine();
@@ -3446,6 +3461,32 @@ void ModCad::extend_preview(glm::vec2 point)
 		_b_extend = _render->create_buffer(vertices);
 	else
 		_b_extend->flush(vertices);
+}
+
+// cut the shapes under the click into two at the clicked point (or at their crossing, when the click aims at one)
+void ModCad::cad_cut(glm::vec2 mouse, glm::vec2 snapped)
+{
+	std::vector<Shape*> removed, created;
+	for (cad_cut::Cut& cut : cad_cut::find(_document->layers(), mouse, snapped))
+	{
+		// the tool cuts the shapes itself (a cut on a vertex or on an end is common with the magnet)
+		std::vector<Shape*> pieces = cad_cut::split_shape(cut.shape, cut.point);
+		if (pieces.empty())
+			continue;
+		removed.push_back(cut.shape);
+		created.insert(created.end(), pieces.begin(), pieces.end());
+	}
+
+	if (removed.empty())
+	{
+		Logger::log(Lang::t("CAD_CUT_NONE"));
+		return;
+	}
+
+	History::begin_undo_record();
+	remove(removed);
+	add(created);
+	History::end_undo_record();
 }
 
 void ModCad::cad_origin()
