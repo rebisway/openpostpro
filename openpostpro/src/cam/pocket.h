@@ -78,6 +78,8 @@ public:
 	std::vector<Curve> merge(std::vector<Curve>& curves);
 
 	void update() override;
+	// a pocket keeps the whole tree of its shapes
+	void refresh(TreeCurve* value) override;
 	void scaled() override;
 	std::vector<Curve> coordinates() override;
 

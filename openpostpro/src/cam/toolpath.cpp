@@ -17,6 +17,9 @@
 
 #include "toolpath.h"
 #include <config.h>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 #include <lang.h>
 
 
@@ -611,6 +614,41 @@ void Toolpath::add(Curve value)
 void Toolpath::tree(TreeCurve* value)
 {
 	_tree = value;
+
+	// the shapes which made the tree, to be able to refresh the toolpath when they are modified
+	if (_references_id.empty() && value != nullptr)
+	{
+		for (Curve& c : value->curves())
+		{
+			int r = c.reference();
+			if (r != -1 && std::find(_references_id.begin(), _references_id.end(), r) == _references_id.end())
+				_references_id.push_back(r);
+		}
+	}
+}
+
+void Toolpath::refresh(TreeCurve* value)
+{
+	// one curve: the one of the first reference (a toolpath made from several curves has one toolpath for each)
+	std::vector<Curve> curves = value->curves();
+	delete value;
+	if (curves.empty())
+		return;
+
+	Curve chosen = curves[0];
+	if (!_references_id.empty())
+	{
+		for (Curve& c : curves)
+			if (c.reference() == _references_id[0])
+			{
+				chosen = c;
+				break;
+			}
+	}
+
+	_original.clear();
+	_original.push_back(chosen);
+	compute();
 }
 
 void Toolpath::draw()

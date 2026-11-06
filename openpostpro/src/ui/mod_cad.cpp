@@ -93,6 +93,7 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["CAM_TOOLPATHS_HIDDEN"] = _render->load_texture("eye_off.png");
 	_textures["CAM_SHOW_DIRECTION"] = _render->load_texture("direction.png");
 	_textures["CAM_SHOW_START"] = _render->load_texture("start.png");
+	_textures["CAM_REFRESH"] = _render->load_texture("refresh.png");
 	_textures["BTN_ADD"] = _render->load_texture("plus.png");
 	_textures["BTN_REMOVE"] = _render->load_texture("minus.png");
 	_textures["BTN_UP"] = _render->load_texture("up.png");

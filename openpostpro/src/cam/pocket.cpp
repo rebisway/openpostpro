@@ -913,6 +913,14 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 	return result;
 }
 
+void Pocket::refresh(TreeCurve* value)
+{
+	if (_tree != nullptr)
+		delete _tree;
+	_tree = value;
+	compute();
+}
+
 void Pocket::update()
 {
 	if (_tree != nullptr)
