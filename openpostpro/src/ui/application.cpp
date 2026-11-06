@@ -16,6 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "application.h"
+#include <algorithm>
 #include <filesystem>
 #include <regex>
 #include <exception>
@@ -950,10 +951,20 @@ void Application::render_menu()
 		{
 			//if (ImGui::BeginMenu(Lang::l("POST_SELECT")))
 			{
-				for (int i = 0; i < _scripts.size(); i++)
+				// one menu per category, in the order of the first script found
+				std::vector<std::string> categories;
+				for (auto script : _scripts)
+					if (std::find(categories.begin(), categories.end(), script->category()) == categories.end())
+						categories.push_back(script->category());
+				for (auto& category : categories)
 				{
-					if (ImGui::BeginMenu(_scripts[i]->category().c_str()))
+					if (!ImGui::BeginMenu(category.c_str()))
+						continue;
+					for (int i = 0; i < _scripts.size(); i++)
 					{
+						if (_scripts[i]->category() != category)
+							continue;
+						ImGui::PushID(i);
 						if (ImGui::MenuItem(Lang::l(_scripts[i]->description())))
 						{
 							auto mouse = ((ModCad*)module("MOD_CAD"))->mouse();
@@ -966,8 +977,9 @@ void Application::render_menu()
 							else
 								insert(_scripts[i]->run(mouse, _document));
 						}
-						ImGui::EndMenu();
+						ImGui::PopID();
 					}
+					ImGui::EndMenu();
 				}
 				// the delivered scripts are copied again at each start: only the files of the user can be edited
 				bool editable = false;
@@ -1083,6 +1095,7 @@ void Application::render_menu()
 					m->selected(true);
 			}
 
+#ifdef _DEBUG
 			ImGui::Separator();
 
 			if (ImGui::MenuItem(Lang::l("TEST")))
@@ -1111,6 +1124,7 @@ void Application::render_menu()
 				//value = get_value();
 				//Logger::log("Value read " + std::to_string(value));
 			}
+#endif
 			ImGui::EndMenu();
 		}
 

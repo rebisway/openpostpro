@@ -40,7 +40,7 @@ class Cadscript:
 		return self.lang['description']
 
 	def get_category(self):
-		return 'CAD'
+		return 'generation'
 
 	# set the reference to the cad core object, do not modify
 	def set_core(self, value):

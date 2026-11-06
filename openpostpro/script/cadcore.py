@@ -30,6 +30,16 @@ if _spec is not None and _spec.origin:
             os.environ[_var] = _path
 
 
+# menus of the Scripts menu: a script returns the key from get_category()
+CATEGORIES = {
+    'generation': {'en-us': 'Generation', 'fr-fr': 'Génération', 'es-es': 'Generación'},
+    'geometry': {'en-us': 'Geometry', 'fr-fr': 'Géométrie', 'es-es': 'Geometría'},
+    'modify': {'en-us': 'Modify', 'fr-fr': 'Modification', 'es-es': 'Modificación'},
+    'import': {'en-us': 'Import', 'fr-fr': 'Import', 'es-es': 'Importar'},
+    'examples': {'en-us': 'Examples', 'fr-fr': 'Exemples', 'es-es': 'Ejemplos'},
+}
+
+
 class Cadcore:
     def __init__(self):
         self.mouse_x = 0.0
@@ -42,6 +52,7 @@ class Cadcore:
         self.script = script
 
     def set_language(self, value):
+        self.language = value
         self.script.set_language(value)
 
     # unit of the document, 'mm' or 'inch'
@@ -198,8 +209,13 @@ class Cadcore:
     def set_property(self, index, val):
         return self.script.set_property(index, val)
 
+    # menu of the script: a key of CATEGORIES is translated, any other name is used as it is
     def get_category(self):
-        return self.script.get_category()
+        name = self.script.get_category()
+        names = CATEGORIES.get(name)
+        if names is None:
+            return name
+        return names.get(getattr(self, 'language', 'en-us'), names['en-us'])
 
     def run(self):
         self.script.run()

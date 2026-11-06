@@ -61,7 +61,7 @@ Un fichier sans `class Cadscript` n'est pas un script : il est ignoré et absent
 | `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` ou `'es-es'` | rien | choisit le dictionnaire des textes de l'interface |
 | `set_core(value)` | le moteur | rien | à mémoriser dans `self.core` ; ne pas modifier |
 | `get_description()` | aucun | chaîne | nom affiché dans le menu Scripts |
-| `get_category()` | aucun | chaîne | catégorie du menu, en général `'CAD'` |
+| `get_category()` | aucun | chaîne | menu du menu Scripts : `'generation'`, `'geometry'`, `'modify'`, `'import'` ou `'examples'` (traduits par le moteur), ou un autre nom utilisé tel quel |
 | `get_properties_count()` | aucun | nombre | nombre de paramètres du script |
 | `get_property_description(index)` | indice depuis 0 | chaîne | libellé du paramètre |
 | `get_property_key(index)` | indice depuis 0 | chaîne | optionnel : nom utilisé pour sauvegarder la valeur (par défaut : l'indice) |

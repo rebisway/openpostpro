@@ -44,7 +44,7 @@ class Cadscript:
 
 	# return menu description : [Scripts][Category][Description]
 	def get_category(self):
-		return 'CAD'
+		return 'generation'
 
 	# set the reference to the cad loop object, do not modify
 	def set_core(self, value):
