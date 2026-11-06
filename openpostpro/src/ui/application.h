@@ -97,6 +97,7 @@ public:
 	void onRenderGUI() override;
 
 	void render_menu();
+	bool _show_about = false;		// the About window is displayed
 
 	Postpro* load_postpro(const std::string& file);	// load a post-processor file, null if it fails
 	CadScript* load_cad_script(const std::string& file);	// load a cad script file, null if it fails

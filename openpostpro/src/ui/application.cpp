@@ -35,6 +35,7 @@
 #include <dialog.h>
 #include <file.h>
 #include <strings.h>
+#include <version.h>
 #include <history.h>
 #include <script.h>
 
@@ -1098,6 +1099,13 @@ void Application::render_menu()
 			ImGui::EndMenu();
 		}
 
+		if (ImGui::BeginMenu(Lang::l("HELP")))
+		{
+			if (ImGui::MenuItem(Lang::l("ABOUT")))
+				_show_about = true;
+			ImGui::EndMenu();
+		}
+
 #ifdef _DEBUG
 		// development functions, not compiled in release builds
 		if (ImGui::BeginMenu(Lang::l("DEBUG")))
@@ -1145,6 +1153,39 @@ void Application::render_menu()
 
 		ImGui::PopStyleVar();
 		ImGui::EndMainMenuBar();
+	}
+
+	if (_show_about)
+	{
+		// the version is the one of the application, not the one of the document file format
+		ImGuiIO& io = ImGui::GetIO();
+		ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		if (ImGui::Begin(Lang::l("ABOUT"), &_show_about, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			// each line is centered in the window
+			auto centered = [](const std::string& text)
+			{
+				float width = ImGui::GetWindowSize().x;
+				ImGui::SetCursorPosX((width - ImGui::CalcTextSize(text.c_str()).x) * 0.5f);
+				ImGui::TextUnformatted(text.c_str());
+			};
+
+			centered("OpenPostPro");
+			ImGui::NewLine();
+			centered(Lang::t("VERSION") + " " + appinfo::version() + " - " + Lang::t("BUILD") + " " + std::to_string(appinfo::build()));
+			centered(Lang::t("BUILD_DATE") + " " + appinfo::build_date() + " " + appinfo::build_time());
+			ImGui::NewLine();
+			centered("Copyright (C) 2024-2026 Thomas Gourgnier");
+			centered("GNU Affero General Public License v3 or later");
+			centered("https://github.com/rebisway/openpostpro");
+			ImGui::NewLine();
+
+			float button = ImGui::CalcTextSize(Lang::l("BTN_OK")).x + ImGui::GetStyle().FramePadding.x * 2;
+			ImGui::SetCursorPosX((ImGui::GetWindowSize().x - button) * 0.5f);
+			if (ImGui::Button(Lang::l("BTN_OK")))
+				_show_about = false;
+		}
+		ImGui::End();
 	}
 
 	if (_display_first_run)

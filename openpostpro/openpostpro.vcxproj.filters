@@ -380,6 +380,9 @@
     <ClInclude Include="src\cad\cut_shape.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="src\common\version.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
     <ClInclude Include="src\common\curve.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
