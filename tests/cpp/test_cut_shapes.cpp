@@ -177,6 +177,75 @@ int main()
 		CHECK(cad_cut::split_points(square, glm::vec2(0, 0)).empty(), "a closed polyline is already open at its start");
 	}
 
+	std::puts("shapes cut");
+	{
+		// line
+		Line* l = line(&renderer, 0, 0, 10, 0);
+		auto p = cad_cut::split_shape(l, glm::vec2(4, 0));
+		CHECK(p.size() == 2, "a line gives two lines");
+		if (p.size() == 2)
+		{
+			CHECK(p[0]->type() == GraphicType::Line && p[1]->type() == GraphicType::Line, "both are lines");
+			CHECK_POINT(((Line*)p[0])->p2(), 4, 0, "first line ends at the cut");
+			CHECK_POINT(((Line*)p[1])->p1(), 4, 0, "second line starts at the cut");
+			CHECK_POINT(((Line*)p[1])->p2(), 10, 0, "second line keeps the end");
+		}
+		CHECK(cad_cut::split_shape(l, glm::vec2(10, 0)).empty(), "no cut on an end of a line");
+
+		// arc, both directions: the pieces keep the center and the direction
+		for (bool cw : { false, true })
+		{
+			Arc* a = cw ? arc(&renderer, glm::vec2(0, 0), glm::vec2(0, 10), glm::vec2(10, 0), true) : arc(&renderer, glm::vec2(0, 0), glm::vec2(10, 0), glm::vec2(0, 10), false);
+			float r = 10.0f * std::sqrt(0.5f);
+			auto pieces = cad_cut::split_shape(a, glm::vec2(r, r));
+			CHECK(pieces.size() == 2, "an arc gives two arcs");
+			if (pieces.size() == 2)
+			{
+				Arc* a1 = (Arc*)pieces[0];
+				Arc* a2 = (Arc*)pieces[1];
+				CHECK(a1->cw() == cw && a2->cw() == cw, "the direction is kept");
+				CHECK_POINT(a1->start(), a->start().x, a->start().y, "first piece starts at the start of the arc");
+				CHECK_POINT(a1->stop(), r, r, "first piece ends at the cut");
+				CHECK_POINT(a2->start(), r, r, "second piece starts at the cut");
+				CHECK_POINT(a2->stop(), a->stop().x, a->stop().y, "second piece ends at the stop of the arc");
+			}
+			CHECK(cad_cut::split_shape(a, a->stop()).empty(), "no cut on the end of an arc");
+		}
+
+		// circle: one click opens it, a second click cuts the arc which goes all the way around
+		Circle* c = circle(&renderer, glm::vec2(0, 0), 10);
+		auto opened = cad_cut::split_shape(c, glm::vec2(0, 10));
+		CHECK(opened.size() == 1 && opened[0]->type() == GraphicType::Arc, "a circle becomes one arc");
+		if (opened.size() == 1)
+		{
+			Arc* full = (Arc*)opened[0];
+			CHECK_POINT(full->start(), 0, 10, "it starts at the cut");
+			CHECK_POINT(full->stop(), 0, 10, "it ends at the cut");
+			CHECK(!full->cw(), "counter-clockwise");
+			CHECK(cad_cut::split_shape(full, glm::vec2(0, 10)).empty(), "no second cut on the open point");
+
+			// second cut, found as the tool does: the point of the full arc nearest to the click
+			Layer layer(&renderer);
+			layer.add(full);
+			std::vector<Layer*> layers = { &layer };
+			auto cuts = cad_cut::find(layers, glm::vec2(10, 0), glm::vec2(10, 0));
+			CHECK(cuts.size() == 1, "the open circle can be cut again");
+			if (cuts.size() == 1)
+			{
+				CHECK_POINT(cuts[0].point, 10, 0, "at the click");
+				auto halves = cad_cut::split_shape(cuts[0].shape, cuts[0].point);
+				CHECK(halves.size() == 2, "two arcs");
+				if (halves.size() == 2)
+				{
+					CHECK_POINT(((Arc*)halves[0])->start(), 0, 10, "first arc starts at the first cut");
+					CHECK_POINT(((Arc*)halves[0])->stop(), 10, 0, "first arc ends at the second cut");
+					CHECK_POINT(((Arc*)halves[1])->start(), 10, 0, "second arc starts at the second cut");
+					CHECK_POINT(((Arc*)halves[1])->stop(), 0, 10, "second arc ends at the first cut");
+				}
+			}
+		}
+	}
+
 	std::puts("hidden layer");
 	{
 		Layer layer(&renderer);
