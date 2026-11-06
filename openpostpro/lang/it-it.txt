@@ -226,3 +226,5 @@ BUILD=Build
 BUILD_DATE=Compilato il
 LOCKED=Bloccato
 LOCKED_NOT_DELETED=Le forme di un livello bloccato non vengono eliminate.
+CAM_TOOLPATHS_VISIBLE=Nascondi tutte le lavorazioni
+CAM_TOOLPATHS_HIDDEN=Mostra tutte le lavorazioni

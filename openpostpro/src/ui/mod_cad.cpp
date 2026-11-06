@@ -89,6 +89,8 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["CAM_FOLLOW"] = _render->load_texture("follow.png");
 	_textures["CAM_OFFSET"] = _render->load_texture("offset.png");
 	_textures["CAM_POCKET"] = _render->load_texture("pocket.png");
+	_textures["CAM_TOOLPATHS_VISIBLE"] = _render->load_texture("eye.png");
+	_textures["CAM_TOOLPATHS_HIDDEN"] = _render->load_texture("eye_off.png");
 	_textures["BTN_ADD"] = _render->load_texture("plus.png");
 	_textures["BTN_REMOVE"] = _render->load_texture("minus.png");
 	_textures["BTN_UP"] = _render->load_texture("up.png");
@@ -1428,6 +1430,11 @@ void ModCad::render_GUI()
 		_btn_pos = ImGui::GetCursorScreenPos();
 		_display_pocket_box = true;
 	}
+
+	// show or hide all the toolpaths at once: the icon is the state, the tooltip is the action
+	ImGui::NewLine();
+	if (set_shortcut(_document->show_toolpaths() ? "CAM_TOOLPATHS_VISIBLE" : "CAM_TOOLPATHS_HIDDEN", ImVec2(20, 20)))
+		_document->show_toolpaths(!_document->show_toolpaths());
 	ImGui::End();
 
 

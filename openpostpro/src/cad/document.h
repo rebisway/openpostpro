@@ -46,6 +46,8 @@ private:
 	Layer* _current_layer = nullptr;		// current selected layer
 	Group* _current_group = nullptr;		// current selected group
 	bool _modified = false;
+	// display of all the toolpaths at once, on top of the visibility of each group. Not saved in the file
+	bool _show_toolpaths = true;
 
 	float _scale = 1.0f;					// last camera scale factor
 	Unit _unit = Unit::Millimeter;			// unit of the coordinates
@@ -71,6 +73,9 @@ public:
 
 	bool modified() { return _modified; }
 	void modified(bool value) { _modified = value; }
+
+	bool show_toolpaths() { return _show_toolpaths; }
+	void show_toolpaths(bool value) { _show_toolpaths = value; }
 
 	std::vector<Layer*>& layers() { return _layers; }
 	Layer* layer(std::string name="");

@@ -413,9 +413,13 @@ void Document::draw()
 		layer->draw();
 	}
 
-	for (Group* group : _groups)
+	// all the toolpaths can be hidden at once, each group keeps its own visibility
+	if (_show_toolpaths)
 	{
-		group->draw();
+		for (Group* group : _groups)
+		{
+			group->draw();
+		}
 	}
 }
 

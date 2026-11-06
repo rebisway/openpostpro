@@ -226,3 +226,5 @@ BUILD=Build
 BUILD_DATE=Compilado em
 LOCKED=Bloqueado
 LOCKED_NOT_DELETED=As formas de uma camada bloqueada não são apagadas.
+CAM_TOOLPATHS_VISIBLE=Ocultar todas as usinagens
+CAM_TOOLPATHS_HIDDEN=Mostrar todas as usinagens

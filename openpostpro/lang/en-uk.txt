@@ -226,3 +226,5 @@ BUILD=Build
 BUILD_DATE=Built on
 LOCKED=Locked
 LOCKED_NOT_DELETED=The shapes on a locked layer are not deleted.
+CAM_TOOLPATHS_VISIBLE=Hide all the toolpaths
+CAM_TOOLPATHS_HIDDEN=Show all the toolpaths
