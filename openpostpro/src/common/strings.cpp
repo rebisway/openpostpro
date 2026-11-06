@@ -181,9 +181,12 @@ namespace stringex
 
 	std::string from_escape(std::string s)
 	{
+		if ( s.size() == 0) return s;
+
 		std::string r;
 
-		for (int i = 0; i < s.size() - 1; i++)
+		// (i + 1 < size: s.size() - 1 would be a huge unsigned number for an empty text)
+		for (size_t i = 0; i + 1 < s.size(); i++)
 		{
 			if (s[i] == '\\')
 			{
