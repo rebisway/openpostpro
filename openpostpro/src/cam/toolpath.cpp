@@ -66,6 +66,15 @@ void Toolpath::start_point_offset(float value)
 	}
 }
 
+void Toolpath::lead_out(bool value)
+{
+	if (_lead_out != value)
+	{
+		_lead_out = value;
+		compute();
+	}
+}
+
 void Toolpath::start_point_inside(bool value)
 {
 	if (_start_point_inside != value)
@@ -158,6 +167,78 @@ Toolpath::~Toolpath()
 	}
 }
 
+// The point and the direction of a closed curve at a given length from its start
+static void curve_point_at(Curve& c, float length, glm::vec2& point, float& angle)
+{
+	// (the segments are c[0] to c[size - 2], each one ends at the point of the next one)
+	float pos = 0;
+	size_t i = 0;
+	while (i + 2 < c.size() && c[i].length + pos < length)
+	{
+		pos += c[i].length;
+		i++;
+	}
+	Segment& s = c[i];
+	glm::vec2 end = c[i + 1].point;
+	point = s.coordinates_at(length - pos, end);
+	if (s.type == SegmentType::Arc || s.type == SegmentType::Circle)
+		angle = geometry::oriented_angle(point, s.center) + (s.cw ? -glm::half_pi<float>() : glm::half_pi<float>());
+	else
+		angle = geometry::oriented_angle(end, s.point);
+}
+
+// With a radius compensation the entry has to be on the side of the tool, and far enough from the contour: the tool starts there, and
+// the compensation moves it to the contour. At a corner, or near it, the entry would come from the other side of the contour. The
+// start is then moved along the contour, step by step, up to the first position where the start of the entry is inside the curve
+// (on the side of the tool). Returns the length of the start of the contour (`start` if the entry is good, or if nothing fits).
+static float fit_start(Curve& c, float start, float offset, bool inside, StartPointType type, float margin)
+{
+	if (offset <= 0 || c.size() < 3 || c[0].type == SegmentType::Circle)
+		return start;
+
+	float total = c.length();
+	std::vector<glm::vec2> polygon = c.coordinates();
+
+	auto distance_to_contour = [&](glm::vec2 p)
+	{
+		float best = (std::numeric_limits<float>::max)();
+		for (size_t i = 0; i + 1 < polygon.size(); i++)
+		{
+			glm::vec2 d = polygon[i + 1] - polygon[i];
+			float l2 = glm::dot(d, d);
+			float t = l2 < geometry::ERR_FLOAT ? 0.0f : glm::clamp(glm::dot(p - polygon[i], d) / l2, 0.0f, 1.0f);
+			best = (glm::min)(best, glm::distance(p, polygon[i] + d * t));
+		}
+		return best;
+	};
+
+	// is the entry good when the contour starts at this length?
+	auto fits = [&](float length)
+	{
+		glm::vec2 point;
+		float angle;
+		curve_point_at(c, std::fmod(length, total), point, angle);
+
+		// the side of the entry, as generate_startpoint chooses it
+		auto source = geometry::position(geometry::oriented_angle(angle + glm::half_pi<float>()), offset, point);
+		if (inside != c.inside(source))
+			source = geometry::position(geometry::oriented_angle(angle - glm::half_pi<float>()), offset, point);
+
+		// where the tool starts: the entry point of a line, the start of the quarter of circle behind its center
+		glm::vec2 from = type == StartPointType::arc ? geometry::position(angle, -offset, source) : source;
+		return c.inside(from) == inside && distance_to_contour(from) >= margin * 0.99f;
+	};
+
+	// the first good position, found step by step (the shift is at least the distance of the entry plus the radius of the tool at a corner)
+	float step = (glm::max)(offset / 4.0f, total / 400.0f);
+	for (float shift = 0; shift < total; shift += step)
+	{
+		if (fits(start + shift))
+			return std::fmod(start + shift, total);
+	}
+	return start;
+}
+
 void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 {
 	if (start_point_allowed() && curves.size() == 1)
@@ -235,14 +316,26 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 			{
 				// direction of the toolpath at its first point, the tangent when the first segment is an arc
 				float angle;
-				if (output[0].type == SegmentType::Arc)
+				if (output[0].type == SegmentType::Arc || output[0].type == SegmentType::Circle)
 					angle = geometry::oriented_angle(output[0].point, output[0].center) + (output[0].cw ? -glm::half_pi<float>() : glm::half_pi<float>());
 				else
 					angle = geometry::oriented_angle(output[1].point, output[0].point);
 				auto source = geometry::position(geometry::oriented_angle(angle + glm::half_pi<float>()), _start_point_offset, output[0].point);
 
-				if (_start_point_inside != output.inside(source))
+				if (_start_point_inside != (c[0].type == SegmentType::Circle ? glm::distance(source, c[0].center) < c[0].radius : output.inside(source)))
 					source = geometry::position(geometry::oriented_angle(angle - glm::half_pi<float>()), _start_point_offset, output[0].point);
+
+				// the contour starts at this point and ends on it again
+				glm::vec2 contour_start = output[0].point;
+
+				// direction of the arcs, the same for the entry and the exit (computed before the curve changes)
+				bool clock = false;
+				if (_start_point_type == StartPointType::arc)
+										{
+						// (a circle is one segment: the area of the rearranged curve does not give its direction)
+						bool path_cw = c[0].type == SegmentType::Circle ? c[0].cw : output.cw();
+						clock = _start_point_inside ? path_cw : !path_cw;
+					}
 
 				if (_start_point_type == StartPointType::line)
 				{
@@ -250,9 +343,31 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 				}
 				else if (_start_point_type == StartPointType::arc)
 				{
-					bool clock = _start_point_inside ? output.cw() : !output.cw();
-					auto centre = geometry::middle(source, output[0].point);
-					output.insert(output.begin(), Segment(source, centre, _start_point_offset / 2.0f, clock));
+					// a quarter of circle which arrives tangent to the contour: its center is `source` (at the distance from the
+					// start of the contour, on the side of the tool), its radius is the distance, it starts behind the center
+					auto start = geometry::position(angle, -_start_point_offset, source);
+					output.insert(output.begin(), Segment(start, source, _start_point_offset, clock));
+				}
+
+				// the exit
+				if (_lead_out)
+				{
+					// the contour ends with its start point twice: one is enough, it becomes the start of the exit move (no move of length zero)
+					if (output.size() > 2 && glm::distance(output[output.size() - 2].point, contour_start) < 0.0001f)
+						output.pop_back();
+					if (_start_point_type == StartPointType::line)
+					{
+						// the entry in the other direction: back to the start of the entry
+						output.back() = Segment(contour_start);
+						output.push_back(Segment(source));
+					}
+					else
+					{
+						// a quarter of circle which leaves the contour tangent, around the same center and in the same direction as the
+						// entry: it goes on after the start of the contour
+						output.back() = Segment(contour_start, source, _start_point_offset, clock);
+						output.push_back(Segment(geometry::position(angle, _start_point_offset, source)));
+					}
 				}
 			}
 			
@@ -269,6 +384,18 @@ void Toolpath::generate_startpoint(std::vector<Curve>& curves)
 			if (c.closed())
 				c = generate_tabs(c);
 	}
+}
+
+// Moves the start of the path along the contour so that the entry is on the side of the tool. It is a setting that is applied when the
+// compensation is chosen: the user can then change the start position as he wants
+void Toolpath::fit_start_point()
+{
+	if (!start_point_allowed() || _start_point_type == StartPointType::normal || _original.size() != 1 || !_original[0].closed())
+		return;
+
+	Curve c = _original[0];
+	c.cw(_cw);		// the direction of the path
+	_start_point_length = fit_start(c, _start_point_length, _start_point_offset, _start_point_inside, _start_point_type, _radius > 0 ? _radius : _start_point_offset / 2.0f);
 }
 
 void Toolpath::tabs_init_positions(float total)
@@ -483,6 +610,8 @@ void Toolpath::generate_deco(std::vector<Curve>& curves)
 		// we add the arrow to display toolpath direction
 		for (auto c : curves)
 		{
+			// (the lengths of the segments are not computed for an open path)
+			c.length();
 			float length = 25 / _render->camera()->scale();
 			float pos = 0;
 			int index = 0;
@@ -535,6 +664,23 @@ void Toolpath::generate_deco(std::vector<Curve>& curves)
 			vertices.push_back(glm::vec3(position.x, position.y, 0));
 			vertices.push_back(glm::vec3(p2.x, p2.y, 0));
 			_deco_indices.push_back((int)vertices.size());
+
+			// with a radius compensation, a second arrow is shifted by the radius of the tool, on the side where the tool is:
+			// it shows where the tool goes
+			ToolRadiusCompensation compensation = radius_compensation();
+			if (compensation != ToolRadiusCompensation::None)
+			{
+				// (at least a few pixels, to see the side of the tool even when the radius is small or not set)
+				float shift = (glm::max)(_radius, 12.0f / _render->camera()->scale());
+				float side = angle + (compensation == ToolRadiusCompensation::Left ? glm::half_pi<float>() : -glm::half_pi<float>());
+				auto shifted = geometry::position(geometry::oriented_angle(side), shift, position);
+				auto q1 = geometry::position(angle + glm::quarter_pi<float>() / 2, -o, shifted);
+				auto q2 = geometry::position(angle + -glm::quarter_pi<float>() / 2, -o, shifted);
+				vertices.push_back(glm::vec3(q1.x, q1.y, 0));
+				vertices.push_back(glm::vec3(shifted.x, shifted.y, 0));
+				vertices.push_back(glm::vec3(q2.x, q2.y, 0));
+				_deco_indices.push_back((int)vertices.size());
+			}
 		}
 
 		if (config.show_cam_start)

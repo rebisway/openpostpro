@@ -307,6 +307,7 @@
     <ClInclude Include="src\cad\text.h" />
     <ClInclude Include="src\cam\drill.h" />
     <ClInclude Include="src\cam\follow.h" />
+    <ClInclude Include="src\cam\compensation.h" />
     <ClInclude Include="src\cam\moveTo.h" />
     <ClInclude Include="src\cam\offset.h" />
     <ClInclude Include="src\cam\pocket.h" />

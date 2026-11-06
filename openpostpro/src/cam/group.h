@@ -26,13 +26,6 @@ enum class CoolingType
 	Mist
 };
 
-enum class ToolRadiusCompensation
-{
-	None,
-	Left,
-	Right
-};
-
 class Group : public Graphic
 {
 private:
@@ -42,7 +35,6 @@ private:
 	bool _generate = true;
 	int _tool_number = -1;
 	float _tool_radius = 1;
-	ToolRadiusCompensation _tool_radius_compensation = ToolRadiusCompensation::None;
 	int _tool_length_compensation = -1;
 	bool _cw = true;
 	float _feed = 1000;
@@ -62,6 +54,7 @@ private:
 	std::string _post_command = "";
 	StartPointType _start_point_type = StartPointType::normal;
 	float _start_point_offset = 0;
+	bool _lead_out = false;		// the paths leave the contour (an exit) like they come to it (the entry)
 	int _repeat_x = 0;
 	float _repeat_x_offset = 10;
 	int _repeat_y = 0;
@@ -79,9 +72,6 @@ public:
 
 	float tool_radius() { return _tool_radius; }
 	void tool_radius(float value);
-
-	ToolRadiusCompensation tool_radius_compensation() { return _tool_radius_compensation; }
-	void tool_radius_compensation(ToolRadiusCompensation value) { _tool_radius_compensation = value; }
 
 	int tool_length_compensation() { return _tool_length_compensation; }
 	void tool_length_compensation(int value) { _tool_length_compensation = value; }
@@ -131,6 +121,9 @@ public:
 
 	float start_point_offset() { return _start_point_offset; }
 	void start_point_offset(float value);
+
+	bool lead_out() { return _lead_out; }
+	void lead_out(bool value);
 
 	Group(Renderer* r);
 	~Group();

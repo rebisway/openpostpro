@@ -39,7 +39,7 @@ Guide: [Writing a CAD script](docs/CAD-SCRIPTS.en.md) · [Écrire un script CAO]
 
 Create toolpath operations from your drawing, grouped by tool, with the depth, the pass depth, and the feeds set per group:
 
-- **Follow** — follow selected geometry
+- **Follow** — follow selected geometry, with an optional entry and exit (a line or a quarter of circle) and the **radius compensation** of the tool, or the kerf of a plasma torch (G41 / G42): the tool is centered on the line, outside or inside of the shape, and the side is deduced from the direction of the path
 - **Offset** — create interior or exterior offsets
 - **Pocket** — generate pocketing toolpaths, with three strategies: zigzag (scan lines at any angle, adjustable stepover, with or without the contour), concentric offsets, and spiral (inward or outward). Finishing passes are machined last, and islands are respected
 - **Drilling** — configure drilling cycles, including peck drilling, tapping, and boring options

@@ -734,7 +734,6 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 
 			output += start_group(g->name(), g->tool_number(), (int)g->spindle_speed());
 
-			output += start_tool_radius_compensation(g->tool_radius_compensation());
 			output += start_tool_length_compensation(g->tool_length_compensation());
 
 			// we loop into toolpaths
@@ -742,6 +741,9 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 			{
 				output += comment("TOOLPATH [" + t->name() + "]");
 				output += start_toolpath();
+				// radius compensation (G41 / G42) of the toolpath: only a compensated "follow" has one
+				ToolRadiusCompensation compensation = t->radius_compensation();
+
 				for (auto c : t->coordinates())
 				{
 					_pos = get_current_position();
@@ -751,6 +753,7 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 
 					// we rapid move to first coordinates
 					output += rapid(glm::vec3(c[0].point.x, c[0].point.y, g->safe()));
+					output += start_tool_radius_compensation(compensation);
 
 
 					if (t->type() == GraphicType::CamDrill) // special case drilling
@@ -847,6 +850,7 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 						}
 
 						output += stop_single_path();
+						output += stop_tool_radius_compensation(compensation);
 					}
 
 					output += stop_toolpath();
@@ -854,7 +858,6 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 			}
 
 			output += stop_tool_length_compensation(g->tool_length_compensation());
-			output += stop_tool_radius_compensation(g->tool_radius_compensation());
 
 			output += stop_group();
 

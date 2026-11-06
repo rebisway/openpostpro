@@ -398,6 +398,9 @@
     <ClInclude Include="src\cam\follow.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="src\cam\compensation.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
     <ClInclude Include="src\cam\offset.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>

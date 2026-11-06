@@ -24,9 +24,27 @@
 class Follow : public Toolpath
 {
 private:
+	// where the tool is relative to the followed shape. The machine compensates the radius of the tool (the kerf of a plasma
+	// torch): G41 or G42 is deduced from this side and from the direction of the path
+	ToolSide _tool_side = ToolSide::Centered;
 
 public:
 	GraphicType type() override { return GraphicType::CamFollow; }
+
+	ToolSide tool_side() { return _tool_side; }
+	// with a compensation, the entry is on the side of the tool: inside for a tool inside, outside for a tool outside
+	void tool_side(ToolSide value)
+	{
+		_tool_side = value;
+		if (_tool_side != ToolSide::Centered)
+		{
+			_start_point_inside = _tool_side == ToolSide::Inside;
+			// the start is moved so that the entry is on the side of the tool; the user can change it afterwards
+			fit_start_point();
+		}
+		compute();	// the entry can change side
+	}
+	ToolRadiusCompensation radius_compensation() override { return compensation_for(_tool_side, _cw); }
 	
 	Follow(Renderer* r) : Toolpath(r) {}
 

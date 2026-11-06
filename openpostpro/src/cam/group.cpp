@@ -69,6 +69,16 @@ void Group::start_point_offset(float value)
 	}
 }
 
+void Group::lead_out(bool value)
+{
+	if (_lead_out != value)
+	{
+		_lead_out = value;
+		for (auto t : _toolpaths)
+			t->lead_out(_lead_out);
+	}
+}
+
 Group::Group(Renderer* r) : Graphic(r)
 {
 	_color = config.groupColor;
@@ -117,6 +127,14 @@ void Group::add(Toolpath* value)
 	// default group params
 	value->start_point_offset(_start_point_offset);
 	value->start_point_type(_start_point_type);
+	value->lead_out(_lead_out);
+
+	// the radius of the tool (the shifted arrow of the compensation, the fit of the start), for the toolpaths which did not get one
+	if (value->radius() <= 0 && _tool_radius > 0)
+	{
+		value->radius(_tool_radius);
+		value->compute();
+	}
 
 	_toolpaths.push_back(value);
 	value->parent(_name);
@@ -409,19 +427,7 @@ void Group::ui()
 	if (_tool_number >= 0)
 	{
 
-		// RADIUS COMPENSATION
-		ImGui::TableNextRow();
-		ImGui::TableSetColumnIndex(0);
-		ImGui::Spacing();
-		ImGui::Text(Lang::l("TOOL_RADIUS_COMPENSATION"));
-		ImGui::TableSetColumnIndex(1);
-		ImGui::PushItemWidth(-FLT_MIN);
-		const char* items[]{ Lang::l("NONE"), Lang::l("TOOL_RADIUS_CMP_LEFT"), Lang::l("TOOL_RADIUS_CMP_RIGHT") };
-		int selected_item = (int)_tool_radius_compensation;
-		if (ImGui::Combo("##TOOL_RADIUS_COMPENSATION", &selected_item, items, IM_ARRAYSIZE(items)))
-		{
-			_tool_radius_compensation = (ToolRadiusCompensation)selected_item;
-		}
+		// (the radius compensation is a property of the "follow" toolpaths, not of the group)
 
 		// LENGTH COMPENSATION
 		ImGui::TableNextRow();
@@ -586,6 +592,16 @@ void Group::ui()
 				Logger::log(e.what());
 			}
 		}
+
+		// EXIT: the path leaves the contour as it comes to it
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("CAM_FOLLOW_EXIT"));
+		ImGui::TableSetColumnIndex(1);
+		bool leave = _lead_out;
+		if (ImGui::Checkbox("##GROUP_LEAD_OUT", &leave))
+			lead_out(leave);
 	}
 
 	ImGui::EndTable();
@@ -608,12 +624,13 @@ std::string Group::write()
 		WF(_finition_feed) +
 		WN(_tool_number) +
 		WF(_finition_offset) +
-		WN((int)_tool_radius_compensation) +
+		WN(0) +	// the radius compensation of the group does not exist any more: the field keeps its place in the file
 		WN(_tool_length_compensation) +
 		WS(_pre_command) +
 		WS(_post_command) +
 		WN((int)_start_point_type) +
-		WF(_start_point_offset);
+		WF(_start_point_offset) +
+		WN((int)_lead_out);
 
 	return result;
 }
@@ -635,11 +652,13 @@ void Group::read(std::string value, float version)
 		RF(_finition_feed, 9);
 		RI(_tool_number, 10);
 		RF(_finition_offset, 11);
-		if (12 < data.size()) _tool_radius_compensation = (ToolRadiusCompensation)std::stoi(data[12]);
+		// data[12]: radius compensation of the group in the old files, not used any more
 		RI(_tool_length_compensation, 13);
 		RS(_pre_command, 14);
 		RS(_post_command, 15);
 		if (16 < data.size()) _start_point_type = (StartPointType)std::stoi(data[16]);
 		RF(_start_point_offset, 17);
+		// older data have no exit
+		if (18 < data.size()) _lead_out = std::stoi(data[18]) != 0;
 	}
 }

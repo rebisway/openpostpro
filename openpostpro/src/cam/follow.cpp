@@ -23,6 +23,10 @@
 
 void Follow::update()
 {
+	// (the side of the entry is not saved: with a compensation it follows the side of the tool)
+	if (_tool_side != ToolSide::Centered)
+		_start_point_inside = _tool_side == ToolSide::Inside;
+
 	for (auto& c : _original)
 		c.cw(_cw);
 
@@ -57,17 +61,26 @@ void Follow::properties()
 	if (property_bool(Lang::l("CAM_FOLLOW_CW"), "##GROUP_CW", clockwise))
 		modify([&] { cw(clockwise); });
 
+	// compensation of the radius of the tool (the kerf): the tool is on the contour, outside of it or inside of it
+	int side = (int)_tool_side;
+	std::vector<std::string> sides = { Lang::t("CAM_COMP_CENTERED"), Lang::t("CAM_COMP_OUTSIDE"), Lang::t("CAM_COMP_INSIDE") };
+	if (property_combo(Lang::l("TOOL_RADIUS_COMPENSATION"), "##TOOL_SIDE", side, sides))
+		modify([&] { tool_side((ToolSide)side); });
+
 	if (_original.size() == 1 && _original[0].closed())
 	{
 		// no undo step: _start_point_inside is not part of write()
 		if (_start_point_type != StartPointType::normal)
 		{
+			// with a compensation, the side of the entry is the side of the tool: the field is shown, but it can not be changed
 			bool inside = _start_point_inside;
+			ImGui::BeginDisabled(_tool_side != ToolSide::Centered);
 			if (property_bool(Lang::l("INTERIOR"), "##VISIBLE", inside))
 			{
 				_start_point_inside = inside;
 				compute();
 			}
+			ImGui::EndDisabled();
 		}
 
 		// the undo step of a slider is pushed by the helper
@@ -112,6 +125,12 @@ std::string Follow::write()
 	result += WN(_tabs_length);
 	result += WN(_tabs_height);
 	result += tabs_write();
+
+	// compensation of the radius of the tool (a tag: the older data do not have it)
+	result += WS(std::string("[#COMPENSATION#]"));
+	result += WN((int)_tool_side);
+	result += WS(std::string("[#EXIT#]"));
+	result += WN((int)_lead_out);
 
 	return result;
 }
@@ -187,6 +206,24 @@ void Follow::read(std::string value, float version)
 	RF(_tabs_length, ref + 3);
 	RF(_tabs_height, ref + 4);
 	tabs_read(data, ref + 5);
+
+	// older data have no compensation of the radius of the tool
+	for (int i = 0; i + 1 < (int)data.size(); i++)
+	{
+		if (data[i] == "[#COMPENSATION#]")
+		{
+			int side = 0;
+			RI(side, i + 1);
+			if (side >= 0 && side <= (int)ToolSide::Inside)
+				_tool_side = (ToolSide)side;
+		}
+		else if (data[i] == "[#EXIT#]")
+		{
+			int leave = 0;
+			RI(leave, i + 1);
+			_lead_out = leave != 0;
+		}
+	}
 
 	update();
 }

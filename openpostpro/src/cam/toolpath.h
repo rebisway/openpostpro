@@ -22,6 +22,7 @@
 #include "graphic.h"
 #include <geometry.h>
 #include <curve.h>
+#include "compensation.h"
 
 enum class StartPointType {
 	normal,
@@ -50,6 +51,9 @@ protected:
 	float _start_point_length = 0;
 	float _start_point_offset = 0;
 	bool _start_point_inside = false;
+	// the path leaves the contour before the tool goes back up: as a line, back to the start of the entry; as an arc, a quarter of
+	// circle which goes on tangent after the start of the contour. Only with an entry
+	bool _lead_out = false;
 
 	float _tabs_count = 0;
 	float _tabs_length = 0;
@@ -105,7 +109,16 @@ public:
 	void start_point_inside(bool value);
 	float start_point_inside() { return _start_point_inside; }
 
+	bool lead_out() { return _lead_out && _start_point_type != StartPointType::normal; }
+	void lead_out(bool value);
+
 	virtual bool tabs_allowed() { return false; }
+
+	// moves the start of the path so that the entry comes from the side of the tool (with a radius compensation)
+	void fit_start_point();
+
+	// side of the tool relative to the direction of the movement (G41 / G42), None for the toolpaths which are not compensated
+	virtual ToolRadiusCompensation radius_compensation() { return ToolRadiusCompensation::None; }
 
 	void tabs_count(float value);
 	float tabs_count() { return _tabs_count; }
@@ -130,7 +143,11 @@ public:
 
 	void add(Curve value);
 	void tree(TreeCurve* value);
-	
+
+	// the shapes the toolpath was made from were modified: takes the new geometry (a tree built from the referenced shapes, which the
+	// toolpath owns) and computes the toolpath again, with its own settings
+	virtual void refresh(TreeCurve* value);
+
 	void draw() override;
 
 	bool cw();
