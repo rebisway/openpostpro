@@ -242,7 +242,8 @@ public:
 	// CAM processing
 	std::vector<Shape*> get_selection();
 	std::vector<int> get_references(std::vector<Graphic*> shapes);
-	bool set_shortcut(std::string code, ImVec2 size);
+	// an icon button, its tooltip is the text of the code. active: a toggle which is on, drawn with a highlighted background
+	bool set_shortcut(std::string code, ImVec2 size, bool active = false);
 	void cam_moveto();
 	void cam_drill();
 	void cam_follow();

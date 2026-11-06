@@ -91,6 +91,8 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["CAM_POCKET"] = _render->load_texture("pocket.png");
 	_textures["CAM_TOOLPATHS_VISIBLE"] = _render->load_texture("eye.png");
 	_textures["CAM_TOOLPATHS_HIDDEN"] = _render->load_texture("eye_off.png");
+	_textures["CAM_SHOW_DIRECTION"] = _render->load_texture("direction.png");
+	_textures["CAM_SHOW_START"] = _render->load_texture("start.png");
 	_textures["BTN_ADD"] = _render->load_texture("plus.png");
 	_textures["BTN_REMOVE"] = _render->load_texture("minus.png");
 	_textures["BTN_UP"] = _render->load_texture("up.png");
@@ -1138,6 +1140,26 @@ void ModCad::render_GUI()
 					_document->down(_document->selected()[0]);
 			}
 
+			// display of the toolpaths: all of them at once (the icon is the state), the machining direction and the starts.
+			// The last two are the options of the preferences, the decorations are drawn again when they change
+			ImGui::SameLine(0, 14);
+			if (set_shortcut(_document->show_toolpaths() ? "CAM_TOOLPATHS_VISIBLE" : "CAM_TOOLPATHS_HIDDEN", ImVec2(15, 15)))
+				_document->show_toolpaths(!_document->show_toolpaths());
+			ImGui::SameLine();
+			if (set_shortcut("CAM_SHOW_DIRECTION", ImVec2(15, 15), config.show_cam_arrow))
+			{
+				config.show_cam_arrow = !config.show_cam_arrow;
+				for (Group* g : _document->groups())
+					g->scaled();
+			}
+			ImGui::SameLine();
+			if (set_shortcut("CAM_SHOW_START", ImVec2(15, 15), config.show_cam_start))
+			{
+				config.show_cam_start = !config.show_cam_start;
+				for (Group* g : _document->groups())
+					g->scaled();
+			}
+
 			_tab_flags = 0;
 			for (Group* g : _document->groups())
 			{
@@ -1430,11 +1452,6 @@ void ModCad::render_GUI()
 		_btn_pos = ImGui::GetCursorScreenPos();
 		_display_pocket_box = true;
 	}
-
-	// show or hide all the toolpaths at once: the icon is the state, the tooltip is the action
-	ImGui::NewLine();
-	if (set_shortcut(_document->show_toolpaths() ? "CAM_TOOLPATHS_VISIBLE" : "CAM_TOOLPATHS_HIDDEN", ImVec2(20, 20)))
-		_document->show_toolpaths(!_document->show_toolpaths());
 	ImGui::End();
 
 
@@ -2019,13 +2036,14 @@ void ModCad::update()
 }
 
 
-bool ModCad::set_shortcut(std::string code, ImVec2 size)
+bool ModCad::set_shortcut(std::string code, ImVec2 size, bool active)
 {
 	Texture* t = _textures[code];
 	if (t != NULL)
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, 1 });
-		bool click = ImGui::ImageButton(code.c_str(), t->id(), size, ImVec2(0, 0), ImVec2(1.0f, 1.0f), ImVec4(0,0,0,1));
+		ImVec4 background = active ? ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive) : ImVec4(0, 0, 0, 1);
+		bool click = ImGui::ImageButton(code.c_str(), t->id(), size, ImVec2(0, 0), ImVec2(1.0f, 1.0f), background);
 		ImGui::PopStyleVar();
 		if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 1)
 			ImGui::SetTooltip(Lang::l(code));

@@ -230,3 +230,5 @@ CAM_TOOLPATHS_VISIBLE=Ocultar todas as usinagens
 CAM_TOOLPATHS_HIDDEN=Mostrar todas as usinagens
 LOG_DOCK_BOTTOM=Parte inferior
 LOG_FULL_SCREEN=Tela cheia
+CAM_SHOW_DIRECTION=Mostrar ou ocultar o sentido da usinagem
+CAM_SHOW_START=Mostrar ou ocultar o início das usinagens

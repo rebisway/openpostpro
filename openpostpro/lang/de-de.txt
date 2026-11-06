@@ -230,3 +230,5 @@ CAM_TOOLPATHS_VISIBLE=Alle Bearbeitungen ausblenden
 CAM_TOOLPATHS_HIDDEN=Alle Bearbeitungen einblenden
 LOG_DOCK_BOTTOM=Unten
 LOG_FULL_SCREEN=Vollbild
+CAM_SHOW_DIRECTION=Bearbeitungsrichtung ein- oder ausblenden
+CAM_SHOW_START=Startpunkte der Bearbeitungen ein- oder ausblenden

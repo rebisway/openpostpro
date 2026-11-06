@@ -230,3 +230,5 @@ CAM_TOOLPATHS_VISIBLE=Ocultar todos los mecanizados
 CAM_TOOLPATHS_HIDDEN=Mostrar todos los mecanizados
 LOG_DOCK_BOTTOM=Parte inferior
 LOG_FULL_SCREEN=Pantalla completa
+CAM_SHOW_DIRECTION=Mostrar u ocultar el sentido del mecanizado
+CAM_SHOW_START=Mostrar u ocultar el inicio de los mecanizados

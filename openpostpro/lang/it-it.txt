@@ -230,3 +230,5 @@ CAM_TOOLPATHS_VISIBLE=Nascondi tutte le lavorazioni
 CAM_TOOLPATHS_HIDDEN=Mostra tutte le lavorazioni
 LOG_DOCK_BOTTOM=In basso
 LOG_FULL_SCREEN=Schermo intero
+CAM_SHOW_DIRECTION=Mostra o nascondi il senso di lavorazione
+CAM_SHOW_START=Mostra o nascondi gli inizi delle lavorazioni

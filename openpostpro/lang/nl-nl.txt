@@ -230,3 +230,5 @@ CAM_TOOLPATHS_VISIBLE=Alle bewerkingen verbergen
 CAM_TOOLPATHS_HIDDEN=Alle bewerkingen tonen
 LOG_DOCK_BOTTOM=Onderaan
 LOG_FULL_SCREEN=Volledig scherm
+CAM_SHOW_DIRECTION=Bewerkingsrichting tonen of verbergen
+CAM_SHOW_START=Startpunten van de bewerkingen tonen of verbergen

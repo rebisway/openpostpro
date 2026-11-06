@@ -230,3 +230,5 @@ CAM_TOOLPATHS_VISIBLE=Hide all the toolpaths
 CAM_TOOLPATHS_HIDDEN=Show all the toolpaths
 LOG_DOCK_BOTTOM=Bottom of the screen
 LOG_FULL_SCREEN=Full screen
+CAM_SHOW_DIRECTION=Show or hide the machining direction
+CAM_SHOW_START=Show or hide the start of the toolpaths
