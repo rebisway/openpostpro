@@ -378,7 +378,7 @@ void Curve::reverse()
 		Segment s = back();
 		std::reverse(begin(), end());
 
-		for (int i = 0; i < size() - 1; i++)
+		for (int i = 0; i + 1 < size(); i++)
 		{
 			(*this)[i].type = (*this)[i + 1].type;
 			(*this)[i].center = (*this)[i + 1].center;
@@ -1709,7 +1709,7 @@ std::vector<Curve> Curve::split_at_intersections()
 		int tag = 0;
 		counter[5] = 0;
 
-		for (int i = 0; i < a.size() - 1; i++)
+		for (int i = 0; i + 1 < a.size(); i++)
 		{
 			Segment s1 = a[i];
 			glm::vec dst1 = a[i + 1].point;
@@ -3714,7 +3714,9 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 							next = own.begin();
 					}
 
-					if (next == it || used.count(&*next) > 0)
+					// (the addresses are compared: next can be in the other list, and the debug library forbids comparing
+					// the iterators of two lists)
+					if (&*next == &*it || used.count(&*next) > 0)
 						broken = true;
 
 					used.insert(&*it);

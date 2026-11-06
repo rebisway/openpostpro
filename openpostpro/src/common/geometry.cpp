@@ -1427,7 +1427,7 @@ std::vector<std::vector<float>> natural_cubic(int n, std::vector<float> x) {
 std::vector<glm::vec2>bezier(std::vector<glm::vec2> points, float scale)
 {
 	std::vector<glm::vec2> coords;
-	for (int i = 0; i < points.size() - 3; i += 3) {
+	for (int i = 0; i + 3 < points.size(); i += 3) {
 		if (points[i] == points[i + 2] && points[i + 1] == points[i + 3]) {
 			if (coords.size() == 0)
 				coords.push_back(points[i]);
@@ -1445,11 +1445,13 @@ std::vector<glm::vec2>bezier(std::vector<glm::vec2> points, float scale)
 std::vector<glm::vec2> bspline(std::vector<glm::vec2>& points)
 {
 	std::vector<glm::vec2> coords, vectors;
+	if (points.empty())
+		return coords;
 	vectors.push_back(points[0]);
 	vectors.insert(vectors.end(), points.begin(), points.end());
 	vectors.push_back(points[points.size() - 1]);
 	coords.push_back(points[0]);
-	for (int i = 2; i < vectors.size() - 1; i++) {
+	for (int i = 2; i + 1 < vectors.size(); i++) {
 		for (int j = 1; j <= 12; j++) {
 			coords.push_back(p(i, j / 12.0f, vectors));
 		}
@@ -2028,7 +2030,7 @@ bool segment_polyline_intersect(glm::vec2 p1, glm::vec2 p2, std::vector<glm::vec
 
 	//if (geometry::rectangle_intersect(p1, p2))
 	glm::vec2 p = glm::vec2();
-	for (size_t i = 0; i < coordinates.size() - 1; i++)
+	for (size_t i = 0; i + 1 < coordinates.size(); i++)
 	{
 		if (segment_segment_intersect(p1, p2, coordinates[i], coordinates[i + 1], p))
 			result.push_back(p);
@@ -2252,7 +2254,7 @@ int circle_circle_intersect(glm::vec2 c1, float r1, glm::vec2 c2, float r2, glm:
 int circle_polyline_intersect(glm::vec2 c1, float r1, std::vector<glm::vec2> coordinates, std::vector<glm::vec2>& result)
 {
 	glm::vec2 points[2] { vec2_empty, vec2_empty };
-	for (int i = 0; i < coordinates.size() - 1; i++)
+	for (int i = 0; i + 1 < coordinates.size(); i++)
 	{
 		auto count = segment_circle_intersect(coordinates[i], coordinates[i + 1], c1, r1, points);
 		for(int j=0; j<count; j++)
@@ -2490,7 +2492,7 @@ int arc_arc_intersect(glm::vec2 start1, glm::vec2 c1, glm::vec2 stop1, float r1,
 int arc_polyline_intersect(float start, glm::vec2 c, float stop, float r, bool cw, std::vector<glm::vec2> coordinates, std::vector<glm::vec2>& result)
 {
 	glm::vec2 points[2]{ vec2_empty, vec2_empty };
-	for (int i = 0; i < coordinates.size() - 1; i++)
+	for (int i = 0; i + 1 < coordinates.size(); i++)
 	{
 		auto count = segment_arc_intersect(coordinates[i], coordinates[i + 1], start, c, stop, r, cw, points);
 		for (int j = 0; j < count; j++)
@@ -2505,9 +2507,9 @@ int arc_polyline_intersect(float start, glm::vec2 c, float stop, float r, bool c
 int polyline_polyline_intersect(std::vector<glm::vec2> coord1, std::vector<glm::vec2> coord2, std::vector<glm::vec2>& result)
 {
 	glm::vec2 p = glm::vec2();
-	for (size_t i = 0; i < coord1.size() - 1; i++)
+	for (size_t i = 0; i + 1 < coord1.size(); i++)
 	{
-		for (size_t j = 0; j < coord2.size() - 1; j++)
+		for (size_t j = 0; j + 1 < coord2.size(); j++)
 		{
 
 			if (segment_segment_intersect(coord1[i], coord1[i + 1], coord2[j], coord2[j + 1], p))

@@ -86,7 +86,7 @@ std::vector<segment> sort_vec2_x_smaller(std::vector<glm::vec2> list)
 {
 	std::vector<segment> result;
 	result.reserve(list.size());
-	for (int i = 0; i < list.size() - 1; i++)
+	for (int i = 0; i + 1 < list.size(); i++)
 	{
 		auto& v1 = list[i];
 		auto& v2 = list[i+1];
@@ -353,13 +353,13 @@ std::vector<std::vector<glm::vec2>> cad::split(std::vector<glm::vec2> coordinate
 
 	//auto sorted = sort_vec2_x_smaller(coordinates);
 
-	std::vector<std::vector<glm::vec2>> intersections(coordinates.size()-1);
-	for (int i = 0; i < coordinates.size() - 1; i++)
+	std::vector<std::vector<glm::vec2>> intersections(coordinates.empty() ? 0 : coordinates.size() - 1);
+	for (int i = 0; i + 1 < coordinates.size(); i++)
 		intersections[i] = std::vector<glm::vec2>();
 
-	for (int i = 0; i < coordinates.size() - 1; i++)
+	for (int i = 0; i + 1 < coordinates.size(); i++)
 	{
-		for (int j = i + 2; j < coordinates.size() - 1; j++)
+		for (int j = i + 2; j + 1 < coordinates.size(); j++)
 		{
 			glm::vec2 a1 = coordinates[i];
 			glm::vec2 a2 = coordinates[i+1];
@@ -436,7 +436,7 @@ std::vector<std::vector<glm::vec2>> cad::split(std::vector<glm::vec2> coordinate
 			result.back().push_back(coordinates[j]);
 		result.back().push_back(intersections[i][0]);				// we add first intersection of current indice
 		result.push_back(std::vector<glm::vec2>());					// then we construct a new polyline
-		for (int j = 0; j < intersections[i].size() - 1; j++)	// we add next intersection
+		for (int j = 0; j + 1 < intersections[i].size(); j++)	// we add next intersection
 		{
 			result.back().push_back(intersections[i][j]);			// if there are several intersections, we add just segments
 			result.back().push_back(intersections[i][j + 1]);
@@ -458,11 +458,11 @@ std::vector < std::vector<glm::vec2>> cad::split(glm::vec2 p1, glm::vec2 p2, std
 	glm::vec2 p = glm::vec2();
 	std::vector<int> indices;
 
-	std::vector<std::vector<glm::vec2>> intersections(coordinates.size() - 1);
-	for (int i = 0; i < coordinates.size() - 1; i++)
+	std::vector<std::vector<glm::vec2>> intersections(coordinates.empty() ? 0 : coordinates.size() - 1);
+	for (int i = 0; i + 1 < coordinates.size(); i++)
 		intersections[i] = std::vector<glm::vec2>();
 
-	for (int i = 0; i < coordinates.size() - 1; i++)
+	for (int i = 0; i + 1 < coordinates.size(); i++)
 	{
 		glm::vec2 a1 = coordinates[i];
 		glm::vec2 a2 = coordinates[i];
@@ -506,7 +506,7 @@ std::vector < std::vector<glm::vec2>> cad::split(glm::vec2 p1, glm::vec2 p2, std
 			result.back().push_back(coordinates[j]);
 		result.back().push_back(intersections[i][0]);
 		result.push_back(std::vector<glm::vec2>());
-		for (int j = 0; j < intersections[i].size() - 1; j++)
+		for (int j = 0; j + 1 < intersections[i].size(); j++)
 		{
 			result.back().push_back(intersections[i][j]);
 			result.back().push_back(intersections[i][j + 1]);
@@ -538,8 +538,8 @@ std::vector < std::vector<glm::vec2>> cad::split(std::vector<glm::vec2> coordina
 	std::vector<int> indices;
 
 	std::vector<std::vector<glm::vec2>> intersections;
-	intersections.reserve(coordinates.size() - 1);
-	for (int i = 0; i < coordinates.size() - 1; i++)
+	intersections.reserve(coordinates.empty() ? 0 : coordinates.size() - 1);
+	for (int i = 0; i + 1 < coordinates.size(); i++)
 		intersections.push_back(std::vector<glm::vec2>());
 
 	for (glm::vec2 p : points)
@@ -636,7 +636,7 @@ std::vector < std::vector<glm::vec2>> cad::split(std::vector<glm::vec2> coordina
 			result.back().push_back(coordinates[j]);
 		result.back().push_back(intersections[i][0]);				// we add first intersection of current indice
 		result.push_back(std::vector<glm::vec2>());					// then we construct a new polyline
-		for (int j = 0; j < intersections[i].size() - 1; j++)	// we add next intersection
+		for (int j = 0; j + 1 < intersections[i].size(); j++)	// we add next intersection
 		{
 			result.back().push_back(intersections[i][j]);			// if there are several intersections, we add just segments
 			result.back().push_back(intersections[i][j + 1]);
@@ -781,7 +781,7 @@ Spline* cad::to_spline(std::vector<Shape*> shapes, Renderer* render)
 			coordinates = ((Polyline*)s)->coordinates();
 			if (coordinates.size() > 1)
 			{
-				for (int i = 0; i < coordinates.size() - 1; i++)
+				for (int i = 0; i + 1 < coordinates.size(); i++)
 					spline->add(coordinates[i]);
 				last = coordinates.back();
 			}
@@ -791,7 +791,7 @@ Spline* cad::to_spline(std::vector<Shape*> shapes, Renderer* render)
 			coordinates = ((Ellipse*)s)->coordinates();
 			if (coordinates.size() > 1)
 			{
-				for (int i = 0; i < coordinates.size() - 1; i++)
+				for (int i = 0; i + 1 < coordinates.size(); i++)
 					spline->add(coordinates[i]);
 				last = coordinates.back();
 			}

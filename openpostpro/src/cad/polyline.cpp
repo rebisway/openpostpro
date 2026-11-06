@@ -248,7 +248,7 @@ std::vector<glm::vec2> Polyline::magnets()
 	{
 		if (_points.size() > 1)
 		{
-			for (int i = 0; i < _points.size() - 1; i++)
+			for (int i = 0; i + 1 < _points.size(); i++)
 				m.push_back(_points[i]);
 		}
 	}

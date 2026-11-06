@@ -169,7 +169,7 @@ void Text::reference_path(std::vector<glm::vec2> path, bool closed)
 	if (path.size() > 0)
 	{
 		_reference_path.insert(_reference_path.end(), path.begin(), path.end());
-		for (int i = 0; i < _reference_path.size() - 1; i++)
+		for (int i = 0; i + 1 < _reference_path.size(); i++)
 			_reference_length += geometry::distance(_reference_path[i], _reference_path[i + 1]);
 		if (_reference_path.size() > 0 && _reference != -1)
 			compute();
@@ -220,7 +220,7 @@ void Text::move(glm::vec2 point)
 			auto p1 = _reference_point, p2 = point;
 			auto l1 = std::numeric_limits<float>::max(), l2 = std::numeric_limits<float>::max();
 			int i1 = 0, i2 = 0;
-			for (int i = 0; i < _reference_path.size() - 1; i++)
+			for (int i = 0; i + 1 < _reference_path.size(); i++)
 			{
 				auto p = geometry::projection(_reference_point, _reference_path[i], _reference_path[i + 1]);
 				if (geometry::colinear_segment_point(_reference_path[i], _reference_path[i + 1], p, geometry::ERR_FLOAT3))
@@ -248,11 +248,11 @@ void Text::move(glm::vec2 point)
 
 			l1 = l2 = 0;
 			// compute length on reference_path
-			for (int i = 0; i < i1 && i < _reference_path.size() - 1; i++)
+			for (int i = 0; i < i1 && i + 1 < _reference_path.size(); i++)
 				l1 += geometry::distance(_reference_path[i], _reference_path[i + 1]);
 			l1 += geometry::distance(_reference_path[i1], p1);
 
-			for (int i = 0; i < i2 && i < _reference_path.size() - 1; i++)
+			for (int i = 0; i < i2 && i + 1 < _reference_path.size(); i++)
 				l2 += geometry::distance(_reference_path[i], _reference_path[i + 1]);
 			l2 += geometry::distance(_reference_path[i1], p2);
 
@@ -262,14 +262,14 @@ void Text::move(glm::vec2 point)
 			if (i1 < i2)
 			{
 				diff += geometry::distance(p1, _reference_path[i1 + 1]);
-				for (int i = i1 + 1; i < i2 && i < _reference_path.size() - 2; i++)
+				for (int i = i1 + 1; i < i2 && i + 2 < _reference_path.size(); i++)
 					diff += geometry::distance(_reference_path[i], _reference_path[i + 1]);
 				diff += geometry::distance(_reference_path[i2], p2);
 			}
 			else if (i1 > i2)
 			{
 				diff += geometry::distance(p2, _reference_path[i2 + 1]);
-				for (int i = i2 + 1; i < i1 && i < _reference_path.size() - 2; i++)
+				for (int i = i2 + 1; i < i1 && i + 2 < _reference_path.size(); i++)
 					diff += geometry::distance(_reference_path[i], _reference_path[i + 1]);
 				diff += geometry::distance(_reference_path[i1], p1);
 				sign = -1;
@@ -424,7 +424,7 @@ void Text::compute()
 			{
 				float pos = glm::max<float>(0, glm::min(_reference_pos, _reference_length) - length);
 				float dst_len = 0, cur_len = 0;
-				for (int i = 0; i < _reference_path.size()-1; i++)
+				for (int i = 0; i + 1 < _reference_path.size(); i++)
 				{
 					auto l = geometry::distance(_reference_path[i], _reference_path[i + 1]);
 					if (dst_len + l < axis[a].x + pos) // if we are still less than the length where the letter should be positionned, we carry on
@@ -701,7 +701,7 @@ void Text::read(std::string value, float version)
 	_reference_length = 0;
 	if (count)
 	{
-		for (int i = 0; i < _reference_path.size() - 1; i++)
+		for (int i = 0; i + 1 < _reference_path.size(); i++)
 			_reference_length += geometry::distance(_reference_path[i], _reference_path[i + 1]);
 	}
 
