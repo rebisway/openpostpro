@@ -23,10 +23,14 @@
 #define _EXTEND_SHAPE_H
 
 #include <layer.h>
+#include <curve.h>
 #include <vector>
 
 namespace cad_extend
 {
+	// A shape as a curve (line, arc, circle, polyline, ellipse, spline). Empty for the other shapes.
+	Curve curve_of(Shape* s);
+
 	// What a click at `point` would extend: the visible line or arc under the point, the end of it which is nearest to
 	// the point (at_start), and the point where this end stops (result).
 	// Returns 0 if there is no line or arc under the point, 1 if nothing stops the prolongation, 2 if found.

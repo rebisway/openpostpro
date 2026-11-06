@@ -221,3 +221,5 @@ DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE=Débogage : convertir l'usinage en cour
 CAD_EXTEND=Prolonger
 CAD_EXTEND_SELECT=Cliquez sur une ligne ou un arc à prolonger.
 CAD_EXTEND_NONE=Aucune entité à rejoindre.
+CAD_CUT=Couper
+CAD_CUT_NONE=Rien à couper ici.

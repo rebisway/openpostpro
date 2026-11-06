@@ -24,6 +24,39 @@
 #include <polyline.h>
 #include <spline.h>
 
+Curve cad_extend::curve_of(Shape* s)
+{
+	Curve c;
+	switch (s->type())
+	{
+	case GraphicType::Line:
+		c.add(((Line*)s)->p1());
+		c.add(((Line*)s)->p2());
+		break;
+	case GraphicType::Arc:
+		c.add(((Arc*)s)->start(), ((Arc*)s)->center(), ((Arc*)s)->radius(), ((Arc*)s)->cw());
+		c.add(((Arc*)s)->stop());
+		break;
+	case GraphicType::Circle:
+		c.add(((Circle*)s)->center(), ((Circle*)s)->radius(), false);
+		break;
+	case GraphicType::Polyline:
+		for (glm::vec2 p : ((Polyline*)s)->coordinates())
+			c.add(p);
+		break;
+	case GraphicType::Ellipse:
+		for (glm::vec2 p : ((Ellipse*)s)->coordinates())
+			c.add(p);
+		break;
+	case GraphicType::Spline:
+		c = ((Spline*)s)->curve();
+		break;
+	default:
+		break;
+	}
+	return c;
+}
+
 namespace
 {
 	// the entities which stop a prolongation, as curves
@@ -38,35 +71,7 @@ namespace
 			{
 				if (s == excluded)
 					continue;
-
-				Curve c;
-				switch (s->type())
-				{
-				case GraphicType::Line:
-					c.add(((Line*)s)->p1());
-					c.add(((Line*)s)->p2());
-					break;
-				case GraphicType::Arc:
-					c.add(((Arc*)s)->start(), ((Arc*)s)->center(), ((Arc*)s)->radius(), ((Arc*)s)->cw());
-					c.add(((Arc*)s)->stop());
-					break;
-				case GraphicType::Circle:
-					c.add(((Circle*)s)->center(), ((Circle*)s)->radius(), false);
-					break;
-				case GraphicType::Polyline:
-					for (glm::vec2 p : ((Polyline*)s)->coordinates())
-						c.add(p);
-					break;
-				case GraphicType::Ellipse:
-					for (glm::vec2 p : ((Ellipse*)s)->coordinates())
-						c.add(p);
-					break;
-				case GraphicType::Spline:
-					c = ((Spline*)s)->curve();
-					break;
-				default:
-					break;
-				}
+				Curve c = cad_extend::curve_of(s);
 				if (c.size() > 1)
 					result.push_back(c);
 			}

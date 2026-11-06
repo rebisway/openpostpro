@@ -217,3 +217,5 @@ DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE=Debug: converti la lavorazione in curva
 CAD_EXTEND=Estendi
 CAD_EXTEND_SELECT=Fare clic su una linea o un arco da estendere.
 CAD_EXTEND_NONE=Nessuna entità da raggiungere.
+CAD_CUT=Taglia
+CAD_CUT_NONE=Niente da tagliare qui.

@@ -217,3 +217,5 @@ DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE=Depuración: convertir el mecanizado en
 CAD_EXTEND=Prolongar
 CAD_EXTEND_SELECT=Haga clic en una línea o un arco para prolongar.
 CAD_EXTEND_NONE=No hay ninguna entidad que alcanzar.
+CAD_CUT=Cortar
+CAD_CUT_NONE=Nada que cortar aquí.

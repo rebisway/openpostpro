@@ -217,3 +217,5 @@ DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE=Debug: convert the toolpath to a curve
 CAD_EXTEND=Extend
 CAD_EXTEND_SELECT=Click a line or an arc to extend.
 CAD_EXTEND_NONE=Nothing to extend up to.
+CAD_CUT=Cut
+CAD_CUT_NONE=Nothing to cut here.

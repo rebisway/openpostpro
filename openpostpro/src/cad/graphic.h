@@ -80,6 +80,7 @@ enum class GraphicType
 	CadSChamfer   = 306,
 	CadRChamfer   = 307,
 	CadExtend     = 308,
+	CadCut        = 309,
 	CamStartpoint = 401,
 	CamTab		  = 402
 };

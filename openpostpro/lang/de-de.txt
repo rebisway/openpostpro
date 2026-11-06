@@ -217,3 +217,5 @@ DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE=Debug: Bearbeitung in Kurve umwandeln
 CAD_EXTEND=Verlängern
 CAD_EXTEND_SELECT=Klicken Sie auf eine Linie oder einen Bogen zum Verlängern.
 CAD_EXTEND_NONE=Nichts zum Verlängern bis zu.
+CAD_CUT=Trennen
+CAD_CUT_NONE=Hier gibt es nichts zu trennen.

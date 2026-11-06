@@ -217,3 +217,5 @@ DRAWING_DEBUG_CONVERT_TOOLPATH_TO_SPLINE=Debug: bewerking omzetten naar curve
 CAD_EXTEND=Verlengen
 CAD_EXTEND_SELECT=Klik op een lijn of boog om te verlengen.
 CAD_EXTEND_NONE=Niets om tot te verlengen.
+CAD_CUT=Knippen
+CAD_CUT_NONE=Hier valt niets te knippen.

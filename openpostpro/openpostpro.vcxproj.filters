@@ -162,6 +162,9 @@
     <ClCompile Include="src\cad\extend_shape.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\cad\cut_shape.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\common\geometry.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
@@ -372,6 +375,9 @@
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="src\cad\extend_shape.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="src\cad\cut_shape.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="src\common\curve.h">

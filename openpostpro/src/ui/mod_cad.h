@@ -213,6 +213,8 @@ public:
 	void cad_origin();
 	// extend: the line or arc under the point is prolonged from its nearest end up to the nearest other entity
 	void cad_extend(glm::vec2 point);
+	// cut: the shapes under the click are cut at the clicked point (magnet applied) or at their crossing
+	void cad_cut(glm::vec2 mouse, glm::vec2 snapped);
 	int extend_find(glm::vec2 point, Shape*& target, bool& at_start, glm::vec2& result);
 	void extend_preview(glm::vec2 point);
 	void cad_symmetry();
