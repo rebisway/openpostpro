@@ -5,3 +5,7 @@ Release/
 *.user
 __pycache__/
 *.pyc
+
+# C++ test build output
+tests/cpp/obj/
+tests/cpp/*.exe

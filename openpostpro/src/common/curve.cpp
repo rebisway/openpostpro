@@ -511,45 +511,46 @@ float Curve::area()
 {
 	if (_area == -1) {
 
-		std::vector<glm::vec2> points;
+		if (empty())
+			return _area = 0;
 
 		if (size() == 1 && (*this)[0].type == SegmentType::Circle)
-			return _area = (*this)[0].radius * glm::two_pi<float>();
-
-		Segment from = front();
-		auto it = begin() + 1;
-
-		points.push_back(from.point);
-
-		while (it != end())
 		{
+			float full = glm::pi<float>() * (*this)[0].radius * (*this)[0].radius;
+			return _area = (*this)[0].cw ? -full : full;
+		}
+
+		// Exact signed area (positive counter-clockwise): shoelace on the chords,
+		// plus the circular segment between each arc and its chord.
+		double sum = 0, extra = 0;
+		// an open curve is implicitly closed back to its first point
+		size_t count = closed() ? size() - 1 : size();
+		for (size_t i = 0; i < count; i++)
+		{
+			const Segment& from = (*this)[i];
+			const glm::vec2 p = from.point, q = (i + 1 < size()) ? (*this)[i + 1].point : front().point;
+			sum += (double)p.x * q.y - (double)q.x * p.y;
+
 			if (from.type == SegmentType::Line)
-			{
-				points.push_back((*it).point);
-			}
+				continue;
+
+			double r = from.radius;
+			double theta;
+			if (from.type == SegmentType::Circle || glm::distance(p, q) < geometry::ERR_FLOAT4)
+				theta = glm::two_pi<double>();
 			else
 			{
-				auto arc = geometry::arc(from.point, from.center, (*it).point, from.cw);
-				points.insert(points.end(), arc.begin() + 1, arc.end());
+				double ap = std::atan2((double)p.y - from.center.y, (double)p.x - from.center.x);
+				double aq = std::atan2((double)q.y - from.center.y, (double)q.x - from.center.x);
+				theta = from.cw ? ap - aq : aq - ap;
+				theta = std::fmod(theta, glm::two_pi<double>());
+				if (theta < 0) theta += glm::two_pi<double>();
 			}
-			from = (*it);
-			it++;
+			double seg = 0.5 * r * r * (theta - std::sin(theta));
+			extra += from.cw ? -seg : seg;
 		}
 
-		if (front().point != back().point)
-			points.push_back(front().point);
-
-		_area = 0;
-		glm::vec2 f = points.front();
-		auto pit = points.begin() + 1;
-		while (pit != points.end())
-		{
-			_area += (f.x * (*pit).y) - ((*pit).x * f.y);
-			f = (*pit);
-			pit++;
-		}
-
-		_area /= 2;
+		_area = (float)(sum / 2 + extra);
 	}
 	return _area;
 }
