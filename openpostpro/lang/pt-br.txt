@@ -1,3 +1,4 @@
+@lang=Português (Brasil)
 LANG=Português (Brasil)
 BTN_ADD=Novo
 BTN_REMOVE=Remover

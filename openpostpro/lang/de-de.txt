@@ -1,3 +1,4 @@
+@lang=Deutsch
 LANG=Deutsch
 BTN_ADD=Neu
 BTN_REMOVE=Entfernen

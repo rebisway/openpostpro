@@ -121,6 +121,20 @@ std::map<std::string, std::string> Lang::get_lang(std::string name, std::string 
 	return result;
 }
 
+std::string Lang::language_name(std::string code)
+{
+	// read once for each language (the combo of the preferences asks for it at every frame)
+	static std::map<std::string, std::string> names;
+	auto it = names.find(code);
+	if (it == names.end())
+	{
+		auto values = get_lang(code);
+		auto name = values.find("@lang");
+		it = names.insert({ code, name == values.end() ? std::string() : name->second }).first;
+	}
+	return it->second;
+}
+
 void Lang::load(std::string name, std::string path)
 {
 	m_name = name;

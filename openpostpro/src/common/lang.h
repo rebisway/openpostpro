@@ -66,6 +66,12 @@ public:
 	static std::vector<std::string> get_langs(std::string path = "");
 
 	/// <summary>
+	/// Name of a language in that language, the "@lang" key of its file ("Français" for fr-fr), empty if the file has none
+	/// </summary>
+	/// <param name="code">Language code</param>
+	static std::string language_name(std::string code);
+
+	/// <summary>
 	/// Load selected current language
 	/// </summary>
 	/// <param name="name">Language code</param>

@@ -180,12 +180,18 @@ MessageBoxResult Config::drawUI()
 			std::string current = _ini_temp.get_string("GENERAL", "Language");
 			if (current.empty())
 				current = Lang::getName();
-			if (ImGui::BeginCombo(Lang::l("LANGUAGE"), current.c_str()))
+			// the name of the language ("@lang" key of its file) then its code: "Français (fr-fr)"
+			auto language_label = [](const std::string& code)
+			{
+				std::string name = Lang::language_name(code);
+				return name.empty() ? code : name + " (" + code + ")";
+			};
+			if (ImGui::BeginCombo(Lang::l("LANGUAGE"), language_label(current).c_str()))
 			{
 				for (const std::string& code : Lang::get_langs())
 				{
 					const bool is_selected = (code == current);
-					if (ImGui::Selectable(code.c_str(), is_selected))
+					if (ImGui::Selectable(language_label(code).c_str(), is_selected))
 						_ini_temp.set("GENERAL", "Language", code);
 					if (is_selected)
 						ImGui::SetItemDefaultFocus();

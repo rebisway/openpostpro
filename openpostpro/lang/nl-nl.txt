@@ -1,3 +1,4 @@
+@lang=Nederlands
 LANG=Nederlands
 BTN_ADD=Nieuw
 BTN_REMOVE=Verwijderen

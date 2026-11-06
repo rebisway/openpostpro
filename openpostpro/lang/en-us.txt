@@ -1,3 +1,4 @@
+@lang=English (US)
 LANG=English
 BTN_ADD=New
 BTN_REMOVE=Remove
