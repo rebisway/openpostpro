@@ -101,7 +101,8 @@ std::map<std::string, std::string> Lang::get_lang(std::string name, std::string 
 	std::ifstream input(filename);
 	for (std::string line; std::getline(input, line); ) {
 		auto index = line.find_first_of('=');
-		if (index > 0)
+		// a line without '=' (blank line, text which goes on) is not a key
+		if (index != std::string::npos && index > 0)
 		{
 			auto code = line.substr(0, index);
 			auto content = line.substr(index + 1);
