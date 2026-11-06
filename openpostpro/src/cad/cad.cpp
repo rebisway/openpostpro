@@ -19,6 +19,7 @@
 #include <line.h>
 #include <circle.h>
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <arc.h>
 #include <polyline.h>
@@ -422,6 +423,9 @@ std::vector<std::vector<glm::vec2>> cad::split(std::vector<glm::vec2> coordinate
 		}
 	}
 
+	// the cleaning can empty the list of a segment which was shared with its neighbour: it must not be split any more
+	indices.erase(std::remove_if(indices.begin(), indices.end(), [&](int i) { return intersections[i].empty(); }), indices.end());
+
 	// we now construct the new list of polylines
 	std::sort(indices.begin(), indices.end(), std::less<int>());
 	int from = 0;
@@ -579,19 +583,19 @@ std::vector < std::vector<glm::vec2>> cad::split(std::vector<glm::vec2> coordina
 	// some of the intersection points may be referenced on two neighbouring segments due to float lake of accuracy
 	// so we need to check and keep the intersection ref_point only for the closest segment
 	// we start to list neighbouring segments
-	std::vector<int*> pairs;
-	for (int i = 0; i < indices.size() - 1; i++)
+	std::vector<std::array<int, 2>> pairs;
+	for (size_t i = 0; i + 1 < indices.size(); i++)	// (indices may be empty: no unsigned underflow)
 	{
 		if (indices[i] == indices[i + 1] - 1 || indices[i] - 1 == indices[i + 1])
 		{
-			int p[2];
+			std::array<int, 2> p;
 			p[0] = indices[i];
 			p[1] = indices[i + 1];
 			pairs.push_back(p);
 		}
 	}
 	// then we look for every intersection points that could be in both indices
-	for (int* p : pairs)
+	for (std::array<int, 2>& p : pairs)
 	{
 		auto iter = intersections[p[0]].begin();
 		while(iter != intersections[p[0]].end())
@@ -618,6 +622,9 @@ std::vector < std::vector<glm::vec2>> cad::split(std::vector<glm::vec2> coordina
 	}
 	//////////////////////////////////// END OF CLEANING SECTION ////////////////////////////////////////
 
+
+	// the cleaning can empty the list of a segment which was shared with its neighbour: it must not be split any more
+	indices.erase(std::remove_if(indices.begin(), indices.end(), [&](int i) { return intersections[i].empty(); }), indices.end());
 
 	// we now construct the new list of polylines
 	std::sort(indices.begin(), indices.end(), std::less<int>());
