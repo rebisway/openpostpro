@@ -37,6 +37,7 @@
 #include <cad.h>
 #include <extend_shape.h>
 #include <cut_shape.h>
+#include <diagnostic.h>
 #include <moveTo.h>
 #include <follow.h>
 #include <offset.h>
@@ -107,6 +108,7 @@ ModCad::~ModCad()
 	delete _b_selection;
 	delete _b_magnet;
 	delete _b_extend;
+	delete _b_diag;
 	delete _b_axe;
 	delete _render;
 	delete _camera;
@@ -999,6 +1001,32 @@ void ModCad::render_frame()
 		_b_magnet->draw(GL_LINES);
 	}
 
+	if (!_diag_points.empty())
+	{
+		// a cross in a square for each problem, of a size on the screen
+		float size = 8.0f / _camera->scale();
+		std::vector<glm::vec3> vertices;
+		for (glm::vec2 p : _diag_points)
+		{
+			glm::vec3 c[4] = { { p.x - size, p.y - size, 0 }, { p.x + size, p.y - size, 0 }, { p.x + size, p.y + size, 0 }, { p.x - size, p.y + size, 0 } };
+			for (int i = 0; i < 4; i++)
+			{
+				vertices.push_back(c[i]);
+				vertices.push_back(c[(i + 1) % 4]);
+			}
+			vertices.push_back(c[0]);
+			vertices.push_back(c[2]);
+			vertices.push_back(c[1]);
+			vertices.push_back(c[3]);
+		}
+		if (_b_diag == nullptr)
+			_b_diag = _render->create_buffer(vertices);
+		else
+			_b_diag->flush(vertices);
+		_render->set_uniform("inner_color", config.decorationColor);
+		_b_diag->draw(GL_LINES);
+	}
+
 	if (_cad_creation == GraphicType::CadExtend && _extend_preview && _b_extend != nullptr)
 	{
 		_render->set_uniform("inner_color", config.decorationColor);
@@ -1706,7 +1734,16 @@ void ModCad::render_menu()
 			key_pressed(GLFW_KEY_F2, 0, GLFW_PRESS, 0);
 		}
 		ImGui::Separator();
-		if (ImGui::MenuItem(Lang::l("DRAWING_REVERSE")))
+			if (ImGui::MenuItem(Lang::l("DRAWING_CHECK")))
+			{
+				check_drawing();
+			}
+			if (!_diag_points.empty() && ImGui::MenuItem(Lang::l("DRAWING_CHECK_CLEAR")))
+			{
+				_diag_points.clear();
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem(Lang::l("DRAWING_REVERSE")))
 		{
 			if (_document->selected().size() > 0)
 			{
@@ -1760,6 +1797,10 @@ void ModCad::render_menu()
 					cad_weiler(CAD_INTERSECT);
 				}
 				ImGui::EndMenu();
+			}
+			if (ImGui::MenuItem(Lang::l("DRAWING_SELECT_CONTOUR")))
+			{
+				select_contour();
 			}
 			if (ImGui::MenuItem(Lang::l("DRAWING_CUT_AT_INTERSECTIONS")))
 			{
@@ -4163,6 +4204,39 @@ void ModCad::cam_follow()
 				}
 			}
 	}
+}
+
+void ModCad::select_contour()
+{
+	std::vector<Shape*> selection = get_selection();
+	if (selection.empty())
+		return;
+
+	std::vector<Shape*> contour = cad_diag::contour(selection, _document->layers());
+	std::vector<Graphic*> graphics(contour.begin(), contour.end());
+	_document->unselect_all();
+	_document->select(graphics);
+}
+
+void ModCad::check_drawing()
+{
+	auto issues = cad_diag::check(_document->layers());
+
+	_diag_points.clear();
+	_document->unselect_all();
+	std::vector<Graphic*> shapes;
+	for (auto& i : issues)
+	{
+		_diag_points.push_back(i.point);
+		if (std::find(shapes.begin(), shapes.end(), i.shape) == shapes.end())
+			shapes.push_back(i.shape);
+	}
+	_document->select(shapes);
+
+	if (issues.empty())
+		Logger::log(Lang::t("DRAWING_CHECK_OK"));
+	else
+		Logger::log(Lang::t("DRAWING_CHECK_RESULT") + " " + cad_diag::summary(issues, Lang::t("DRAWING_CHECK_ZERO"), Lang::t("DRAWING_CHECK_DUPLICATE"), Lang::t("DRAWING_CHECK_FREE_END")));
 }
 
 void ModCad::cam_refresh()

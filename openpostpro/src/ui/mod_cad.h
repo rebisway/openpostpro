@@ -42,6 +42,9 @@ private:
 	Buffer* _b_magnet = NULL;
 	// preview of the extend tool: the part which would be added to the line or arc under the mouse
 	Buffer* _b_extend = NULL;
+	// markers of the diagnostic of the drawing (free ends, shapes of length zero or drawn twice), drawn until they are cleared
+	Buffer* _b_diag = NULL;
+	std::vector<glm::vec2> _diag_points;
 	bool _extend_preview = false;
 	Shape* _extend_target = nullptr;
 	bool _extend_at_start = false;
@@ -249,6 +252,10 @@ public:
 	// the click would place the polyline point on the previous one
 	bool polyline_click_repeated();
 	void cam_follow();
+	// is the drawing ready for machining: free ends, shapes of length zero or drawn twice. Reported in the log, with the shapes selected and markers
+	void check_drawing();
+	// selects every shape connected to the selection (the contour it belongs to)
+	void select_contour();
 	// computes the selected toolpaths again (all of them without selection) from their referenced shapes, which may have been modified
 	void cam_refresh();
 	void cam_offset(bool interior);

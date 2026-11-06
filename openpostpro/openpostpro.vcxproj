@@ -191,6 +191,7 @@
     <ClCompile Include="src\cad\extend.cpp" />
     <ClCompile Include="src\cad\extend_shape.cpp" />
     <ClCompile Include="src\cad\cut_shape.cpp" />
+    <ClCompile Include="src\cad\diagnostic.cpp" />
     <ClCompile Include="src\cad\circle.cpp" />
     <ClCompile Include="openpostpro.cpp" />
     <ClCompile Include="src\cad\ellipse.cpp" />
@@ -292,6 +293,7 @@
     <ClInclude Include="src\cad\extend.h" />
     <ClInclude Include="src\cad\extend_shape.h" />
     <ClInclude Include="src\cad\cut_shape.h" />
+    <ClInclude Include="src\cad\diagnostic.h" />
     <ClInclude Include="src\common\version.h" />
     <ClInclude Include="src\cad\circle.h" />
     <ClInclude Include="src\cad\ellipse.h" />
