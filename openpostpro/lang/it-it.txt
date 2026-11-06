@@ -228,3 +228,5 @@ LOCKED=Bloccato
 LOCKED_NOT_DELETED=Le forme di un livello bloccato non vengono eliminate.
 CAM_TOOLPATHS_VISIBLE=Nascondi tutte le lavorazioni
 CAM_TOOLPATHS_HIDDEN=Mostra tutte le lavorazioni
+LOG_DOCK_BOTTOM=In basso
+LOG_FULL_SCREEN=Schermo intero

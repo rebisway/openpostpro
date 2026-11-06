@@ -228,3 +228,5 @@ LOCKED=Bloqueado
 LOCKED_NOT_DELETED=As formas de uma camada bloqueada não são apagadas.
 CAM_TOOLPATHS_VISIBLE=Ocultar todas as usinagens
 CAM_TOOLPATHS_HIDDEN=Mostrar todas as usinagens
+LOG_DOCK_BOTTOM=Parte inferior
+LOG_FULL_SCREEN=Tela cheia

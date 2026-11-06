@@ -748,6 +748,30 @@ void Application::render_menu()
 	ImGuiStyle& style = ImGui::GetStyle();
 	style.WindowRounding = 7;
 
+	// the button of the log window switches it between the full screen (a tab) and the panel at the bottom of the window
+	Module* log = module("MOD_LOG");
+	if (((ModLog*)log)->take_dock_toggle())
+	{
+		config.log_docked = !config.log_docked;
+		log->show(true);
+		if (config.log_docked)
+		{
+			// the log leaves the tabs: the drawing becomes the current module again
+			if (_current_module == log)
+			{
+				_current_module = _modules[0];
+				_modules[0]->selected(true);
+			}
+		}
+		else
+		{
+			// the log comes back as a tab and stays the current one (the tab which was current must not ask to be selected again)
+			_current_module->selected(false);
+			_current_module = log;
+			log->selected(true);
+		}
+	}
+
 	if (ImGui::BeginMainMenuBar())
 	{
 		_menu_height = (int)ImGui::GetWindowHeight();
@@ -1078,22 +1102,6 @@ void Application::render_menu()
 			{
 				m->show(!m->show());
 				m->selected(m->show());
-			}
-			if (ImGui::MenuItem(Lang::l("DISPLAY_LOG_DOCK"), NULL, config.log_docked))
-			{
-				config.log_docked = !config.log_docked;
-				m->show(true);
-				if (config.log_docked)
-				{
-					// the log leaves the tabs: the drawing becomes the current module again
-					if (_current_module == m)
-					{
-						_current_module = _modules[0];
-						_modules[0]->selected(true);
-					}
-				}
-				else
-					m->selected(true);
 			}
 
 			ImGui::EndMenu();

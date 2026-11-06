@@ -228,3 +228,5 @@ LOCKED=Vergrendeld
 LOCKED_NOT_DELETED=De vormen van een vergrendelde laag worden niet verwijderd.
 CAM_TOOLPATHS_VISIBLE=Alle bewerkingen verbergen
 CAM_TOOLPATHS_HIDDEN=Alle bewerkingen tonen
+LOG_DOCK_BOTTOM=Onderaan
+LOG_FULL_SCREEN=Volledig scherm

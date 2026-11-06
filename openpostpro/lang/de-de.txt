@@ -228,3 +228,5 @@ LOCKED=Gesperrt
 LOCKED_NOT_DELETED=Die Formen einer gesperrten Ebene werden nicht gelöscht.
 CAM_TOOLPATHS_VISIBLE=Alle Bearbeitungen ausblenden
 CAM_TOOLPATHS_HIDDEN=Alle Bearbeitungen einblenden
+LOG_DOCK_BOTTOM=Unten
+LOG_FULL_SCREEN=Vollbild

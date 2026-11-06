@@ -29,6 +29,7 @@ private:
 	ImVector<int> _lineOffsets;
 	bool _scrollToBottom = false;
 	bool _copy = false;
+	bool _dock_toggle = false;	// the button of the window was clicked: the application switches between the tab and the bottom panel
 	std::filesystem::file_time_type _log_file_time;
 
 	double _last_modify;
@@ -38,6 +39,8 @@ private:
 
 public:
 	bool docked() override;
+	// true once after the button which switches between full screen and bottom of the screen was clicked
+	bool take_dock_toggle() { bool value = _dock_toggle; _dock_toggle = false; return value; }
 	void render_dock(float y, float width, float height);
 
 	using Module::show;		// the override of show(bool) hides the getter

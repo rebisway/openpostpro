@@ -228,3 +228,5 @@ LOCKED=Locked
 LOCKED_NOT_DELETED=The shapes on a locked layer are not deleted.
 CAM_TOOLPATHS_VISIBLE=Hide all the toolpaths
 CAM_TOOLPATHS_HIDDEN=Show all the toolpaths
+LOG_DOCK_BOTTOM=Bottom of the screen
+LOG_FULL_SCREEN=Full screen

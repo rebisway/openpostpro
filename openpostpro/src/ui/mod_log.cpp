@@ -84,8 +84,18 @@ void ModLog::draw(bool dock)
 		_last_modify = 0;
 	}
 
+	// top right: a chevron which puts the log at the bottom of the screen (from the full screen, pointing down) or back to full
+	// screen (from the bottom, pointing up). The text is the tooltip
+	const char* toggle = Lang::l(dock ? "LOG_FULL_SCREEN" : "LOG_DOCK_BOTTOM");
+	float toggle_width = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x;
+
 	ImGui::SameLine();
-	_filter.Draw(Lang::l("FILTER"), dock ? -110.0f : -60.0f);
+	_filter.Draw(Lang::l("FILTER"), (dock ? -110.0f : -60.0f) - toggle_width);
+	ImGui::SameLine();
+	if (ImGui::ArrowButton("##LOG_DOCK_TOGGLE", dock ? ImGuiDir_Up : ImGuiDir_Down))
+		_dock_toggle = true;
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("%s", toggle);
 	if (dock)
 	{
 		ImGui::SameLine();
