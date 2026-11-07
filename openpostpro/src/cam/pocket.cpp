@@ -23,6 +23,10 @@
 #include <chrono>
 #include <limits>
 
+// Above this number of segments, a curve is not merged any more: touching offsets can make the curves grow a lot with tiny segments.
+// The outline of a text offset by the tool radius easily gets a few thousands of segments, and it must be merged with the others.
+static const int MAX_MERGE_SEGMENTS = 10000;
+
 void Pocket::mode(PocketMode value)
 {
 	if (value != _mode)
@@ -495,7 +499,7 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 						std::vector<Curve> merged_curves;
 
 						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
-						bool too_big = (*it1).size() > 1500 || (*it2).size() > 1500;
+						bool too_big = (*it1).size() > MAX_MERGE_SEGMENTS || (*it2).size() > MAX_MERGE_SEGMENTS;
 
 						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
 						// there is nothing left to machine, and the holes must not keep growing outside of the material
@@ -811,7 +815,7 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 						std::vector<Curve> merged_curves;
 
 						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
-						bool too_big = (*it1).size() > 1500 || (*it2).size() > 1500;
+						bool too_big = (*it1).size() > MAX_MERGE_SEGMENTS || (*it2).size() > MAX_MERGE_SEGMENTS;
 
 						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
 						// there is nothing left to machine, and the holes must not keep growing outside of the material
