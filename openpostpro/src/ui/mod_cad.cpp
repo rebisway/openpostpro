@@ -1798,10 +1798,6 @@ void ModCad::render_menu()
 				}
 				ImGui::EndMenu();
 			}
-			if (ImGui::MenuItem(Lang::l("DRAWING_SELECT_CONTOUR")))
-			{
-				select_contour();
-			}
 			if (ImGui::MenuItem(Lang::l("DRAWING_CUT_AT_INTERSECTIONS")))
 			{
 				cut_at_intersections();

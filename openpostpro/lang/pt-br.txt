@@ -246,4 +246,4 @@ DRAWING_CHECK_RESULT=Problemas encontrados:
 DRAWING_CHECK_ZERO=comprimento zero
 DRAWING_CHECK_DUPLICATE=duplicados
 DRAWING_CHECK_FREE_END=extremidades livres
-DRAWING_SELECT_CONTOUR=Selecionar o contorno (elementos conectados)
+EDIT_SELECT_CONTOUR=Contorno

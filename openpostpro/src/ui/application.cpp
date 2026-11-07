@@ -885,7 +885,7 @@ void Application::render_menu()
 						ImGui::EndMenu();
 					}
 				}
-				if (_current_module->code() == "MOD_CAD" && _document->selected().size() > 0 && ImGui::MenuItem(Lang::l("DRAWING_SELECT_CONTOUR"), NULL, false))
+				if (_current_module->code() == "MOD_CAD" && _document->selected().size() > 0 && ImGui::MenuItem(Lang::l("EDIT_SELECT_CONTOUR"), NULL, false))
 				{
 					((ModCad*)_current_module)->select_contour();
 				}

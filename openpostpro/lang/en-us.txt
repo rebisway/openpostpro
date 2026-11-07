@@ -246,4 +246,4 @@ DRAWING_CHECK_RESULT=Problems found:
 DRAWING_CHECK_ZERO=zero length
 DRAWING_CHECK_DUPLICATE=duplicates
 DRAWING_CHECK_FREE_END=free ends
-DRAWING_SELECT_CONTOUR=Select the contour (connected shapes)
+EDIT_SELECT_CONTOUR=Contour

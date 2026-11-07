@@ -246,4 +246,4 @@ DRAWING_CHECK_RESULT=Gevonden problemen:
 DRAWING_CHECK_ZERO=lengte nul
 DRAWING_CHECK_DUPLICATE=dubbele
 DRAWING_CHECK_FREE_END=vrije uiteinden
-DRAWING_SELECT_CONTOUR=Contour selecteren (verbonden elementen)
+EDIT_SELECT_CONTOUR=Contour
