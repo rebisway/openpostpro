@@ -313,7 +313,38 @@ void ModCad::document_loaded()
 		}
 	}
 	_document->unselect_all();
-	_camera->center();
+
+	if (_document->has_view())
+	{
+		// the view saved with the document: applied now if the size of the drawing area is known, otherwise when it is
+		_view_pending = true;
+		_initialized = true;
+		if (_camera->width() > 0)
+			apply_view();
+	}
+	else if (_document->view_scale() != 1.0f)
+	{
+		// a file written before the view was saved: the zoom is kept as it is
+		_initialized = true;
+		_camera->set_size(_camera->width(), _camera->height());
+		Shape::precision = PRECISION / _camera->scale();
+	}
+	else
+		_camera->center();
+}
+
+void ModCad::apply_view()
+{
+	_view_pending = false;
+	_camera->view(_document->view_scale(), _document->view_zoom(), _document->view_middle());
+
+	// everything which depends on the camera follows: the precision of the mouse detection, the axes, the grid, the cursor and
+	// the position of the mouse
+	Shape::precision = PRECISION / _camera->scale();
+	_last_mouse_pos = _camera->getPosition(_camera->xpos(), _camera->ypos());
+	updateAxe();
+	updateGrid();
+	updateCursor();
 }
 
 void ModCad::display(float left, float top, float width, float height)
@@ -325,7 +356,10 @@ void ModCad::display(float left, float top, float width, float height)
 	_render->set_bottom((std::max)(0.0f, _window->height() - top - height));
 	_render->set_size(width, height);
 	_camera->set_size(width, height);
-	
+
+	if (_view_pending)
+		apply_view();
+
 	if ( !_initialized )
 	{ 
 		_initialized = true;

@@ -50,9 +50,19 @@ private:
 	bool _show_toolpaths = true;
 
 	float _scale = 1.0f;					// last camera scale factor
+	// the view read from the file: the zoom steps, and the point of the drawing which is at the middle of the screen (the screen
+	// can have another size than the one of the person who saved the file)
+	bool _has_view = false;
+	int _view_zoom = 0;
+	glm::vec2 _view_middle = glm::vec2(0.0f);
 	Unit _unit = Unit::Millimeter;			// unit of the coordinates
 
 public:
+	bool has_view() { return _has_view; }
+	int view_zoom() { return _view_zoom; }
+	glm::vec2 view_middle() { return _view_middle; }
+	float view_scale() { return _scale; }
+
 	Document();
 	~Document();
 

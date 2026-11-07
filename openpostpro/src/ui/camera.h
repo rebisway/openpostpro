@@ -85,6 +85,10 @@ public:
 	virtual void set_size(float width, float height) { _width = width; _height = height; }
 	virtual void center() {}
 
+	// the view as it is saved in a document: the zoom steps, and the point of the drawing which is at the middle of the screen
+	virtual int zoom_step() { return 0; }
+	virtual void view(float scale, int zoom_step, glm::vec2 middle) {}
+
 	virtual glm::vec2 getPosition(float x, float y) { return glm::vec2(); }
 	glm::vec2 getPosition(glm::vec2 mouse) { return getPosition(mouse.x, mouse.y); }
 };

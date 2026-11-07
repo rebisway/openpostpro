@@ -32,6 +32,8 @@ public:
 
 	void set_size(float width, float height) override;
 	void center() override;
+	int zoom_step() override { return _zoom_inc; }
+	void view(float scale, int zoom_step, glm::vec2 middle) override;
 
 	void mouseMove(float xpos, float ypos) override;
 	void mouseWheel(float xdelta, float ydelta) override;

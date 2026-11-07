@@ -60,6 +60,9 @@ private:
 	bool _left_down = false;
 	bool _right_down = false;
 	bool _initialized = false;
+	// the view of the document which has just been read, applied when the size of the drawing area is known
+	bool _view_pending = false;
+	void apply_view();
 	std::map<std::string, Texture*> _textures;
 
 	MessageBox _message_box;

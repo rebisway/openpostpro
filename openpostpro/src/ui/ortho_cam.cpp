@@ -53,6 +53,19 @@ void OrthoCamera::center()
 }
 
 /// <summary>
+/// Set the zoom and the point of the drawing which is at the middle of the screen (the size of the screen must be known)
+/// </summary>
+void OrthoCamera::view(float scale, int zoom_step, glm::vec2 middle)
+{
+	_scale = scale;
+	_zoom_inc = zoom_step;
+	_xcenter = _width / 2.0f - middle.x * _scale;
+	_ycenter = _height / 2.0f + middle.y * _scale;
+
+	compute();
+}
+
+/// <summary>
 /// Compute modelview matrix
 /// </summary>
 void OrthoCamera::compute()

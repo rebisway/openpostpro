@@ -518,7 +518,15 @@ std::string Document::write(float version)
 		std::to_string(_render->camera()->znear()) + ";" +
 		std::to_string(_render->camera()->zfar()) + ";" +
 		std::to_string(_render->camera()->xcenter()) + ";" +
-		std::to_string(_render->camera()->ycenter()) + '\n';
+		std::to_string(_render->camera()->ycenter());
+
+	// the zoom steps and the point at the middle of the screen: the view does not depend on the size of the screen
+	{
+		Camera* c = _render->camera();
+		glm::vec2 middle = c->getPosition(c->width() / 2.0f, c->height() / 2.0f);
+		buffer += ";" + std::to_string(c->zoom_step()) + ";" + stringex::to_string(middle.x) + ";" + stringex::to_string(middle.y);
+	}
+	buffer += '\n';
 
 	buffer += "{LAYERS}\n";
 
@@ -563,6 +571,7 @@ void Document::read(std::string value)
 
 	// documents saved before the unit existed are in millimeters
 	_unit = Unit::Millimeter;
+	_has_view = false;
 
 	auto data = stringex::split(value, '\n');
 	float version = 0.0f;
@@ -606,6 +615,14 @@ void Document::read(std::string value)
 					_render->camera()->zfar(std::stof(values[4]));
 					_render->camera()->xcenter(std::stof(values[5]));
 					_render->camera()->ycenter(std::stof(values[6]));
+					_scale = std::stof(values[2]);
+					// the files written before the view was saved have no more than the values above
+					if (values.size() > 9)
+					{
+						_has_view = true;
+						_view_zoom = std::stoi(values[7]);
+						_view_middle = glm::vec2(std::stof(values[8]), std::stof(values[9]));
+					}
 				}
 				break;
 			case GraphicType::Layer:
