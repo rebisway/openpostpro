@@ -1326,10 +1326,11 @@ void ModCad::render_GUI()
 
 	// icon shortcuts
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize;
-	ImGui::SetNextWindowPos(ImVec2(_width - 40.0f, 60.0f));
-	ImGui::SetNextWindowSize(ImVec2(38.0f, _height));
+	ImGui::SetNextWindowPos(ImVec2(_width - 68.0f, 60.0f));
+	ImGui::SetNextWindowSize(ImVec2(66.0f, _height));
 	ImGui::Begin("###SHORTCUTS", 0, window_flags);
-	
+	_shortcut_column = 0;
+
 	if (set_shortcut("CAD_POINT", ImVec2(20, 20)))
 	{
 		reset_display_boxes();
@@ -1398,6 +1399,7 @@ void ModCad::render_GUI()
 		_cad_creation = GraphicType::Text;
 	}
 
+	_shortcut_column = 0;
 	ImGui::NewLine();
 	ImGui::Separator();
 	ImGui::NewLine();
@@ -1503,6 +1505,7 @@ void ModCad::render_GUI()
 		_cad_creation = GraphicType::CadCut;
 	}
 
+	_shortcut_column = 0;
 	ImGui::NewLine();
 	ImGui::Separator();
 	ImGui::NewLine();
@@ -2135,6 +2138,10 @@ bool ModCad::set_shortcut(std::string code, ImVec2 size, bool active)
 	Texture* t = _textures[code];
 	if (t != NULL)
 	{
+		// the icons are in two columns: the second one stays on the line of the previous icon
+		if (_shortcut_column == 1)
+			ImGui::SameLine();
+		_shortcut_column ^= 1;
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, 1 });
 		ImVec4 background = active ? ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive) : ImVec4(0, 0, 0, 1);
 		bool click = ImGui::ImageButton(code.c_str(), t->id(), size, ImVec2(0, 0), ImVec2(1.0f, 1.0f), background);

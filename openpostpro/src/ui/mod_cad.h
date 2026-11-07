@@ -98,6 +98,7 @@ private:
 	// ui control variables
 	bool _display_poly_box = false;
 	ImVec2 _btn_pos = ImVec2(0, 0);
+	int _shortcut_column = 0; // column (0 or 1) of the next icon in the right toolbar
 	ImVec2 _last_size = ImVec2(0, 0);
 	bool _display_arc_box = false;
 	bool _display_chamfer_box = false;
