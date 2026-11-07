@@ -848,6 +848,9 @@ std::vector<Shape*> cad::chamfer(std::vector<Shape*> shapes, float radius)
 	{
 		Shape* clone = c->clone();
 		clone->id(c->id());
+		// the shortened shape is read back into the original one: it must keep its name and its layer
+		clone->name(c->name());
+		clone->parent(c->parent());
 		clones.push_back(clone);
 	}
 
@@ -917,6 +920,9 @@ std::vector<Shape*> cad::fillet(std::vector<Shape*> shapes, float radius)
 	{
 		Shape* clone = c->clone();
 		clone->id(c->id());
+		// the shortened shape is read back into the original one: it must keep its name and its layer
+		clone->name(c->name());
+		clone->parent(c->parent());
 		clones.push_back(clone);
 	}
 
