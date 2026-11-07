@@ -63,6 +63,7 @@ void ModOutput::show(bool value)
 void ModOutput::document_loaded()
 {
 	_last_modify = 0;
+	_output_file_time = std::filesystem::file_time_type::min();	// the output of the new document is read even if it is older than the previous one
 }
 
 void ModOutput::undo()

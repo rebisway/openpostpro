@@ -40,7 +40,6 @@
 
 Document::Document()
 {
-	_output = "C:\\dev\\c++\\openpostpro\\sample\\gcode.txt";
 }
 
 Document::~Document()
