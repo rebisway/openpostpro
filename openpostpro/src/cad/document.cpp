@@ -206,7 +206,17 @@ void Document::remove_layer(Layer* value)
 	if (it != _layers.end())
 	{
 		(*it)->selected(false);
+		bool current = _current_layer == *it;
+		// the layer which takes the place: the previous one, or the next one if it was the first
+		size_t index = it - _layers.begin();
 		_layers.erase(it);
+		if (current)
+			{
+			_current_layer = _layers.empty() ? nullptr : _layers[index > 0 ? index - 1 : 0];
+			// a document always has a layer
+			if (_current_layer == nullptr)
+				layer();
+		}
 	}
 }
 
@@ -221,7 +231,11 @@ void Document::remove_group(Group* value)
 	if (it != _groups.end())
 	{
 		(*it)->selected(false);
+		bool current = _current_group == *it;
+		size_t index = it - _groups.begin();
 		_groups.erase(it);
+		if (current)
+			_current_group = _groups.empty() ? nullptr : _groups[index > 0 ? index - 1 : 0];
 	}
 }
 
