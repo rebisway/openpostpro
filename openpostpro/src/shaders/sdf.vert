@@ -15,8 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#version 300 es
-precision highp float;
+#version 330 core
 
 // Input vertex data, different for all executions of this shader.
 layout(location = 0) in vec2 in_vertex;

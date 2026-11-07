@@ -22,6 +22,7 @@
 #include <environment.h>
 #include <file.h>
 #include <logger.h>
+#include <stdexcept>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
@@ -96,8 +97,8 @@ void OpenGlRenderer::set_size(float width, float height)
 
 void OpenGlRenderer::clear(float r, float g, float b, float a)
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glClearColor(r, g, b, a);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 bool OpenGlRenderer::blend() 
@@ -122,6 +123,9 @@ void OpenGlRenderer::load_program(std::string name, std::string directory)
 	// fragment shadeer has '.frag' extension
 	std::filesystem::path path(environment::application_path());
 	path /= "shaders";
+	// the folder given by the caller (the default one is the shaders folder next to the executable)
+	if (!directory.empty())
+		path = directory;
 
 	if (std::filesystem::exists(path))
 	{
@@ -186,7 +190,7 @@ void OpenGlRenderer::load_program(std::string name, std::string directory)
 
 		// check for errors
 		int result = 1;
-		glGetProgramiv(program, GL_COMPILE_STATUS, &result);
+		glGetProgramiv(program, GL_LINK_STATUS, &result);
 		if (result == GL_FALSE)
 		{
 			GLint maxLength = GL_INFO_LOG_LENGTH;
@@ -237,7 +241,7 @@ void OpenGlRenderer::set_uniform(std::string name, float value)
 
 void OpenGlRenderer::set_uniform(std::string name, double value)
 {
-	glUniform1d(get_uniform_location(name), value);
+	glUniform1f(get_uniform_location(name), (float)value);
 }
 
 void OpenGlRenderer::set_uniform(std::string name, glm::vec2 value)
@@ -276,9 +280,9 @@ float OpenGlRenderer::get_uniform_float(std::string name)
 
 double OpenGlRenderer::get_uniform_double(std::string name)
 {
-	double d = 0;
-	glGetUniformdv(_current_program.id, get_uniform_location(name), &d);
-	return d;
+	float f = 0;
+	glGetUniformfv(_current_program.id, get_uniform_location(name), &f);
+	return f;
 }
 
 glm::vec2 OpenGlRenderer::get_uniform_vec2(std::string name)
@@ -451,7 +455,7 @@ void GlBuffer::create(std::vector<glm::vec3> vertices, std::vector<glm::vec4> co
 
 	if (normales.size() > 0)
 	{
-		glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, (void*)(vertices_len + colors_len));
+		glVertexAttribPointer(2, 3, GL_FLOAT, false, 0, (void*)(vertices_len + colors_len));
 		glEnableVertexAttribArray(2);
 	}
 
@@ -528,7 +532,7 @@ void GlBuffer::release()
 void GlBuffer::update(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normales, int usage) 
 {
 	if (vertices.size() > _count)
-		throw std::exception("ERROR - Buffer is too small for vertices");
+		throw std::runtime_error("ERROR - Buffer is too small for vertices");
 
 	size_t vertices_len = _count * glm::vec3::length() * sizeof(float); // taille de vertices en octets
 	size_t normales_len = normales.size() * glm::vec3::length() * sizeof(float); // taille de vertices en octets
@@ -550,7 +554,7 @@ void GlBuffer::update(std::vector<glm::vec3> vertices, std::vector<glm::vec3> no
 void GlBuffer::update(std::vector<glm::vec3> vertices, std::vector<glm::vec4> colors, std::vector<glm::vec3> normales, int usage) 
 {
 	if (vertices.size() > _count)
-		throw std::exception("ERROR - Buffer is too small for vertices");
+		throw std::runtime_error("ERROR - Buffer is too small for vertices");
 
 	size_t vertices_len = _count * glm::vec3::length() * sizeof(float); // taille de vertices en octets
 	size_t colors_len = colors.size() * glm::vec4::length() * sizeof(float); // taille de vertices en octets
@@ -574,7 +578,7 @@ void GlBuffer::update(std::vector<glm::vec3> vertices, std::vector<glm::vec4> co
 void GlBuffer::update(std::vector<glm::vec3> vertices, std::vector<glm::vec2> textures, std::vector<glm::vec3> normales, int usage) 
 {
 	if (vertices.size() > _count)
-		throw std::exception("ERROR - Buffer is too small for vertices");
+		throw std::runtime_error("ERROR - Buffer is too small for vertices");
 
 	size_t vertices_len = _count * glm::vec3::length() * sizeof(float); // taille de vertices en octets
 	size_t textures_len = textures.size() * glm::vec2::length() * sizeof(float); // taille de vertices en octets
@@ -706,9 +710,18 @@ void GlBuffer::draw(int primitive, int first, int count)
 
 void GlBuffer::draw(int primitive, int count, int* indice)
 {
+	// the indices are few: a temporary element buffer
+	GLuint ebo = 0;
+	glGenBuffers(1, &ebo);
+
 	glBindVertexArray(_vao_id);
-	glDrawElements(primitive, count, GL_UNSIGNED_INT, (void*)indice);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)count * sizeof(unsigned int), indice, GL_STREAM_DRAW);
+	glDrawElements(primitive, count, GL_UNSIGNED_INT, (void*)0);
 	glBindVertexArray(0);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glDeleteBuffers(1, &ebo);
 }
 
 

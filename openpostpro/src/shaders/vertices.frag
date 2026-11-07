@@ -15,8 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#version 330
-//precision highp float;
+#version 330 core
 
 uniform vec4 inner_color;
 uniform int  use_aa;
