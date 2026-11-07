@@ -25,6 +25,7 @@
 #include <script.h>
 #include <filesystem>
 #include <fstream>
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -511,7 +512,7 @@ int main()
 		std::filesystem::create_directories(temp);
 		{
 			std::ofstream f(temp / "failing.py");
-			f << "class Failing:\n"
+			f << "class Translator:\n"
 				 "    def start(self, options):\n"
 				 "        return {'unit': 'inch'}\n"
 				 "    def next(self, line):\n"
@@ -523,7 +524,7 @@ int main()
 				 "    def close(self):\n"
 				 "        pass\n";
 			std::ofstream g(temp / "refusing.py");
-			g << "class Refusing:\n"
+			g << "class Translator:\n"
 				 "    def start(self, options):\n"
 				 "        raise RuntimeError('no machine')\n"
 				 "    def next(self, line):\n"
@@ -531,7 +532,20 @@ int main()
 				 "    def close(self):\n"
 				 "        pass\n";
 		}
+		{
+			// a library and a module with another class are not translators
+			std::ofstream l(temp / "library.py");
+			l << "def helper():\n    return 1\n";
+			std::ofstream o(temp / "other.py");
+			o << "class Other:\n    def next(self, line):\n        return []\n";
+		}
 		Script::add_module_path(temp.string());
+
+		std::vector<std::string> found = PythonTranslator::list(temp.string());
+		CHECK(found.size() == 2 && found[0] == "failing" && found[1] == "refusing", "the translators of a folder are the modules which define a class Translator");
+		std::vector<std::string> delivered = PythonTranslator::list(simulator.string());
+		CHECK(std::find(delivered.begin(), delivered.end(), "gcode") != delivered.end(), "the generic G-code translator is delivered");
+		CHECK(PythonTranslator::list((temp / "nothing").string()).empty(), "a folder which does not exist has no translator");
 
 		// from a program to the material
 		PythonTranslator gcode("gcode");
@@ -604,6 +618,27 @@ int main()
 		PythonTranslator missing("no_such_translator");
 		SimLoader l4;
 		CHECK(!l4.begin(&missing, &p3, "x\n") && !l4.error().empty(), "a missing module is an error");
+		PythonTranslator other("other");
+		SimLoader l5;
+		CHECK(!l5.begin(&other, &p3, "x\n") && l5.error().find("Translator") != std::string::npos, "a module without the class Translator says it");
+
+		// the encoding of a line: UTF-8 is kept, an 8 bits text (Windows-1252, Latin-1) is converted
+		CHECK(SimTranslator::to_utf8("G1 X1") == "G1 X1", "ASCII is not changed");
+		CHECK(SimTranslator::to_utf8("(caf\xC3\xA9)") == "(caf\xC3\xA9)", "valid UTF-8 is not changed");
+		CHECK(SimTranslator::to_utf8("(caf\xE9)") == "(caf\xC3\xA9)", "a text in Latin-1 becomes UTF-8");
+		CHECK(SimTranslator::to_utf8("(\xC3)") == "(\xC3\x83)", "a lone byte is not a UTF-8 sequence");
+		PythonTranslator accents("gcode");
+		SimProgram p6;
+		SimLoader l6;
+		l6.begin(&accents, &p6, "G21\n(caf\xE9 \xE0 la carte)\n(MSG, \xE9t\xE9)\nG1 X1 F100\n");
+		while (!l6.step(1.0)) {}
+		p6.analyze(settings);
+		CHECK(p6.stats().errors == 0 && p6.size() == 2, "a program in Windows-1252 is translated without error");
+		bool accents_right = false;
+		for (const SimCommand& c : p6.commands())
+			if (c.type == SimCommandType::Message && c.text == "\xC3\xA9t\xC3\xA9")
+				accents_right = true;
+		CHECK(accents_right, "and the accents of a message are right");
 
 		std::filesystem::remove_all(temp);
 		Script::finalize_python();

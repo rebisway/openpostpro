@@ -15,7 +15,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'openpostpro', 'simulator'))
-from gcode import Gcode  # noqa: E402
+from gcode import Translator  # noqa: E402
 
 failed = 0
 run = 0
@@ -34,7 +34,7 @@ def close(a, b, tolerance=1e-6):
 
 
 def translate(lines, options=None):
-    t = Gcode()
+    t = Translator()
     t.start(options or {})
     result = []
     for line in lines.split('\n'):
@@ -137,7 +137,7 @@ check(len([m for m in c if m['cmd'] == 'message' and 'G41' in m['text']]) == 1, 
 check(len([m for m in c if m['cmd'] == 'message' and 'M99' in m['text']]) == 1, 'an unknown M code, once')
 c = translate('G1 X1')
 check(any(m['cmd'] == 'message' and 'feed' in m['text'] for m in c) and c[-1]['f'] == 1.0, 'a feed move with no F is reported')
-t = Gcode()
+t = Translator()
 t.start({})
 check(isinstance(t.start({'a': 1}), dict) and t.start({})['unit'] == 'mm', 'start returns the information')
 t.next('G1 X1 F10')
@@ -162,6 +162,21 @@ c = translate(program)
 check(kinds(c) == ['tool', 'spindle', 'rapid', 'rapid', 'linear', 'linear', 'arc', 'linear', 'rapid', 'spindle', 'stop'], 'the commands of the program: %s' % kinds(c))
 check(c[6]['cmd'] == 'arc' and close(c[6]['cx'], 20) and close(c[6]['cy'], 20), 'the arc of the program')
 check(close(math.hypot(c[6]['x'] - c[6]['cx'], c[6]['y'] - c[6]['cy']), math.hypot(20 - c[6]['cx'], 10 - c[6]['cy'])), 'the arc has the same radius at its start and its end')
+
+print('the example translator of the guide (tests/sim/points_translator.py)')
+import importlib.util
+spec = importlib.util.spec_from_file_location('points_translator', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sim', 'points_translator.py'))
+points = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(points)
+example = points.Translator()
+check(example.start({})['unit'] == 'mm', 'the example gives the unit')
+rows = [example.next(l) for l in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sim', 'points.txt')).read().splitlines()]
+commands = [c for row in rows for c in row]
+check(commands[0]['cmd'] == 'rapid' and commands[0]['z'] == 5, 'the first point is a rapid move')
+check(commands[1]['cmd'] == 'linear' and commands[1]['f'] == 200 and commands[2]['f'] == 600, 'the feed of a point, and the default one')
+check([c['level'] for c in commands if c['cmd'] == 'message'] == ['error', 'warning'], 'a bad line is an error, a short one a warning')
+check(len([c for c in commands if c['cmd'] != 'message']) == 8, 'the other points are moves')
+example.close()
 
 print('%d checks, %d failed' % (run, failed))
 sys.exit(1 if failed else 0)

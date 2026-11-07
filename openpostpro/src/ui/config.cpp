@@ -46,6 +46,7 @@ void Config::read()
 
 	python_path = _ini.get_string(_section, "PythonPath", "");
 	language = _ini.get_string(_section, "Language", "");
+	simulation_translator = _ini.get_string("SIMULATION", "Translator", "gcode");
 	default_unit = _ini.get_int(_section, "Unit", 0);
 
 	anchorFillColor = geometry::from_string(_ini.get_string("COLOR", "AnchorFill", "(1.0;1.0;1.0;0.5)"));
@@ -85,6 +86,7 @@ void Config::write()
 	_ini.set(_section, "DisplayOutput", display_output);
 	_ini.set(_section, "PythonPath", python_path);
 	_ini.set(_section, "Language", language);
+	_ini.set("SIMULATION", "Translator", simulation_translator);
 	_ini.set(_section, "Unit", default_unit);
 
 	_ini.set("COLOR", "AnchorFill", geometry::to_string(anchorFillColor));

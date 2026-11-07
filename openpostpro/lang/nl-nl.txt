@@ -299,3 +299,5 @@ SIM_STATE_FINISHED=klaar
 SIM_HELD=gestopt door het programma: druk op Afspelen
 SIM_ERR_NO_OUTPUT=Simulatie: geen uitvoerbestand, voer eerst de postprocessor uit
 POST_SIMULATE=Uitvoeren en simuleren
+SIM_TRANSLATOR=Vertaler
+SIM_OPEN_FOLDER=Map van de vertalers openen

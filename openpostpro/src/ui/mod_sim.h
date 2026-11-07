@@ -46,6 +46,9 @@ private:
 	std::vector<int> _line_level;				// for each line: -1 nothing, 0 information, 1 warning, 2 error
 	std::string _name;							// the name of what is simulated
 	std::string _translator_name = "gcode";
+	std::vector<std::string> _translators;		// the translators of the folder, refreshed when the list is opened
+	std::string _text;							// the text which is simulated: translated again when the translator changes
+	bool _text_from_document = false;
 	bool _ready = false;						// the program is translated and the block is made
 	bool _block_dirty = false;					// the settings changed: the block has to be made again
 
@@ -80,6 +83,8 @@ private:
 	void finish_loading();
 	void build_block();
 	void apply_tool();
+	std::string translators_folder();
+	void select_translator(const std::string& name);
 	void update(double seconds);
 	void sync_view();
 	std::string state_text();

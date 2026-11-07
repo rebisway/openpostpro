@@ -26,6 +26,7 @@
 #include "sim_types.h"
 #include "script.h"
 #include <map>
+#include <vector>
 
 class SimTranslator
 {
@@ -42,9 +43,13 @@ public:
 
 	// the unit of the program as the translator says it ("mm" or "inch"), empty if it does not
 	virtual std::string unit() const { return ""; }
+
+	// A line of a program as UTF-8: a line which already is valid UTF-8 is not changed, any other one is taken as Windows-1252 or
+	// Latin-1 (the programs of many CAM softwares and machines are in these encodings)
+	static std::string to_utf8(const std::string& text);
 };
 
-// A translator written in Python: the module has a class with its name (first letter in upper case), as the post-processors have.
+// A translator written in Python: the module defines a class named Translator (as a post-processor defines a class named Postpro).
 // The python interpreter has to be initialized (Script::initialize_python) and the folder of the module in its path.
 class PythonTranslator : public SimTranslator, private Script
 {
@@ -64,6 +69,10 @@ public:
 	std::string unit() const override { return _unit; }
 
 	std::string name() const { return _name; }
+
+	// The translators of a folder: the modules (without .py) which define a class Translator with a method next. A module without
+	// them is a library which other files use. Sorted by name.
+	static std::vector<std::string> list(const std::string& folder);
 };
 
 #endif

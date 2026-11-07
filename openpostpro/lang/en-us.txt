@@ -299,3 +299,5 @@ SIM_STATE_FINISHED=finished
 SIM_HELD=stopped by the program: press Play
 SIM_ERR_NO_OUTPUT=Simulation: no output file, run the post-processor first
 POST_SIMULATE=Run and simulate
+SIM_TRANSLATOR=Translator
+SIM_OPEN_FOLDER=Open the folder of the translators

@@ -299,3 +299,5 @@ SIM_STATE_FINISHED=concluído
 SIM_HELD=parada do programa: pressione Reproduzir
 SIM_ERR_NO_OUTPUT=Simulação: nenhum arquivo de saída, execute primeiro o pós-processador
 POST_SIMULATE=Executar e simular
+SIM_TRANSLATOR=Tradutor
+SIM_OPEN_FOLDER=Abrir a pasta dos tradutores

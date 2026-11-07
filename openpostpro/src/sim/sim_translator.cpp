@@ -18,6 +18,9 @@
 #include "sim_translator.h"
 #include <python_api.h>
 #include <logger.h>
+#include <file.h>
+#include <filesystem>
+#include <algorithm>
 
 namespace
 {
@@ -136,6 +139,39 @@ namespace
 	}
 }
 
+std::string SimTranslator::to_utf8(const std::string& text)
+{
+	// is the text valid UTF-8?
+	size_t i = 0;
+	bool valid = true;
+	while (i < text.size() && valid)
+	{
+		unsigned char c = (unsigned char)text[i];
+		int extra = c < 0x80 ? 0 : (c >= 0xC2 && c < 0xE0 ? 1 : (c >= 0xE0 && c < 0xF0 ? 2 : (c >= 0xF0 && c < 0xF5 ? 3 : -1)));
+		if (extra < 0 || i + extra >= text.size() + (extra == 0 ? 1 : 0))
+			valid = extra == 0;
+		for (int k = 1; valid && k <= extra; k++)
+			valid = i + k < text.size() && ((unsigned char)text[i + k] & 0xC0) == 0x80;
+		i += extra + 1;
+	}
+	if (valid)
+		return text;
+
+	// not UTF-8: the file is in an 8 bits encoding (Windows-1252 or Latin-1 for the letters of the Western languages)
+	std::string result;
+	for (unsigned char c : text)
+	{
+		if (c < 0x80)
+			result += (char)c;
+		else
+		{
+			result += (char)(0xC0 | (c >> 6));
+			result += (char)(0x80 | (c & 0x3F));
+		}
+	}
+	return result;
+}
+
 PythonTranslator::PythonTranslator(const std::string& module)
 {
 	_name = module;
@@ -153,10 +189,19 @@ bool PythonTranslator::start(const std::map<std::string, double>& options, std::
 	// the module is read again, so a translator edited since the last time is the one which is used
 	Script::reload_module(_name);
 	_module = _name;
-	Script::initialize(_name, "");
+
+	// the class Translator of the module
+	_py_core_module = PyImport_ImportModule(_name.c_str());
+	if (_py_core_module != NULL)
+	{
+		_py_core_class = PyObject_GetAttrString(_py_core_module, "Translator");
+		if (_py_core_class != NULL && PyCallable_Check(_py_core_class))
+			_py_core_object = PyObject_CallObject(_py_core_class, NULL);
+	}
 	if (_py_core_object == nullptr)
 	{
-		error = _error.empty() ? "translator " + _name + " not loaded" : _error;
+		std::string reason = Script::python_error();
+		error = "translator " + _name + " not loaded" + (reason.empty() ? " (no class Translator)" : ": " + reason);
 		PyErr_Clear();		// python_error() leaves the exception pending
 		Script::finalize();
 		return false;
@@ -194,7 +239,8 @@ void PythonTranslator::translate(const std::string& line, int number, std::vecto
 		return;
 	}
 
-	PyObject* result = PyObject_CallMethod(_py_core_object, "next", "s", line.c_str());
+	std::string utf8 = to_utf8(line);
+	PyObject* result = PyObject_CallMethod(_py_core_object, "next", "s", utf8.c_str());
 	if (result == NULL)
 	{
 		// an exception of the translator: it is shown with its line of Python, and the program goes on
@@ -234,4 +280,22 @@ void PythonTranslator::close()
 	}
 	_opened = false;
 	Script::finalize();
+}
+
+std::vector<std::string> PythonTranslator::list(const std::string& folder)
+{
+	std::vector<std::string> result;
+	if (!std::filesystem::exists(folder))
+		return result;
+
+	for (const auto& entry : std::filesystem::directory_iterator(folder))
+	{
+		if (!entry.is_regular_file() || entry.path().extension() != ".py")
+			continue;
+		std::string source = file::read_all_text(entry.path().string());
+		if (source.find("class Translator") != std::string::npos && source.find("def next") != std::string::npos)
+			result.push_back(entry.path().stem().string());
+	}
+	std::sort(result.begin(), result.end());
+	return result;
 }

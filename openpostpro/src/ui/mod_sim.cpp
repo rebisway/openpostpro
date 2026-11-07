@@ -27,6 +27,7 @@
 #include <dialog.h>
 #include <strings.h>
 #include <config.h>
+#include <environment.h>
 #include <filesystem>
 #include <algorithm>
 #include <cstdio>
@@ -47,10 +48,14 @@ ModSim::ModSim(Window* window) : Module(window)
 	_render->initialize_GLFW();
 	_view = new SimView(_render);
 
+	// the translator which was chosen the last time
+	_translator_name = config.simulation_translator.empty() ? "gcode" : config.simulation_translator;
 	_translator = new PythonTranslator(_translator_name);
 	_player.on_move = [this](const SimMove& m)
 	{
-		_material.cut(m.from, m.to, _tool);
+		// a torch only cuts while it is lit (M3 or the torch command); a cutter takes the material away whatever the spindle does
+		if (_tool.shape != SimToolShape::Plasma || m.spindle != 0 || m.torch)
+			_material.cut(m.from, m.to, _tool);
 		_view->add_move(m);
 	};
 	_player.on_reset = [this]()
@@ -66,6 +71,28 @@ ModSim::~ModSim()
 	delete _view;
 	delete _translator;
 	delete _render;
+}
+
+std::string ModSim::translators_folder()
+{
+	return environment::combine_path(environment::application_data_path(), "simulator");
+}
+
+void ModSim::select_translator(const std::string& name)
+{
+	if (name == _translator_name)
+		return;
+	_loader.cancel();
+	delete _translator;
+	_translator_name = name;
+	_translator = new PythonTranslator(_translator_name);
+
+	// saved with the settings of the application when it is closed
+	config.simulation_translator = _translator_name;
+
+	// the program which is shown is translated again
+	if (!_text.empty())
+		load_text(_text, _name, _text_from_document);
 }
 
 void ModSim::apply_tool()
@@ -124,6 +151,8 @@ void ModSim::load_text(const std::string& text, const std::string& name, bool fr
 	_loader.cancel();
 	_ready = false;
 	_name = name;
+	_text = text;
+	_text_from_document = from_document;
 	double start = glfwGetTime();
 	_lines = SimLoader::split_lines(text);
 	Logger::log("Simulation: " + std::to_string(_lines.size()) + " lines split in " + std::to_string((int)((glfwGetTime() - start) * 1000)) + " ms");
@@ -355,6 +384,18 @@ void ModSim::draw_controls()
 			load_file(path);
 	}
 	ImGui::SameLine();
+	ImGui::SetNextItemWidth(130);
+	if (ImGui::BeginCombo("##SIM_TRANSLATOR", _translator_name.c_str()))
+	{
+		_translators = PythonTranslator::list(translators_folder());
+		for (const std::string& name : _translators)
+			if (ImGui::Selectable(name.c_str(), name == _translator_name))
+				select_translator(name);
+		ImGui::EndCombo();
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("%s", Lang::l("SIM_TRANSLATOR"));
+	ImGui::SameLine();
 	if (_loader.active())
 	{
 		ImGui::ProgressBar((float)_loader.progress(), ImVec2(220, 0), (std::string(Lang::l("SIM_TRANSLATING")) + " " + std::to_string((int)(_loader.progress() * 100)) + "%").c_str());
@@ -564,6 +605,8 @@ void ModSim::render_menu()
 			if (dialog::open_file_dialog("", path, "G-code", "*.nc;*.gcode;*.txt;*.tap;*.ngc;*.cnc;*.*"))
 				load_file(path);
 		}
+		if (ImGui::MenuItem(Lang::l("SIM_OPEN_FOLDER")))
+			dialog::open_folder(translators_folder());
 		ImGui::Separator();
 		if (ImGui::MenuItem(_player.playing() ? Lang::l("SIM_PAUSE") : Lang::l("SIM_PLAY"), "Space", false, _ready))
 			_player.toggle();
@@ -669,6 +712,8 @@ bool ModSim::command(const std::vector<std::string>& w)
 		else if (item == "material") _view->show_material = value;
 		else if (item == "axes") _view->show_axes = value;
 	}
+	else if (what == "translator" && w.size() > 2)
+		select_translator(w[2]);
 	else if (what == "status")
 	{
 		char text[512];

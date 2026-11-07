@@ -299,3 +299,5 @@ SIM_STATE_FINISHED=terminato
 SIM_HELD=arresto del programma: premere Riproduci
 SIM_ERR_NO_OUTPUT=Simulazione: nessun file di uscita, eseguire prima il postprocessore
 POST_SIMULATE=Esegui e simula
+SIM_TRANSLATOR=Traduttore
+SIM_OPEN_FOLDER=Apri la cartella dei traduttori

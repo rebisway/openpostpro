@@ -67,6 +67,9 @@ public:
 	// language code (name of a file of the lang folder), empty keeps the default one
 	std::string language = "";
 
+	// translator of the simulator (name of a module of the simulator folder)
+	std::string simulation_translator = "gcode";
+
 	// unit given to the new documents: 0 millimeter, 1 inch
 	int default_unit = 0;
 

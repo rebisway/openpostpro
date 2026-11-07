@@ -17,7 +17,7 @@
 
 # Translator of the simulator: generic G-code (milling, router, plasma) to the simple commands of the simulator.
 #
-# The application calls the three methods of the class (the class has the name of the module with a capital letter):
+# The application calls the three methods of the class Translator:
 #     start(options)   resets the state, returns a dictionary of information ('unit' = the unit of the program)
 #     next(line)       translates ONE line of the program, returns the list of the commands of the line
 #     close()          releases what has to be
@@ -42,7 +42,7 @@ MM_PER_INCH = 25.4
 WORD = re.compile(r'([A-Za-z])\s*([-+]?(?:\d+\.?\d*|\.\d+))')
 
 
-class Gcode:
+class Translator:
     def __init__(self):
         self.options = {}
         self.reset()

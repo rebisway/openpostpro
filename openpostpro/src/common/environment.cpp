@@ -81,6 +81,31 @@ namespace environment
 
 	std::string user_path()
 	{
+		// a folder given by OPP_PROFILE replaces the folder of the user (the settings, the scripts and the output are in it):
+		// for the tests, which must not change the settings of the person, and for a portable use
+		{
+			std::string profile;
+#ifdef _WIN32
+			char* value = nullptr;
+			size_t length = 0;
+			if (_dupenv_s(&value, &length, "OPP_PROFILE") == 0 && value != nullptr)
+			{
+				profile = value;
+				free(value);
+			}
+#else
+			const char* value = getenv("OPP_PROFILE");
+			if (value != nullptr)
+				profile = value;
+#endif
+			if (!profile.empty())
+			{
+				if (profile.back() != PATH_SEPARATOR)
+					profile += PATH_SEPARATOR;
+				return profile;
+			}
+		}
+
 #ifdef _WIN32
 		WCHAR path[MAX_PATH];
 		SHGetFolderPathW(NULL, CSIDL_PROFILE, NULL, 0, path);
