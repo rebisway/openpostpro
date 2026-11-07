@@ -36,7 +36,7 @@ void Script::initialize_python()
 		if (!config.python_path.empty())
 		{
 			auto p = stringex::replace(config.python_path, "\\", "/");
-			code += "\nsys.path.append('" + p + "'";
+			code += "\nsys.path.append('" + p + "')";
 		}
 
 		py_run_string(code.c_str());
