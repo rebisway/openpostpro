@@ -4,7 +4,7 @@
 
 OpenPostPro brings together a lightweight 2D drawing environment, CAM operations, and configurable Python post-processors. Import a DXF drawing or create geometry directly in the application, prepare machining or cutting operations, then generate output adapted to your machine through a post-processor.
 
-The current version is **0.5**. The project is still in an **early development stage**: it is usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
+The current version is **0.6**. The project is still in an **early development stage**: it is usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
 
 ![OpenPostPro](https://github.com/user-attachments/assets/fc224d77-bbef-4d37-98aa-c54a5e4b89e1)
 
@@ -16,10 +16,12 @@ OpenPostPro includes tools to create and edit 2D geometry directly:
 - Geometric transformations such as offset, mirror, scale, rotation, and moving the origin
 - **Extend**: prolongs a line or an arc, from the end nearest to the mouse, up to the nearest other entity, with a preview of the result under the mouse
 - **Cut**: splits lines, arcs, circles, polylines, and ellipses at the clicked point (the magnet stays active) or at the crossing of the shapes under the click
+- **Contour** (Edit → Select): from the selection, selects every shape connected to it
+- **Check the drawing** (Drawing menu): finds the shapes of length zero, the shapes drawn twice, and the free ends (open contours), with markers on the drawing
 - Chamfer and fillet (CAD scripts), cut at intersections, and boolean operations to combine, subtract, or intersect supported shapes
-- DXF import for supported drawing entities, including lines, points, circles, arcs, ellipses, elliptical arcs, polylines, splines, and text
+- DXF import for supported drawing entities, including lines, points, circles, arcs, ellipses, elliptical arcs, polylines, splines, and text. The ends of lines and arcs which are less than 0.01 apart are joined into one contour
 - Document unit (millimetres or inches), with the conversion of an imported DXF or of the whole drawing
-- Layers, undo and redo, and a magnet to snap to the points of the drawing
+- Layers (a layer can be locked: its shapes can not be moved, edited, deleted, cut or extended, but the magnet still snaps to them), undo and redo, and a magnet to snap to the points of the drawing
 
 ## 🐍 Python scripting for CAD
 OpenPostPro also supports Python scripts at the CAD level. Scripts can create or modify geometry directly inside the application, making it possible to automate repetitive work or generate complex shapes parametrically instead of drawing every element by hand. They receive the current selection, the position of the mouse and the unit of the document, can show a properties dialog, and each run is undone in a single step.
@@ -46,6 +48,8 @@ Create toolpath operations from your drawing, grouped by tool, with the depth, t
 - **Spiral** — create spiral toolpaths
 - **Move to** — add a positioning move
 - **Tabs** (holding bridges) on closed follow and offset paths, with independent positions that can be moved with a slider, and a choice of the start point of the path
+
+A button of the Groups tab computes the toolpaths again from their shapes (the selected ones, or all of them) after the drawing has been modified.
 
 CAM operations have configurable parameters. Because the project is still young, the results, especially outline, offset, and pocket calculations, may not be reliable for every shape or machining situation.
 
@@ -113,7 +117,7 @@ OpenPostPro is designed with cross-platform compatibility in mind, with very few
 
 ## 🚧 Project status
 
-OpenPostPro is version 0.5, an independent open-source project. The main priority for future improvement remains the robustness and precision of geometry and outline calculations (offsets and pockets on difficult shapes); some algorithms still use floating-point precision and need further work. The format of the document files may still change before a 1.0 version.
+OpenPostPro is version 0.6, an independent open-source project. The main priority for future improvement remains the robustness and precision of geometry and outline calculations (offsets and pockets on difficult shapes); some algorithms still use floating-point precision and need further work. The format of the document files may still change before a 1.0 version.
 
 Please treat generated toolpaths and machine code as output that requires verification. Simulate or inspect the program and check machine settings, tool definitions, clearances, feeds, and speeds before running it on physical equipment.
 
