@@ -23,9 +23,31 @@
 #include <chrono>
 #include <limits>
 
-// Above this number of segments, a curve is not merged any more: touching offsets can make the curves grow a lot with tiny segments.
-// The outline of a text offset by the tool radius easily gets a few thousands of segments, and it must be merged with the others.
-static const int MAX_MERGE_SEGMENTS = 10000;
+// A boolean operation only cuts the curves where they cross and joins the pieces: it never creates anything outside the two curves, and
+// it can not have many more segments than the two curves together. A result which does (touching offsets, rounding errors) is a runaway :
+// it is dropped and the two curves stay as they are. This does not depend on the size of the curves, a text offset by the radius of the
+// tool has thousands of segments and has to be merged.
+static bool merge_plausible(Curve& a, Curve& b, std::vector<Curve>& result)
+{
+	geometry::rectangle& ba = a.bounds();
+	geometry::rectangle& bb = b.bounds();
+	const float margin = geometry::ERR_FLOAT2;
+	const float min_x = glm::min(glm::min(ba.top_left.x, ba.bottom_right.x), glm::min(bb.top_left.x, bb.bottom_right.x)) - margin;
+	const float max_x = glm::max(glm::max(ba.top_left.x, ba.bottom_right.x), glm::max(bb.top_left.x, bb.bottom_right.x)) + margin;
+	const float min_y = glm::min(glm::min(ba.top_left.y, ba.bottom_right.y), glm::min(bb.top_left.y, bb.bottom_right.y)) - margin;
+	const float max_y = glm::max(glm::max(ba.top_left.y, ba.bottom_right.y), glm::max(bb.top_left.y, bb.bottom_right.y)) + margin;
+
+	size_t size = 0;
+	for (Curve& c : result)
+	{
+		geometry::rectangle& r = c.bounds();
+		if (glm::min(r.top_left.x, r.bottom_right.x) < min_x || glm::max(r.top_left.x, r.bottom_right.x) > max_x ||
+			glm::min(r.top_left.y, r.bottom_right.y) < min_y || glm::max(r.top_left.y, r.bottom_right.y) > max_y)
+			return false;
+		size += c.size();
+	}
+	return size <= 2 * ((size_t)a.size() + (size_t)b.size()) + 64;
+}
 
 void Pocket::mode(PocketMode value)
 {
@@ -498,9 +520,6 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 						}
 						std::vector<Curve> merged_curves;
 
-						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
-						bool too_big = (*it1).size() > MAX_MERGE_SEGMENTS || (*it2).size() > MAX_MERGE_SEGMENTS;
-
 						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
 						// there is nothing left to machine, and the holes must not keep growing outside of the material
 						if ((*it1).level() != (*it2).level())
@@ -525,12 +544,15 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 						if ((*it1).level() != (*it2).level())
 						{
 							if ((*it1).level() < (*it2).level())
-								merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_substract((*it2));
+								merged_curves = (*it1).boolean_substract((*it2));
 							else
-								merged_curves = too_big ? std::vector<Curve>() : (*it2).boolean_substract((*it1));
+								merged_curves = (*it2).boolean_substract((*it1));
 						}
 						else
-							merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_union((*it2));
+							merged_curves = (*it1).boolean_union((*it2));
+
+						if (!merge_plausible(*it1, *it2, merged_curves))
+							merged_curves.clear();
 
 
 						// the result keeps the lower level (the outer contour), whatever the order of the two curves
@@ -814,9 +836,6 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 						}
 						std::vector<Curve> merged_curves;
 
-						// touching offsets can make the curves grow a lot with tiny segments : such a curve is not merged anymore
-						bool too_big = (*it1).size() > MAX_MERGE_SEGMENTS || (*it2).size() > MAX_MERGE_SEGMENTS;
-
 						// the lower level curve (the material) lies entirely inside a higher level curve (a hole offset):
 						// there is nothing left to machine, and the holes must not keep growing outside of the material
 						if ((*it1).level() != (*it2).level())
@@ -841,12 +860,15 @@ std::vector<Curve> Pocket::merge(std::vector<Curve>& curves)
 						if ((*it1).level() != (*it2).level())
 						{
 							if ((*it1).level() < (*it2).level())
-								merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_substract((*it2));
+								merged_curves = (*it1).boolean_substract((*it2));
 							else
-								merged_curves = too_big ? std::vector<Curve>() : (*it2).boolean_substract((*it1));
+								merged_curves = (*it2).boolean_substract((*it1));
 						}
 						else
-							merged_curves = too_big ? std::vector<Curve>() : (*it1).boolean_union((*it2));
+							merged_curves = (*it1).boolean_union((*it2));
+
+						if (!merge_plausible(*it1, *it2, merged_curves))
+							merged_curves.clear();
 
 
 						// the result keeps the lower level (the outer contour), whatever the order of the two curves
