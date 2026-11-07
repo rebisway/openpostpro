@@ -131,6 +131,19 @@ Layer* Document::layer(std::string name)
 	return l;
 }
 
+Layer* Document::layer_of(Shape* shape)
+{
+	// the layer of a shape is never created here: a shape without a valid parent (a file written by an older version) would get a
+	// new layer at each call, and the layers would multiply
+	for (Layer* l : _layers)
+		if (l->name() == shape->parent())
+			return l;
+	for (Layer* l : _layers)
+		if (std::find(l->shapes().begin(), l->shapes().end(), shape) != l->shapes().end())
+			return l;
+	return _layers.size() > 0 ? _layers[0] : layer();
+}
+
 Group* Document::group(std::string name)
 {
 	for (Group* g : _groups)
@@ -252,7 +265,7 @@ void Document::up(Graphic* g)
 	}
 	if (g->shape())
 	{
-		auto gp = layer(((Shape*)g)->parent());
+		auto gp = layer_of((Shape*)g);
 		auto index = std::find(gp->shapes().begin(), gp->shapes().end(), (Shape*)g);
 		if (index != gp->shapes().begin())
 		{
@@ -310,7 +323,7 @@ void Document::down(Graphic* g)
 	}
 	if (g->shape())
 	{
-		auto gp = layer(((Shape*)g)->parent());
+		auto gp = layer_of((Shape*)g);
 		auto index = std::find(gp->shapes().begin(), gp->shapes().end(), (Shape*)g);
 		if (index != gp->shapes().end() - 1)
 		{
@@ -507,7 +520,11 @@ std::string Document::write(float version)
 	for (Layer* layer : _layers)
 	{
 		for (Shape* shape : layer->shapes())
+		{
+			// the shape is in this layer, whatever its parent says
+			shape->parent(layer->name());
 			buffer += shape->write() + "\n";
+		}
 	}
 
 	buffer += "{TOOLPATH}\n";
@@ -534,6 +551,16 @@ void Document::read(std::string value)
 	unsigned int id = 1;
 
 	std::vector<int> refs;
+
+	// a shape which has no layer (a file written by an older version) goes to the first one: asking for a layer without name would
+	// create a new layer for each shape, and the shapes of a contour would not be seen together any more
+	auto shape_layer = [this](Shape* shape) -> Layer*
+	{
+		// a shape which has no layer goes to the first one
+		if (shape->parent().empty() && _layers.size() > 0)
+			return _layers[0];
+		return layer(shape->parent());
+	};
 
 	for (std::string s : data)
 	{
@@ -573,44 +600,44 @@ void Document::read(std::string value)
 			case GraphicType::Arc:
 				g = new Arc(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				break;
 			case GraphicType::Circle:
 				g = new Circle(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				break;
 			case GraphicType::Ellipse:
 				g = new Ellipse(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				break;
 			case GraphicType::Line:
 				g = new Line(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				break;
 			case GraphicType::Point:
 				g = new Point(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				break;
 			case GraphicType::Polyline:
 				g = new Polyline(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				break;
 			case GraphicType::Text:
 				g = new Text(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				if (((Text*)g)->reference() != -1)
 					refs.push_back(((Text*)g)->reference());
 				break;
 			case GraphicType::Spline:
 				g = new Spline(_render);
 				g->read(s, version);
-				layer(((Shape*)g)->parent())->add(((Shape*)g));
+				shape_layer((Shape*)g)->add((Shape*)g);
 				break;
 			case GraphicType::CamMoveTo:
 				g = new MoveTo(_render);

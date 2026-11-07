@@ -176,6 +176,33 @@ void Application::initialize()
 			bridge::log("post-processor run, output " + _document->output());
 			return true;
 		}
+		if (c[0] == "pocket")
+		{
+			// "pocket 0" (offset), "pocket 1" ...: a pocket of all the shapes of the document, in the current group
+			ModCad* cad = (ModCad*)module("MOD_CAD");
+			if (cad == nullptr)
+				return false;
+			_document->select_all();
+			if (c.size() > 2)
+			{
+				// "pocket 1 text" or "pocket 1 other": only the texts, or only the other shapes
+				std::vector<Graphic*> kept;
+				for (Graphic* g : _document->selected())
+					if ((g->type() == GraphicType::Text) == (c[2] == "text"))
+						kept.push_back(g);
+				_document->unselect_all();
+				_document->select(kept);
+			}
+			cad->cam_pocket((PocketMode)(c.size() > 1 ? std::stoi(c[1]) : 0));
+			bridge::log("pocket done");
+			return true;
+		}
+		if (c[0] == "save" && c.size() > 1)
+		{
+			save_file(c[1]);
+			bridge::log("saved " + c[1]);
+			return true;
+		}
 		if (c[0] == "sim")
 		{
 			ModSim* sim = (ModSim*)module("MOD_SIM");

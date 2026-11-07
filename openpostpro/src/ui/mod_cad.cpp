@@ -268,7 +268,7 @@ void ModCad::remove(std::vector<Shape*> shapes)
 	{
 		if (s->selected())
 			unselect(s);
-		_document->layer(s->parent())->remove(s);
+		_document->layer_of(s)->remove(s);
 	}
 }
 
@@ -282,7 +282,7 @@ void ModCad::add(std::vector<Shape*> shapes)
 
 	for (Shape* s : shapes)
 	{
-		_document->layer(s->parent())->add(s);
+		_document->layer_of(s)->add(s);
 	}
 }
 
@@ -1771,7 +1771,7 @@ void ModCad::render_menu()
 								if (s->parent() != l->name())
 								{
 									History::undo(HistoryActionType::Delete, s->write());
-									_document->layer(s->parent())->remove(s);
+									_document->layer_of(s)->remove(s);
 									l->add(s);
 									History::undo(HistoryActionType::Add, s->write());
 								}
@@ -1834,7 +1834,7 @@ void ModCad::render_menu()
 						if (splines.size() > 0)
 						{
 							History::begin_undo_record();
-							_document->layer(((Text*)g)->parent())->remove((Text*)g);
+							_document->layer_of(((Text*)g))->remove((Text*)g);
 							for (Shape* s : splines)
 							{
 								_document->current_layer()->add(s);
@@ -2187,7 +2187,7 @@ void ModCad::cut()
 	for (Graphic* g : graphics)
 	{
 		if (g->shape())
-			_document->layer(((Shape*)g)->parent())->remove((Shape*)g);
+			_document->layer_of(((Shape*)g))->remove((Shape*)g);
 	}
 }
 
@@ -2308,7 +2308,7 @@ void ModCad::remove()
 		}
 		if (g->shape())
 		{
-			Layer* l = _document->layer(((Shape*)g)->parent());
+			Layer* l = _document->layer_of(((Shape*)g));
 			if (l != nullptr)
 			{
 				g->selected(false);
@@ -2339,7 +2339,7 @@ void ModCad::remove()
 // true if the shape is on a locked layer
 bool ModCad::is_locked(Shape* shape)
 {
-	Layer* layer = _document->layer(shape->parent());
+	Layer* layer = _document->layer_of(shape);
 	return layer != nullptr && layer->locked();
 }
 
@@ -2508,7 +2508,7 @@ HistoryAction ModCad::process_action(HistoryAction action)
 			if (s != nullptr)
 			{
 				s->read(v);
-				_document->layer(s->parent())->add(s);
+				_document->layer_of(s)->add(s);
 				s->compute();
 				s = nullptr;
 			}
@@ -3043,7 +3043,7 @@ std::vector<Shape*> ModCad::look_for_siblings(Shape* s)
 		const float tolerance = geometry::ERR_FLOAT2;
 
 		std::vector<Shape*> shapes;
-		for (Shape* shape : _document->layer(s->parent())->shapes())
+		for (Shape* shape : _document->layer_of(s)->shapes())
 			if (shape != s && (shape->type() == GraphicType::Line || shape->type() == GraphicType::Arc || shape->type() == GraphicType::Polyline))
 				shapes.push_back(shape);
 
@@ -3515,7 +3515,7 @@ void ModCad::cad_weiler(int code)
 		for (Shape* s : s_to_remove)
 		{
 			History::undo(HistoryActionType::Delete, s->write());
-			_document->layer(s->parent())->remove(s);
+			_document->layer_of(s)->remove(s);
 		}
 		History::end_undo_record();
 		select(off_splines);
@@ -3970,7 +3970,7 @@ void ModCad::insert(std::string code)
 	if (data[0] == "D" && data.size() > 1)
 	{
 		auto s = find_shape((unsigned int)std::stoul(data[1]));
-		Layer* layer = s != nullptr ? _document->layer(s->parent()) : nullptr;
+		Layer* layer = s != nullptr ? _document->layer_of(s) : nullptr;
 		if (layer == nullptr)
 		{
 			Logger::error("Script: shape " + data[1] + " not found");

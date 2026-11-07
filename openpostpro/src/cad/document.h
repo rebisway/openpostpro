@@ -79,6 +79,7 @@ public:
 
 	std::vector<Layer*>& layers() { return _layers; }
 	Layer* layer(std::string name="");
+	Layer* layer_of(Shape* shape);
 
 	std::vector<Group*>& groups() { return _groups; }
 	Group* group(std::string name="");
