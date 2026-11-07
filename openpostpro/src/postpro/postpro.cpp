@@ -736,73 +736,86 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 
 			output += start_tool_length_compensation(g->tool_length_compensation());
 
-			// we loop into toolpaths
-			for (Toolpath* t : g->toolpaths())
+			// the depths of the passes: the tool goes down by one pass, all the toolpaths of the group are machined at this depth, then the
+			// tool goes down again... (without Z, a single pass)
+			std::vector<float> levels;
+			if (get_disable_z() == false)
 			{
-				output += comment("TOOLPATH [" + t->name() + "]");
-				output += start_toolpath();
-				// radius compensation (G41 / G42) of the toolpath: only a compensated "follow" has one
-				ToolRadiusCompensation compensation = t->radius_compensation();
-
-				for (auto c : t->coordinates())
+				float z = std::max(g->origin() - g->pass(), g->depth());
+				levels.push_back(z);
+				while (z > g->depth() && g->pass() > 0)
 				{
-					_pos = get_current_position();
+					z = std::max(z - g->pass(), g->depth());
+					levels.push_back(z);
+				}
+			}
+			else
+				levels.push_back(0);
 
-					// the tool is left to safe z
-					output += rapid('Z', g->safe());
+			// we loop into the passes, then into toolpaths
+			for (size_t level = 0; level < levels.size(); level++)
+			{
+				const float z = levels[level];
 
-					// we rapid move to first coordinates
-					output += rapid(glm::vec3(c[0].point.x, c[0].point.y, g->safe()));
-					output += start_tool_radius_compensation(compensation);
+				for (Toolpath* t : g->toolpaths())
+				{
+					// drillings and moves are done once, with the first pass
+					if (level > 0 && (t->type() == GraphicType::CamDrill || t->type() == GraphicType::CamMoveTo))
+						continue;
 
+					output += comment("TOOLPATH [" + t->name() + "]");
+					output += start_toolpath();
+					// radius compensation (G41 / G42) of the toolpath: only a compensated "follow" has one
+					ToolRadiusCompensation compensation = t->radius_compensation();
 
-					if (t->type() == GraphicType::CamDrill) // special case drilling
+					for (auto c : t->coordinates())
 					{
-						Drill* d = (Drill*)t;
-						switch (d->mode())
+						_pos = get_current_position();
+
+						// the tool is left to safe z
+						output += rapid('Z', g->safe());
+
+						// we rapid move to first coordinates
+						output += rapid(glm::vec3(c[0].point.x, c[0].point.y, g->safe()));
+						output += start_tool_radius_compensation(compensation);
+
+
+						if (t->type() == GraphicType::CamDrill) // special case drilling
 						{
-						case DrillMode::Drilling:
-							output += drilling(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract(), d->pause());
-							break;
-						case DrillMode::Pecking:
-							output += pecking(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract(), d->delta());
-							break;
-						case DrillMode::Tapping:
-							output += tapping(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract());
-							break;
-						case DrillMode::Boring:
-							output += boring(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract(), d->pause());
-							break;
-						}
-					}
-					else if (t->type() == GraphicType::CamMoveTo) // special case move to
-					{
-						MoveTo* d = (MoveTo*)t;
-						output += rapid(glm::vec3(d->point().x, d->point().y, g->safe()));
-						if (d->pause() > 0)
-							output += pause(d->pause());
-					}
-					else
-					{
-						// we plung
-						if (get_disable_z() == false)
-						{
-							float z = std::max(g->origin() - g->pass(), g->depth());
-							bool first_z = true;
-
-							while (z >= g->depth())
+							Drill* d = (Drill*)t;
+							switch (d->mode())
 							{
-								// go down to Z working position
+							case DrillMode::Drilling:
+								output += drilling(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract(), d->pause());
+								break;
+							case DrillMode::Pecking:
+								output += pecking(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract(), d->delta());
+								break;
+							case DrillMode::Tapping:
+								output += tapping(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract());
+								break;
+							case DrillMode::Boring:
+								output += boring(glm::vec3(d->point().x, d->point().y, g->depth()), d->retract(), d->pause());
+								break;
+							}
+						}
+						else if (t->type() == GraphicType::CamMoveTo) // special case move to
+						{
+							MoveTo* d = (MoveTo*)t;
+							output += rapid(glm::vec3(d->point().x, d->point().y, g->safe()));
+							if (d->pause() > 0)
+								output += pause(d->pause());
+						}
+						else
+						{
+							if (get_disable_z() == false)
+							{
+								// go down to Z working position: the plunge is vertical, the tool comes from the safe height
 								output += feed(g->plung_feed());
 								output += linear(glm::vec3(c[0].point.x, c[0].point.y, z));
 								output += feed(g->feed());
 
-								// if first pass, call start_single_path
-								if (first_z)
-								{
-									output += start_single_path();
-									first_z = false;
-								}
+								output += start_single_path();
 
 								auto from = c.front();
 								auto next = c.begin() + 1;
@@ -825,49 +838,30 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 									from = (*next);
 									next = std::next(next);
 								}
+							}
+							else
+							{
+								output += start_single_path();
 
-								if (z == g->depth())
-									break;
-								else
+								auto from = c.front();
+								auto next = c.begin() + 1;
+								while (next != c.end())
 								{
-									z = std::max(z - g->pass(), g->depth());
-
-									// With a compensation, or when the path does not end where it starts (an entry and an exit), the next
-									// pass can not begin with a move from the end of the path: the tool goes up, the compensation is
-									// cancelled in the air, then the tool goes back to the entry, the compensation is called again, and
-									// the next plunge is vertical
-									if (compensation != ToolRadiusCompensation::None || glm::distance(c.back().point, c.front().point) > 0.0001f)
-									{
-										output += rapid('Z', g->safe());
-										output += stop_tool_radius_compensation(compensation);
-										output += rapid(glm::vec3(c[0].point.x, c[0].point.y, g->safe()));
-										output += start_tool_radius_compensation(compensation);
-									}
+									if (from.type == SegmentType::Line)
+										output += linear(glm::vec3((*next).point, 0));
+									else
+										output += circular(glm::vec3((*next).point, 0), from.center, from.cw);
+									from = (*next);
+									next = std::next(next);
 								}
 							}
-						}
-						else
-						{
-							output += start_single_path();
 
-							auto from = c.front();
-							auto next = c.begin() + 1;
-							while (next != c.end())
-							{
-								if (from.type == SegmentType::Line)
-									output += linear(glm::vec3((*next).point, 0));
-								else
-									output += circular(glm::vec3((*next).point, 0), from.center, from.cw);
-								from = (*next);
-								next = std::next(next);
-							}
+							output += stop_single_path();
+							output += stop_tool_radius_compensation(compensation);
 						}
 
-						output += stop_single_path();
-						output += stop_tool_radius_compensation(compensation);
+						output += stop_toolpath();
 					}
-
-					output += stop_toolpath();
 				}
 			}
 
