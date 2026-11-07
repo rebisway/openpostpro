@@ -223,7 +223,7 @@ void ModSim::build_block()
 	double thickness = _stock_thickness > 0.0f ? _stock_thickness : std::max(3.0, deepest * 1.25 + 1.0);
 	double bottom = top - thickness;
 
-	double step = SimMaterial::choose_step(corner_high.x - corner_low.x, corner_high.y - corner_low.y, _tool.radius, _precision, _settings.max_cells);
+	double step = SimMaterial::choose_step(corner_high.x - corner_low.x, corner_high.y - corner_low.y, _tool.radius, _precision, (int)(_max_cells * 1e6f));
 	_material.setup(corner_low, corner_high, top, bottom, step);
 	_view->set_material(_material, _tool.shape == SimToolShape::Plasma);
 	_view->clear_paths();
@@ -338,6 +338,11 @@ void ModSim::render_GUI()
 
 	// the panels are submitted first, their size tells where the scene is drawn: under the buttons and at the left of the program
 	draw_controls();
+	_view->feed_color = config.simFeedColor;
+	_view->rapid_color = config.simRapidColor;
+	draw_overlays();
+	if (_ready)
+		draw_cards();
 	if (_show_program)
 		draw_program(_top + 0.0f, 330.0f);
 
@@ -364,6 +369,55 @@ void ModSim::render_GUI()
 		_render->set_size(_width, _height);
 	}
 	(void)x;
+}
+
+enum SimIcon { IC_PLAY, IC_PAUSE, IC_BEGIN, IC_STEP, IC_LINE, IC_END, IC_MATERIAL, IC_FEED, IC_RAPID, IC_TOOL, IC_AXES, IC_TOP, IC_FRONT, IC_ISO, IC_SETTINGS, IC_PROGRAM };
+
+// A button drawn with an icon (no image file): `on` shows a toggle which is active
+static bool sim_icon(const char* id, SimIcon kind, bool on, const char* tip)
+{
+	const float S = 28.0f;
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	bool click = ImGui::InvisibleButton(id, ImVec2(S, S));
+	bool hover = ImGui::IsItemHovered();
+	ImDrawList* d = ImGui::GetWindowDrawList();
+	if (on || hover)
+		d->AddRectFilled(p, ImVec2(p.x + S, p.y + S), ImGui::GetColorU32(on ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered), 4.0f);
+	const ImU32 col = ImGui::GetColorU32(ImGuiCol_Text);
+	ImVec4 soft = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+	soft.w *= 0.6f;
+	const ImU32 light = ImGui::GetColorU32(soft);
+	ImVec2 c(p.x + S * 0.5f, p.y + S * 0.5f);
+	auto P = [&](float x, float y) { return ImVec2(c.x + x, c.y + y); };
+	auto tri = [&](float a, float b, float e, float f, float g, float h) { d->AddTriangleFilled(P(a, b), P(e, f), P(g, h), col); };
+	auto rect = [&](float a, float b, float e, float f) { d->AddRectFilled(P(a, b), P(e, f), col); };
+	auto line = [&](float a, float b, float e, float f) { d->AddLine(P(a, b), P(e, f), col, 2.0f); };
+	switch (kind)
+	{
+	case IC_PLAY: tri(-5, -8, -5, 8, 8, 0); break;
+	case IC_PAUSE: rect(-7, -8, -2, 8); rect(2, -8, 7, 8); break;
+	case IC_BEGIN: rect(-8, -8, -5, 8); tri(8, -8, 8, 8, -4, 0); break;
+	case IC_STEP: tri(-8, -8, -8, 8, 3, 0); rect(5, -8, 8, 8); break;
+	case IC_LINE: tri(-9, -8, -9, 8, 0, 0); line(3, -5, 9, -5); line(3, 0, 9, 0); line(3, 5, 9, 5); break;
+	case IC_END: tri(-9, -8, -9, 8, -1, 0); tri(-1, -8, -1, 8, 7, 0); rect(7, -8, 9, 8); break;
+	case IC_MATERIAL: d->AddRectFilled(P(-8, -3), P(8, 8), col); d->AddQuadFilled(P(-8, -3), P(-4, -8), P(12, -8), P(8, -3), light); break;
+	case IC_FEED: d->AddPolyline(std::vector<ImVec2>{ P(-9, 5), P(-4, -5), P(1, 5), P(6, -5), P(9, 0) }.data(), 5, col, 0, 2.0f); break;
+	case IC_RAPID: line(-9, 0, -5, 0); line(-2, 0, 2, 0); line(5, 0, 9, 0); break;
+	case IC_TOOL: rect(-3, -9, 3, 0); tri(-3, 0, 3, 0, 0, 9); break;
+	case IC_AXES: line(-6, 6, 8, 6); line(-6, 6, -6, -8); line(-6, 6, 4, -2); break;
+	case IC_TOP: d->AddRect(P(-8, -8), P(8, 8), col, 0, 0, 2.0f); rect(-5, -5, 5, 5); break;
+	case IC_FRONT: d->AddRect(P(-8, -6), P(8, 6), col, 0, 0, 2.0f); rect(-8, 2, 8, 6); break;
+	case IC_ISO:
+		d->AddQuadFilled(P(0, -9), P(8, -4), P(0, 1), P(-8, -4), light);
+		d->AddQuad(P(-8, -4), P(0, 1), P(0, 9), P(-8, 4), col, 2.0f);
+		d->AddQuad(P(8, -4), P(0, 1), P(0, 9), P(8, 4), col, 2.0f);
+		break;
+	case IC_SETTINGS: line(-8, -5, 8, -5); line(-8, 0, 8, 0); line(-8, 5, 8, 5); d->AddCircleFilled(P(-3, -5), 2.5f, light); d->AddCircleFilled(P(4, 0), 2.5f, light); d->AddCircleFilled(P(-2, 5), 2.5f, light); break;
+	case IC_PROGRAM: line(-8, -6, 8, -6); line(-8, 0, 4, 0); line(-8, 6, 8, 6); break;
+	}
+	if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+		ImGui::SetTooltip("%s", tip);
+	return click;
 }
 
 void ModSim::draw_controls()
@@ -416,85 +470,16 @@ void ModSim::draw_controls()
 	else
 		ImGui::TextUnformatted(_name.empty() ? Lang::l("SIM_NO_PROGRAM") : _name.c_str());
 
-	// the buttons of the player
-	ImGui::BeginDisabled(!_ready);
-	bool playing = _player.playing() && !_player.going();
-	if (ImGui::Button(playing ? Lang::l("SIM_PAUSE") : Lang::l("SIM_PLAY")))
-		_player.toggle();
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("SIM_STOP")))
-		_player.stop();
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("SIM_STEP")))
-		_player.step_command();
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("SIM_STEP_LINE")))
-		_player.step_line();
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("SIM_END")))
-		_player.go_to_end();
-	ImGui::SameLine();
-	ImGui::SetNextItemWidth(70);
-	{
-		char items[8][16];
-		const char* pointers[8];
-		for (int i = 0; i < SPEED_COUNT; i++)
-		{
-			snprintf(items[i], sizeof(items[i]), "x%g", SPEEDS[i]);
-			pointers[i] = items[i];
-		}
-		ImGui::Combo("##SIM_SPEED", &_speed_index, pointers, SPEED_COUNT);
-	}
-	if (ImGui::IsItemHovered())
-		ImGui::SetTooltip("%s", Lang::l("SIM_SPEED"));
-	ImGui::SameLine();
-	ImGui::Checkbox(Lang::l("SIM_FULL_SPEED"), &_full_speed);
-	ImGui::EndDisabled();
-
 	// the time and the position
 	if (_ready)
 	{
 		ImGui::ProgressBar((float)_player.fraction(), ImVec2(-1, 0), (format_time(_player.elapsed()) + " / " + format_time(_player.total())).c_str());
-		glm::dvec3 p = _player.position();
-		ImGui::Text("X %.3f   Y %.3f   Z %.3f    T%d   %s   %s: %d", p.x, p.y, p.z, _player.tool(),
+		ImGui::Text("T%d   %s   %s: %d", _player.tool(),
 			_player.spindle() == 0 ? Lang::l("SIM_SPINDLE_OFF") : (_player.spindle() == 1 ? Lang::l("SIM_SPINDLE_CW") : Lang::l("SIM_SPINDLE_CCW")), Lang::l("SIM_LINE"), _player.line());
 		ImGui::SameLine();
 		bool held = _player.held_by_program();
 		ImGui::TextColored(held ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) : ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "  [%s]", state_text().c_str());
 	}
-
-	// what is shown
-	ImGui::Checkbox(Lang::l("SIM_MATERIAL"), &_view->show_material);
-	ImGui::SameLine();
-	ImGui::Checkbox(Lang::l("SIM_FEED"), &_view->show_feed);
-	ImGui::SameLine();
-	ImGui::Checkbox(Lang::l("SIM_RAPIDS"), &_view->show_rapid);
-	ImGui::SameLine();
-	ImGui::Checkbox(Lang::l("SIM_TOOL"), &_view->show_tool);
-	ImGui::SameLine();
-	ImGui::Checkbox(Lang::l("SIM_AXES"), &_view->show_axes);
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("SIM_VIEW_TOP")))
-	{
-		_view->camera().view(0);
-		_view->camera().fit(glm::vec3(_program.stats().low) - glm::vec3(1.0f), glm::vec3(_program.stats().high) + glm::vec3(1.0f));
-	}
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("SIM_VIEW_FRONT")))
-	{
-		_view->camera().view(1);
-		_view->camera().fit(glm::vec3(_program.stats().low) - glm::vec3(1.0f), glm::vec3(_program.stats().high) + glm::vec3(1.0f));
-	}
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("SIM_VIEW_ISO")))
-	{
-		_view->camera().view(3);
-		_view->camera().fit(glm::vec3(_program.stats().low) - glm::vec3(1.0f), glm::vec3(_program.stats().high) + glm::vec3(1.0f));
-	}
-	ImGui::SameLine();
-	ImGui::Checkbox(Lang::l("SIM_SETTINGS"), &_show_settings);
-	ImGui::SameLine();
-	ImGui::Checkbox(Lang::l("SIM_PROGRAM"), &_show_program);
 
 	// the block and the tool
 	if (_show_settings)
@@ -532,6 +517,10 @@ void ModSim::draw_controls()
 		ImGui::SetNextItemWidth(90);
 		changed |= ImGui::InputFloat(Lang::l("SIM_PRECISION"), &_precision, 5.0f, 10.0f, "%.0f");
 		_precision = std::clamp(_precision, 3.0f, 100.0f);
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(90);
+		changed |= ImGui::InputFloat(Lang::l("SIM_MAX_CELLS"), &_max_cells, 1.0f, 4.0f, "%.0f");
+		_max_cells = std::clamp(_max_cells, 1.0f, 32.0f);
 		_tool_diameter = std::max(_tool_diameter, 0.1f);
 		if (ImGui::Checkbox(Lang::l("SIM_OPTIONAL_STOP"), &_optional_stop))
 		{
@@ -543,6 +532,180 @@ void ModSim::draw_controls()
 	}
 
 	_controls_height = ImGui::GetWindowHeight();
+	ImGui::End();
+}
+
+// The information of the machine, in cards over the left of the scene: time, feed rate, tool, position, state, size of the work
+void ModSim::draw_cards()
+{
+	const float width = 150.0f;
+	ImGui::SetNextWindowPos(ImVec2(_left + 8.0f, _top + _controls_height + 8.0f));
+	ImGui::SetNextWindowSize(ImVec2(width + 16.0f, 0));
+	ImGui::Begin("MOD_SIM_CARDS", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground
+		| ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_AlwaysAutoResize);
+
+	const ImU32 border = ImGui::GetColorU32(ImGuiCol_ButtonActive);
+	const ImU32 fill = IM_COL32(40, 40, 44, 200);
+	ImDrawList* draw = ImGui::GetWindowDrawList();
+
+	// a card: the title, then the lines drawn by the callback
+	auto card = [&](const char* title, int lines, auto content)
+	{
+		ImVec2 p = ImGui::GetCursorScreenPos();
+		float h = ImGui::GetTextLineHeightWithSpacing() * (lines + 1) + 22.0f;
+		draw->AddRectFilled(p, ImVec2(p.x + width, p.y + h), fill, 8.0f);
+		draw->AddRect(p, ImVec2(p.x + width, p.y + h), border, 8.0f, 0, 2.0f);
+		ImVec2 t = ImGui::CalcTextSize(title);
+		draw->AddText(ImVec2(p.x + (width - t.x) * 0.5f, p.y + 4.0f), IM_COL32(255, 255, 255, 255), title);
+		ImGui::SetCursorScreenPos(ImVec2(p.x + 10.0f, p.y + 4.0f + ImGui::GetTextLineHeightWithSpacing()));
+		ImGui::BeginGroup();
+		content(p.x, width);
+		ImGui::EndGroup();
+		ImGui::SetCursorScreenPos(ImVec2(p.x, p.y + h + 6.0f));
+	};
+	// a text centered in the card
+	auto centered = [&](float x, float w, const std::string& text)
+	{
+		ImVec2 t = ImGui::CalcTextSize(text.c_str());
+		ImVec2 c = ImGui::GetCursorScreenPos();
+		draw->AddText(ImVec2(x + (w - t.x) * 0.5f, c.y), IM_COL32(255, 255, 255, 255), text.c_str());
+		ImGui::Dummy(ImVec2(1, ImGui::GetTextLineHeightWithSpacing()));
+	};
+	// a light with its name
+	auto light = [&](float x, const char* name, bool on, ImU32 color)
+	{
+		ImVec2 c = ImGui::GetCursorScreenPos();
+		float r = ImGui::GetTextLineHeight() * 0.4f;
+		draw->AddCircleFilled(ImVec2(x + width - 20.0f, c.y + ImGui::GetTextLineHeight() * 0.5f), r, on ? color : IM_COL32(190, 50, 45, 255));
+		draw->AddText(c, IM_COL32(255, 255, 255, 255), name);
+		ImGui::Dummy(ImVec2(1, ImGui::GetTextLineHeightWithSpacing()));
+	};
+
+	char text[96];
+	card(Lang::l("SIM_CARD_TIME"), 1, [&](float x, float w) { centered(x, w, format_time(_player.elapsed())); });
+	snprintf(text, sizeof(text), "%g", _player.feed());
+	card(Lang::l("SIM_CARD_FEED"), 1, [&](float x, float w) { centered(x, w, text); });
+	snprintf(text, sizeof(text), "T%d", _player.tool());
+	card(Lang::l("SIM_TOOL"), 1, [&](float x, float w) { centered(x, w, text); });
+	glm::dvec3 p = _player.position();
+	card(Lang::l("SIM_CARD_POSITION"), 3, [&](float x, float w)
+	{
+		const char* names[3] = { "X", "Y", "Z" };
+		for (int i = 0; i < 3; i++)
+		{
+			ImVec2 c = ImGui::GetCursorScreenPos();
+			snprintf(text, sizeof(text), "%.3f", p[i]);
+			ImVec2 t = ImGui::CalcTextSize(text);
+			draw->AddText(c, IM_COL32(255, 255, 255, 255), names[i]);
+			draw->AddText(ImVec2(x + w - 12.0f - t.x, c.y), IM_COL32(255, 255, 255, 255), text);
+			ImGui::Dummy(ImVec2(1, ImGui::GetTextLineHeightWithSpacing()));
+		}
+	});
+	const ImU32 green = IM_COL32(60, 190, 70, 255);
+	card(Lang::l("SIM_CARD_STATE"), 4, [&](float x, float w)
+	{
+		light(x, Lang::l("SIM_CARD_CUTTING"), _player.playing() && !_player.held_by_program(), green);
+		light(x, Lang::l("SIM_CARD_SPINDLE"), _player.spindle() != 0, green);
+		light(x, Lang::l("SIM_CARD_COOLANT"), _player.coolant() != 0, green);
+		light(x, Lang::l("SIM_CARD_PAUSED"), !_player.playing(), IM_COL32(230, 170, 40, 255));
+	});
+	const SimStats& s = _program.stats();
+	card(Lang::l("SIM_CARD_SIZE"), 3, [&](float x, float w)
+	{
+		const char* names[3] = { "X", "Y", "Z" };
+		for (int i = 0; i < 3; i++)
+		{
+			ImVec2 c = ImGui::GetCursorScreenPos();
+			snprintf(text, sizeof(text), "%.1f", s.high[i] - s.low[i]);
+			ImVec2 t = ImGui::CalcTextSize(text);
+			draw->AddText(c, IM_COL32(255, 255, 255, 255), names[i]);
+			draw->AddText(ImVec2(x + w - 12.0f - t.x, c.y), IM_COL32(255, 255, 255, 255), text);
+			ImGui::Dummy(ImVec2(1, ImGui::GetTextLineHeightWithSpacing()));
+		}
+	});
+	ImGui::End();
+}
+
+// The buttons over the scene: the display options at the top, the player at the bottom, the speed at the right
+void ModSim::draw_overlays()
+{
+	const float scene_width = _width - (_show_program ? 330.0f : 0.0f);
+	const float top = _top + _controls_height + 8.0f;
+	const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar
+		| ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_AlwaysAutoResize;
+
+	// what is shown
+	ImGui::SetNextWindowPos(ImVec2(_left + scene_width * 0.5f, top), ImGuiCond_Always, ImVec2(0.5f, 0.0f));
+	ImGui::SetNextWindowBgAlpha(0.65f);
+	ImGui::Begin("MOD_SIM_DISPLAY", NULL, flags);
+	if (sim_icon("##SIM_MATERIAL", IC_MATERIAL, _view->show_material, Lang::l("SIM_MATERIAL"))) _view->show_material = !_view->show_material;
+	ImGui::SameLine();
+	if (sim_icon("##SIM_FEED", IC_FEED, _view->show_feed, Lang::l("SIM_FEED"))) _view->show_feed = !_view->show_feed;
+	ImGui::SameLine();
+	if (sim_icon("##SIM_RAPIDS", IC_RAPID, _view->show_rapid, Lang::l("SIM_RAPIDS"))) _view->show_rapid = !_view->show_rapid;
+	ImGui::SameLine();
+	if (sim_icon("##SIM_TOOL", IC_TOOL, _view->show_tool, Lang::l("SIM_TOOL"))) _view->show_tool = !_view->show_tool;
+	ImGui::SameLine();
+	if (sim_icon("##SIM_AXES", IC_AXES, _view->show_axes, Lang::l("SIM_AXES"))) _view->show_axes = !_view->show_axes;
+	ImGui::SameLine(0, 14);
+	const SimIcon views[3] = { IC_TOP, IC_FRONT, IC_ISO };
+	const int view_codes[3] = { 0, 1, 3 };
+	const char* view_names[3] = { Lang::l("SIM_VIEW_TOP"), Lang::l("SIM_VIEW_FRONT"), Lang::l("SIM_VIEW_ISO") };
+	for (int i = 0; i < 3; i++)
+	{
+		if (sim_icon(("##SIM_VIEW" + std::to_string(i)).c_str(), views[i], false, view_names[i]))
+		{
+			_view->camera().view(view_codes[i]);
+			_view->camera().fit(glm::vec3(_program.stats().low) - glm::vec3(1.0f), glm::vec3(_program.stats().high) + glm::vec3(1.0f));
+		}
+		ImGui::SameLine();
+	}
+	ImGui::SameLine(0, 14);
+	if (sim_icon("##SIM_SETTINGS", IC_SETTINGS, _show_settings, Lang::l("SIM_SETTINGS"))) _show_settings = !_show_settings;
+	ImGui::SameLine();
+	if (sim_icon("##SIM_PROGRAM", IC_PROGRAM, _show_program, Lang::l("SIM_PROGRAM"))) _show_program = !_show_program;
+	ImGui::End();
+
+	// the player
+	ImGui::SetNextWindowPos(ImVec2(_left + scene_width * 0.5f, _top + _height - 10.0f), ImGuiCond_Always, ImVec2(0.5f, 1.0f));
+	ImGui::SetNextWindowBgAlpha(0.65f);
+	ImGui::Begin("MOD_SIM_PLAYER", NULL, flags);
+	ImGui::BeginDisabled(!_ready);
+	bool playing = _player.playing() && !_player.going();
+	if (sim_icon("##SIM_PLAY", playing ? IC_PAUSE : IC_PLAY, false, playing ? Lang::l("SIM_PAUSE") : Lang::l("SIM_PLAY")))
+		_player.toggle();
+	ImGui::SameLine();
+	if (sim_icon("##SIM_BEGIN", IC_BEGIN, false, Lang::l("SIM_STOP")))
+		_player.stop();
+	ImGui::SameLine();
+	if (sim_icon("##SIM_STEP", IC_STEP, false, Lang::l("SIM_STEP")))
+		_player.step_command();
+	ImGui::SameLine();
+	if (sim_icon("##SIM_LINE", IC_LINE, false, Lang::l("SIM_STEP_LINE")))
+		_player.step_line();
+	ImGui::SameLine();
+	if (sim_icon("##SIM_END", IC_END, false, Lang::l("SIM_END")))
+		_player.go_to_end();
+	ImGui::EndDisabled();
+	ImGui::End();
+
+	// the speed: a vertical slider, the fastest at the top, and the full speed
+	ImGui::SetNextWindowPos(ImVec2(_left + scene_width - 10.0f, _top + _controls_height + (_height - _controls_height) * 0.5f), ImGuiCond_Always, ImVec2(1.0f, 0.5f));
+	ImGui::SetNextWindowBgAlpha(0.65f);
+	ImGui::Begin("MOD_SIM_SPEED", NULL, flags);
+	// the last position of the slider is the full speed
+	int position = _full_speed ? SPEED_COUNT : std::clamp(_speed_index, 0, SPEED_COUNT - 1);
+	char label[32];
+	snprintf(label, sizeof(label), _full_speed ? "max" : "x%g", SPEEDS[std::clamp(_speed_index, 0, SPEED_COUNT - 1)]);
+	ImGui::TextUnformatted(label);
+	if (ImGui::VSliderInt("##SIM_SPEED", ImVec2(28, 200), &position, 0, SPEED_COUNT, ""))
+	{
+		_full_speed = position >= SPEED_COUNT;
+		if (!_full_speed)
+			_speed_index = position;
+	}
+	if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("%s", Lang::l("SIM_SPEED"));
 	ImGui::End();
 }
 

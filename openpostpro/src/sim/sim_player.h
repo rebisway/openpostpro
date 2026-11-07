@@ -124,6 +124,8 @@ public:
 	int coolant() const { return _coolant; }
 	bool torch() const { return _torch; }
 	double rpm() const { return _rpm; }
+	// the feed rate (mm/min) of the command which is played, 0 for a rapid move or when nothing is played
+	double feed() const { return (_program && _index < _program->size()) ? _program->at(_index).feed : 0.0; }
 };
 
 #endif

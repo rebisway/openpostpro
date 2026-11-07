@@ -88,6 +88,8 @@ public:
 	glm::vec4 layerColor = glm::vec4(0.278f, 0.78f, 1.0f, 1.0f);
 	glm::vec4 groupColor = glm::vec4(0.173f, 0.271f, 0.631f, 1.0f);
 	glm::vec4 selectedCadColor = glm::vec4(0.0f, 0.8f, 0.0f, 1.0f);
+	glm::vec4 simFeedColor = glm::vec4(0.1f, 0.8f, 0.2f, 1.0f);		// the machining moves in the simulator
+	glm::vec4 simRapidColor = glm::vec4(1.0f, 0.15f, 0.15f, 1.0f);	// the rapid moves in the simulator
 	glm::vec4 selectedCamColor = glm::vec4(1.0f, 1.1f, 1.0f, 1.0f);
 	glm::vec4 tabsCamColor = glm::vec4(1.0f, 0.6f, 0.0f, 1.0f);
 	glm::vec4 selectedTabCamColor = glm::vec4(1.0f, 0.0f, 0.3f, 1.0f);

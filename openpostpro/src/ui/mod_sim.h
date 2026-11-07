@@ -60,6 +60,7 @@ private:
 	float _stock_top = 0.0f;
 	float _stock_thickness = 0.0f;				// 0: from the depth of the program
 	float _precision = 15.0f;
+	float _max_cells = 4.0f;					// the most cells of the grid of the material, in millions: a large block with a small tool is limited by it
 	bool _optional_stop = true;
 	bool _tool_from_group = true;				// the radius of the tool comes from the first group of the document, until it is changed
 
@@ -90,6 +91,8 @@ private:
 	std::string state_text();
 
 	void draw_controls();
+	void draw_cards();
+	void draw_overlays();
 	void draw_program(float top, float width);
 	static std::string format_time(double seconds);
 
