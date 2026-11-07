@@ -17,3 +17,6 @@ state.md
 dump3.txt
 local_changes.patch
 split_patches/
+
+# Working notes of the simulator (personal, not versioned)
+simulator-notes.md
