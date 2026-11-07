@@ -1664,6 +1664,8 @@ void ModCad::render_GUI()
 			History::undo(HistoryActionType::Delete, undo + layer->write());
 
 			_document->remove_layer(layer);
+			// the deleted one must not stay selected: the layer which takes its place is selected
+			select(_document->current_layer());
 		}
 		else if (result == MessageBoxStatus::No)
 			_display_delete_layer = false;
@@ -1687,6 +1689,7 @@ void ModCad::render_GUI()
 			History::undo(HistoryActionType::Delete, undo + group->write());
 
 			_document->remove_group(group);
+			select(_document->current_group());
 		}
 		else if (result == MessageBoxStatus::No)
 			_display_delete_group = false;

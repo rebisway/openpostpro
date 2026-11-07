@@ -235,7 +235,12 @@ void Document::remove_group(Group* value)
 		size_t index = it - _groups.begin();
 		_groups.erase(it);
 		if (current)
+			{
 			_current_group = _groups.empty() ? nullptr : _groups[index > 0 ? index - 1 : 0];
+			// a document always has a group
+			if (_current_group == nullptr)
+				group();
+		}
 	}
 }
 
