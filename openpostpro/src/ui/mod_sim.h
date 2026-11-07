@@ -36,7 +36,8 @@ private:
 
 	SimProgram _program;
 	SimPlayer _player;
-	SimMaterial _material;
+	std::unique_ptr<SimModel> _model;			// the material: its method is chosen in the settings (SimModel::create)
+	int _model_method = -1;						// the method of _model
 	SimSettings _settings;
 	SimTool _tool;
 	PythonTranslator* _translator = nullptr;
@@ -60,6 +61,16 @@ private:
 	float _stock_top = 0.0f;
 	float _stock_thickness = 0.0f;				// 0: from the depth of the program
 	float _precision = 15.0f;
+	double _real_time = 0;						// seconds of the computer spent to play the program (what is written in the log at its end)
+	double _machined = 0;						// the length (mm) of the moves at a feed rate which were played
+	double _cut_time = 0;						// ... of which in the model of the material
+	size_t _cut_count = 0;						// the cuts made in the model
+	int _pauses = 0;							// pauses of the player (button), and stops asked by the program (M0, M1), since the start
+	int _program_stops = 0;
+	bool _was_paused = false;
+	bool _was_held = false;
+	bool _end_logged = false;					// the summary of the end of the program was written
+	int _method = 0;							// the method of the model of the material
 	float _max_cells = 4.0f;					// the most cells of the grid of the material, in millions: a large block with a small tool is limited by it
 	bool _optional_stop = true;
 	bool _tool_from_group = true;				// the radius of the tool comes from the first group of the document, until it is changed
@@ -121,7 +132,7 @@ public:
 	// state, for the tests
 	const SimPlayer& player() const { return _player; }
 	const SimProgram& program() const { return _program; }
-	const SimMaterial& material() const { return _material; }
+	const SimModel& model() const { return *_model; }
 	bool ready() const { return _ready; }
 };
 

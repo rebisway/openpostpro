@@ -54,14 +54,26 @@ ModSim::ModSim(Window* window) : Module(window)
 	_player.on_move = [this](const SimMove& m)
 	{
 		// a torch only cuts while it is lit (M3 or the torch command); a cutter takes the material away whatever the spindle does
-		if (_tool.shape != SimToolShape::Plasma || m.spindle != 0 || m.torch)
-			_material.cut(m.from, m.to, _tool);
+		if ((_tool.shape != SimToolShape::Plasma || m.spindle != 0 || m.torch) && _model)
+		{
+			double start = glfwGetTime();
+			_model->cut(m.from, m.to, _tool);
+			_cut_time += glfwGetTime() - start;
+			_cut_count++;
+		}
+		if (!m.rapid)
+			_machined += glm::distance(m.from, m.to);
 		_view->add_move(m);
 	};
 	_player.on_reset = [this]()
 	{
-		_material.reset();
+		if (_model) _model->reset();
 		_view->clear_paths();
+		_real_time = _cut_time = _machined = 0;
+		_cut_count = 0;
+		_pauses = _program_stops = 0;
+		_was_paused = _was_held = false;
+		_end_logged = false;
 	};
 	apply_tool();
 }
@@ -223,9 +235,24 @@ void ModSim::build_block()
 	double thickness = _stock_thickness > 0.0f ? _stock_thickness : std::max(3.0, deepest * 1.25 + 1.0);
 	double bottom = top - thickness;
 
-	double step = SimMaterial::choose_step(corner_high.x - corner_low.x, corner_high.y - corner_low.y, _tool.radius, _precision, (int)(_max_cells * 1e6f));
-	_material.setup(corner_low, corner_high, top, bottom, step);
-	_view->set_material(_material, _tool.shape == SimToolShape::Plasma);
+	if (_model == nullptr || _model_method != _method)
+	{
+		_model = SimModel::create(_method);
+		_model_method = _method;
+	}
+	SimBlock block;
+	block.low = corner_low;
+	block.high = corner_high;
+	block.top = top;
+	block.bottom = bottom;
+	block.tool_radius = _tool.radius;
+	block.precision = _precision;
+	block.max_cells = (int)(_max_cells * 1e6f);
+	block.through = _tool.shape == SimToolShape::Plasma;
+	double start = glfwGetTime();
+	_model->setup(block);
+	_view->set_model(*_model);
+	double built = glfwGetTime() - start;
 	_view->clear_paths();
 	// the view looks at the whole program, not only at the block, when the size of the scene is known
 	_refit = true;
@@ -234,7 +261,7 @@ void ModSim::build_block()
 	_ready = _program.size() > 0;
 	_block_dirty = false;
 	_shown_line = -1;
-	Logger::log("Simulation: block " + std::to_string(_material.width()) + " x " + std::to_string(_material.height()) + " columns, step " + std::to_string(step) + " mm");
+	Logger::log(std::string("Simulation: block (") + _model->name() + ") " + _model->describe() + ", " + std::to_string(_model->memory() / 1024) + " KB, made in " + std::to_string((int)(built * 1000)) + " ms");
 }
 
 // ---------------------------------------------------------------------------------------------- frame
@@ -242,9 +269,16 @@ std::string ModSim::format_time(double seconds)
 {
 	if (seconds < 0)
 		seconds = 0;
-	int total = (int)(seconds + 0.5);
-	char text[32];
-	snprintf(text, sizeof(text), "%d:%02d", total / 60, total % 60);
+	// days, hours, minutes, seconds: the units which are zero at the left are not written
+	long long total = (long long)(seconds + 0.5);
+	const long long days = total / 86400, hours = total / 3600 % 24, minutes = total / 60 % 60, secs = total % 60;
+	char text[48];
+	if (days > 0)
+		snprintf(text, sizeof(text), "%lldd %02lld:%02lld:%02lld", days, hours, minutes, secs);
+	else if (hours > 0)
+		snprintf(text, sizeof(text), "%lld:%02lld:%02lld", hours, minutes, secs);
+	else
+		snprintf(text, sizeof(text), "%lld:%02lld", minutes, secs);
 	return text;
 }
 
@@ -297,12 +331,44 @@ void ModSim::update(double seconds)
 
 	_player.full_speed(_full_speed);
 	_player.set_speed(SPEEDS[std::clamp(_speed_index, 0, SPEED_COUNT - 1)]);
+	bool working = _player.playing() || _player.going();
 	_player.update(seconds, 0.008);
+	if (working)
+		_real_time += seconds;
+
+	// the pauses: the button, and the stops of the program
+	bool paused = _player.state() == SimPlayer::State::Paused;
+	bool held = _player.held_by_program();
+	if (paused && !_was_paused && !held)
+		_pauses++;
+	if (held && !_was_held)
+		_program_stops++;
+	_was_paused = paused;
+	_was_held = held;
+
+	// the summary of the end of the program, once
+	if (_player.state() == SimPlayer::State::Finished && !_end_logged && _model != nullptr)
+	{
+		_end_logged = true;
+		const SimStats& s = _program.stats();
+		char text[768];
+		snprintf(text, sizeof(text), "Simulation: end of %s. Machine time %s, computed in %s (x%.0f), %d commands, %d line(s) of program",
+			_name.c_str(), format_time(_player.total()).c_str(), format_time(_real_time).c_str(), _real_time > 0.001 ? _player.total() / _real_time : 0.0,
+			(int)_program.size(), _player.line());
+		Logger::log(text);
+		snprintf(text, sizeof(text), "Simulation: %d error(s), %d warning(s), %d command(s) unknown; %d pause(s), %d stop(s) of the program; feed %.0f mm, rapid %.0f mm",
+			s.errors, s.warnings, s.unknown, _pauses, _program_stops, s.feed_length, s.rapid_length);
+		Logger::log(text);
+		snprintf(text, sizeof(text), "Simulation: model %s, %s, %zu KB; %zu cuts in %.0f ms (%.1f %% of the time computed); %.0f mm3 removed; %zu vertices of paths",
+			_model->name(), _model->describe().c_str(), _model->memory() / 1024, _cut_count, _cut_time * 1000.0,
+			_real_time > 0.001 ? _cut_time / _real_time * 100.0 : 0.0, _model->removed_volume(), _view->path_vertices());
+		Logger::log(text);
+	}
 }
 
 void ModSim::sync_view()
 {
-	_view->upload(_material);
+	_view->upload();
 	_view->set_tool(_tool, _player.position());
 
 	// the line of the text follows the player
@@ -466,20 +532,12 @@ void ModSim::draw_controls()
 			ImGui::SameLine();
 			ImGui::TextColored(s.errors > 0 ? ImVec4(1.0f, 0.35f, 0.3f, 1.0f) : ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "[%d %s, %d %s]", s.errors, Lang::l("SIM_ERRORS"), s.warnings, Lang::l("SIM_WARNINGS"));
 		}
+		// the progress, on the rest of the line
+		ImGui::SameLine();
+		ImGui::ProgressBar((float)_player.fraction(), ImVec2(-1, 0), (format_time(_player.elapsed()) + " / " + format_time(_player.total())).c_str());
 	}
 	else
 		ImGui::TextUnformatted(_name.empty() ? Lang::l("SIM_NO_PROGRAM") : _name.c_str());
-
-	// the time and the position
-	if (_ready)
-	{
-		ImGui::ProgressBar((float)_player.fraction(), ImVec2(-1, 0), (format_time(_player.elapsed()) + " / " + format_time(_player.total())).c_str());
-		ImGui::Text("T%d   %s   %s: %d", _player.tool(),
-			_player.spindle() == 0 ? Lang::l("SIM_SPINDLE_OFF") : (_player.spindle() == 1 ? Lang::l("SIM_SPINDLE_CW") : Lang::l("SIM_SPINDLE_CCW")), Lang::l("SIM_LINE"), _player.line());
-		ImGui::SameLine();
-		bool held = _player.held_by_program();
-		ImGui::TextColored(held ? ImVec4(1.0f, 0.8f, 0.2f, 1.0f) : ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "  [%s]", state_text().c_str());
-	}
 
 	// the block and the tool
 	if (_show_settings)
@@ -521,6 +579,22 @@ void ModSim::draw_controls()
 		ImGui::SetNextItemWidth(90);
 		changed |= ImGui::InputFloat(Lang::l("SIM_MAX_CELLS"), &_max_cells, 1.0f, 4.0f, "%.0f");
 		_max_cells = std::clamp(_max_cells, 1.0f, 32.0f);
+		ImGui::SetNextItemWidth(140);
+		if (ImGui::BeginCombo(Lang::l("SIM_METHOD"), SimModel::method_name(_method)))
+		{
+			for (int i = 0; i < SimModel::method_count(); i++)
+				if (ImGui::Selectable(SimModel::method_name(i), i == _method) && i != _method)
+				{
+					_method = i;
+					changed = true;
+				}
+			ImGui::EndCombo();
+		}
+		if (_model != nullptr)
+		{
+			ImGui::SameLine();
+			ImGui::Text("%s, %zu KB", _model->describe().c_str(), _model->memory() / 1024);
+		}
 		_tool_diameter = std::max(_tool_diameter, 0.1f);
 		if (ImGui::Checkbox(Lang::l("SIM_OPTIONAL_STOP"), &_optional_stop))
 		{
@@ -552,7 +626,10 @@ void ModSim::draw_cards()
 	auto card = [&](const char* title, int lines, auto content)
 	{
 		ImVec2 p = ImGui::GetCursorScreenPos();
-		float h = ImGui::GetTextLineHeightWithSpacing() * (lines + 1) + 22.0f;
+		// the title, then each line (its height and the space which follows it): the same margin under the last line for every card
+		const float row = ImGui::GetTextLineHeightWithSpacing();
+		const float space = ImGui::GetStyle().ItemSpacing.y;
+		float h = 4.0f + row + lines * (row + space) - space + 10.0f;
 		draw->AddRectFilled(p, ImVec2(p.x + width, p.y + h), fill, 8.0f);
 		draw->AddRect(p, ImVec2(p.x + width, p.y + h), border, 8.0f, 0, 2.0f);
 		ImVec2 t = ImGui::CalcTextSize(title);
@@ -582,7 +659,16 @@ void ModSim::draw_cards()
 	};
 
 	char text[96];
-	card(Lang::l("SIM_CARD_TIME"), 1, [&](float x, float w) { centered(x, w, format_time(_player.elapsed())); });
+	card(Lang::l("SIM_CARD_TIME"), 2, [&](float x, float w)
+	{
+		centered(x, w, format_time(_player.elapsed()));
+		// the length machined: in meters from one meter
+		if (_machined >= 1000.0)
+			snprintf(text, sizeof(text), "%.2f m", _machined / 1000.0);
+		else
+			snprintf(text, sizeof(text), "%.1f mm", _machined);
+		centered(x, w, text);
+	});
 	snprintf(text, sizeof(text), "%g", _player.feed());
 	card(Lang::l("SIM_CARD_FEED"), 1, [&](float x, float w) { centered(x, w, text); });
 	snprintf(text, sizeof(text), "T%d", _player.tool());
@@ -881,9 +967,9 @@ bool ModSim::command(const std::vector<std::string>& w)
 	{
 		char text[512];
 		glm::dvec3 p = _player.position();
-		snprintf(text, sizeof(text), "sim: ready %d, loading %d, state %d, command %d/%d, line %d, position %.3f %.3f %.3f, time %.2f / %.2f, held %d, removed %.1f mm3, columns %dx%d",
+		snprintf(text, sizeof(text), "sim: ready %d, loading %d, state %d, command %d/%d, line %d, position %.3f %.3f %.3f, time %.2f / %.2f, held %d, removed %.1f mm3, model %s, %d cells",
 			(int)_ready, (int)_loader.active(), (int)_player.state(), (int)_player.index(), (int)_program.size(), _player.line(), p.x, p.y, p.z,
-			_player.elapsed(), _player.total(), (int)_player.held_by_program(), _material.removed_volume(), _material.width(), _material.height());
+			_player.elapsed(), _player.total(), (int)_player.held_by_program(), _model->removed_volume(), _model->name(), (int)_model->cells());
 		Logger::log(text);
 		bridge::log(text);
 	}

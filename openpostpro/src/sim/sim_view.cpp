@@ -42,7 +42,6 @@ SimView::SimView(Renderer* render)
 
 SimView::~SimView()
 {
-	if (_heights) _render->delete_texture(_heights);
 	if (_feed.buffer) _render->delete_buffer(_feed.buffer);
 	if (_rapid.buffer) _render->delete_buffer(_rapid.buffer);
 	if (_box) _render->delete_buffer(_box);
@@ -50,23 +49,10 @@ SimView::~SimView()
 	if (_tool) _render->delete_buffer(_tool);
 }
 
-void SimView::set_material(const SimMaterial& material, bool through)
+void SimView::set_model(SimModel& model)
 {
-	if (_heights)
-	{
-		_render->delete_texture(_heights);
-		_heights = nullptr;
-	}
-
-	_width = material.width();
-	_height = material.height();
-	_origin = glm::vec2((float)material.origin_x(), (float)material.origin_y());
-	_step = (float)material.step();
-	_top = (float)material.top();
-	_bottom = (float)material.bottom();
-	_through = through;
-	if (_width > 0 && _height > 0)
-		_heights = _render->create_float_texture(_width, _height, material.data().data());
+	_model = &model;
+	_model->create_graphics(_render);
 
 	build_box();
 	fit();
@@ -74,22 +60,15 @@ void SimView::set_material(const SimMaterial& material, bool through)
 
 void SimView::fit()
 {
-	if (_width <= 0)
+	if (_model == nullptr)
 		return;
-	glm::vec3 low(_origin.x, _origin.y, _bottom);
-	glm::vec3 high(_origin.x + (_width - 1) * _step, _origin.y + (_height - 1) * _step, _top);
-	_camera.fit(low, high);
+	_camera.fit(glm::vec3(_model->low()), glm::vec3(_model->high()));
 }
 
-void SimView::upload(SimMaterial& material)
+void SimView::upload()
 {
-	int x0, y0, x1, y1;
-	if (_heights == nullptr || !material.take_dirty(x0, y0, x1, y1))
-		return;
-	if (material.width() != _width || material.height() != _height)
-		return;
-	const float* first = &material.data()[(size_t)y0 * _width + x0];
-	_render->update_float_texture(_heights, x0, y0, x1 - x0 + 1, y1 - y0 + 1, first, _width);
+	if (_model != nullptr)
+		_model->upload();
 }
 
 void SimView::add_move(const SimMove& move)
@@ -139,11 +118,11 @@ void SimView::build_box()
 		_render->delete_buffer(_box);
 		_box = nullptr;
 	}
-	if (_width <= 0)
+	if (_model == nullptr)
 		return;
 
-	float x0 = _origin.x, y0 = _origin.y, x1 = _origin.x + (_width - 1) * _step, y1 = _origin.y + (_height - 1) * _step;
-	float z0 = _bottom, z1 = _top;
+	float x0 = (float)_model->low().x, y0 = (float)_model->low().y, x1 = (float)_model->high().x, y1 = (float)_model->high().y;
+	float z0 = (float)_model->low().z, z1 = (float)_model->high().z;
 	glm::vec3 c[8] = { { x0, y0, z0 }, { x1, y0, z0 }, { x1, y1, z0 }, { x0, y1, z0 }, { x0, y0, z1 }, { x1, y0, z1 }, { x1, y1, z1 }, { x0, y1, z1 } };
 	int edges[24] = { 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7 };
 	std::vector<glm::vec3> vertices;
@@ -203,40 +182,16 @@ void SimView::draw(float width, float height)
 	_render->depth_test(true);
 
 	// the block
-	if (show_material && _heights != nullptr)
+	if (show_material && _model != nullptr)
 	{
-		_render->use_program("sim");
-		_render->set_uniform("projection", _camera.projection());
-		_render->set_uniform("modelview", _camera.modelview());
-		_render->set_uniform("eye", _camera.eye());
-		_render->set_uniform("top_color", top_color);
-		_render->set_uniform("cut_color", cut_color);
-		_render->set_uniform("side_color", side_color);
-		_render->set_uniform("grid_w", _width);
-		_render->set_uniform("grid_h", _height);
-		_render->set_uniform("origin", _origin);
-		_render->set_uniform("step", _step);
-		_render->set_uniform("top", _top);
-		_render->set_uniform("bottom", _bottom);
-		_render->bind_texture(_heights, 0);
-		_render->set_uniform("heights", 0);
-
-		_render->set_uniform("part", 0);
-		_render->draw_arrays(_render->pr_triangles(), (_width - 1) * (_height - 1) * 6);
-		_render->set_uniform("part", 1);
-		_render->draw_arrays(_render->pr_triangle_strip(), _width * 2);
-		_render->set_uniform("part", 2);
-		_render->draw_arrays(_render->pr_triangle_strip(), _width * 2);
-		_render->set_uniform("part", 3);
-		_render->draw_arrays(_render->pr_triangle_strip(), _height * 2);
-		_render->set_uniform("part", 4);
-		_render->draw_arrays(_render->pr_triangle_strip(), _height * 2);
-		if (!_through)
-		{
-			_render->set_uniform("part", 5);
-			_render->draw_arrays(_render->pr_triangles(), 6);
-		}
-		_render->bind_texture(nullptr, 0);
+		SimLook look;
+		look.projection = _camera.projection();
+		look.modelview = _camera.modelview();
+		look.eye = _camera.eye();
+		look.top_color = top_color;
+		look.cut_color = cut_color;
+		look.side_color = side_color;
+		_model->draw(look);
 	}
 
 	// the lines

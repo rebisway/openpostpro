@@ -313,3 +313,4 @@ SIM_CARD_STATE=Status
 PREF_SIM_FEED=Simulatie: frezen
 PREF_SIM_RAPID=Simulatie: ijlgang
 SIM_MAX_CELLS=Max. cellen (miljoen)
+SIM_METHOD=Methode

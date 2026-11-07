@@ -15,14 +15,13 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-// The drawing of the simulator, with the renderer of the application: the block of material (a map of heights read by the shader
-// sim), the paths of the tool, the tool, the box of the block and the axes. It knows nothing of the interface (windows, menus).
+// The drawing of the simulator, with the renderer of the application: the block of material (drawn by its model, SimModel), the paths of the tool, the tool, the box of the block and the axes. It knows nothing of the interface (windows, menus).
 
 #pragma once
 #ifndef _SIM_VIEW_H
 #define _SIM_VIEW_H
 
-#include "sim_material.h"
+#include "sim_model.h"
 #include "sim_player.h"
 #include "renderer.h"
 #include "orbit_cam.h"
@@ -47,12 +46,7 @@ private:
 	Renderer* _render;
 	OrbitCamera _camera;
 
-	Texture* _heights = nullptr;
-	int _width = 0, _height = 0;				// of the map
-	glm::vec2 _origin = glm::vec2(0);
-	float _step = 1.0f;
-	float _top = 0.0f, _bottom = -1.0f;
-	bool _through = false;						// a torch: the block has no bottom face, it is cut through
+	SimModel* _model = nullptr;					// the material: it is not owned, it has to live as long as the view uses it
 
 	Lines _feed;
 	Lines _rapid;
@@ -91,10 +85,10 @@ public:
 
 	OrbitCamera& camera() { return _camera; }
 
-	// A new block: the map of heights is made again, the camera looks at the block
-	void set_material(const SimMaterial& material, bool through);
-	// The columns which changed since the last call are sent to the graphic card
-	void upload(SimMaterial& material);
+	// A new block (the model is set up): its graphic resources are made again, the camera looks at the block
+	void set_model(SimModel& model);
+	// What changed in the model since the last call is sent to the graphic card
+	void upload();
 
 	// The paths: a piece of path, or all of them removed
 	void add_move(const SimMove& move);

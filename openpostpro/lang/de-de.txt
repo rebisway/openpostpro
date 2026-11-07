@@ -313,3 +313,4 @@ SIM_CARD_STATE=Zustand
 PREF_SIM_FEED=Simulation: Bearbeitung
 PREF_SIM_RAPID=Simulation: Eilgang
 SIM_MAX_CELLS=Max. Zellen (Millionen)
+SIM_METHOD=Methode

@@ -17,6 +17,7 @@
 #include <GLFW/glfw3.h>
 #include "renderer_opengl.h"
 #include <sim_view.h>
+#include <sim_model_grid.h>
 #include <filesystem>
 #include <cstdio>
 #include <cstdlib>
@@ -156,12 +157,18 @@ int main()
 	tool.radius = 1.5;
 	tool.length = 20;
 
-	SimMaterial material;
-	double step = SimMaterial::choose_step(70, 50, tool.radius, 15.0, 4000000);
-	material.setup(glm::dvec2(-30, -20), glm::dvec2(40, 20), 0.0, -6.0, step);
+	SimModelGrid grid;
+	SimBlock block;
+	block.low = glm::dvec2(-30, -20);
+	block.high = glm::dvec2(40, 20);
+	block.top = 0.0;
+	block.bottom = -6.0;
+	block.tool_radius = tool.radius;
+	grid.setup(block);
+	SimMaterial& material = grid.material();
 
 	SimView view(&renderer);
-	view.set_material(material, false);
+	view.set_model(grid);
 	CHECK(gl_errors() == 0, "no OpenGL error after the texture");
 
 	// before the program: nothing is cut, the block is flat
@@ -187,13 +194,13 @@ int main()
 	CHECK(view.path_vertices() > 100, "the paths were collected");
 
 	// the reset of the player marked all the map, then the whole map is sent once; after that only a cut changes a zone
-	view.upload(material);
+	view.upload();
 	int x0, y0, x1, y1;
 	CHECK(!material.take_dirty(x0, y0, x1, y1), "everything was sent");
 	material.cut(glm::dvec3(35, 10, -1), glm::dvec3(36, 10, -1), tool);
 	CHECK(material.take_dirty(x0, y0, x1, y1) && x1 - x0 < material.width() / 4 && y1 - y0 < material.height() / 4, "a small cut changes a small zone of the map");
 	material.cut(glm::dvec3(35, 10, -1), glm::dvec3(36, 10, -1), tool);	// the same cut: nothing changes, nothing to send
-	view.upload(material);
+	view.upload();
 	view.set_tool(tool, player.position());
 
 	renderer.clear(view.background.r, view.background.g, view.background.b, 1.0f);
@@ -266,8 +273,17 @@ int main()
 		SimTool torch;
 		torch.shape = SimToolShape::Plasma;
 		torch.radius = 0.6;
-		SimMaterial plate;
-		plate.setup(glm::dvec2(-20, -20), glm::dvec2(20, 20), 0.0, -3.0, 0.2);
+		SimModelGrid plate_grid;
+		SimBlock plate_block;
+		plate_block.low = glm::dvec2(-20, -20);
+		plate_block.high = glm::dvec2(20, 20);
+		plate_block.top = 0.0;
+		plate_block.bottom = -3.0;
+		plate_block.tool_radius = torch.radius;
+		plate_block.precision = 0.2 / torch.radius * 100.0;		// a step of 0.2 mm
+		plate_block.through = true;
+		plate_grid.setup(plate_block);
+		SimMaterial& plate = plate_grid.material();
 		// a circle of radius 10 cut through
 		SimPath circle(glm::dvec3(10, 0, 0), [] { SimCommand c; c.type = SimCommandType::Arc; c.target = glm::dvec3(10, 0, 0); c.center = glm::dvec3(0, 0, 0); c.feed = 1000; return c; }());
 		glm::dvec3 last = circle.at(0);
@@ -278,7 +294,7 @@ int main()
 			last = p;
 		}
 		SimView plate_view(&renderer);
-		plate_view.set_material(plate, true);
+		plate_view.set_model(plate_grid);
 		plate_view.camera().view(0);
 		plate_view.fit();
 		plate_view.show_axes = false;

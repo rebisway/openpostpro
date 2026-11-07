@@ -317,3 +317,4 @@ SIM_CARD_STATE=État
 PREF_SIM_FEED=Simulation : usinage
 PREF_SIM_RAPID=Simulation : rapides
 SIM_MAX_CELLS=Cellules max (millions)
+SIM_METHOD=Méthode
