@@ -485,6 +485,9 @@
     <ClInclude Include="src\postpro\postpro.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="src\postpro\travel_sort.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
     <ClInclude Include="src\python\script.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>

@@ -1016,6 +1016,8 @@ void Pocket::update()
 				last.insert(last.end(), finish.begin(), finish.end());
 		}
 
+		// the finishing pass stays at the very end, whatever the order of the other curves
+		_final_count = last.size();
 		_computed.insert(_computed.end(), last.begin(), last.end());
 
 		generate_data(_computed);

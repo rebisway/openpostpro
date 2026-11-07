@@ -10,6 +10,7 @@
 //
 // Build: tests/cpp/build_pocket_file.bat   (exit code 0 = no crossing)
 #include <pocket.h>
+#include <travel_sort.h>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -65,6 +66,38 @@ int main(int argc, char** argv)
 				out << "C " << c.level() << ' ' << c.cw() << ' ' << c.size() << "\n";
 				for (const glm::vec2& v : c.coordinates())
 					out << v.x << ' ' << v.y << "\n";
+			}
+		}
+		// the rapid moves between the curves: in the order of the pocket, and sorted (the finishing pass stays at the end)
+		{
+			const size_t split = curves.size() - pocket.final_count();
+			float natural = 0, sorted = 0;
+			glm::vec2 end_natural(0.0f), end_sorted(0.0f);
+			for (int part = 0; part < 2; part++)
+			{
+				std::vector<glm::vec2> starts, ends;
+				for (size_t i = part == 0 ? 0 : split; i < (part == 0 ? split : curves.size()); i++)
+				{
+					starts.push_back(curves[i].front().point);
+					ends.push_back(curves[i].back().point);
+				}
+				for (size_t i = 0; i < starts.size(); i++)
+				{
+					natural += glm::distance(end_natural, starts[i]);
+					end_natural = ends[i];
+				}
+				glm::vec2 cursor = end_sorted;
+				for (int i : sort_by_travel(starts, ends, cursor))
+				{
+					sorted += glm::distance(end_sorted, starts[i]);
+					end_sorted = ends[i];
+				}
+			}
+			std::printf("  rapid moves: %.0f mm in the order of the pocket, %.0f mm sorted (%zu curves, %zu for the finishing)\n", natural, sorted, curves.size(), pocket.final_count());
+			if (curves.size() > 8 && sorted > natural)
+			{
+				std::printf("  the sorted order is longer\n");
+				crossings++;
 			}
 		}
 		std::printf("pocket %d: radius %.1f, %zu curves, %d crossings\n", pockets, pocket.radius(), curves.size(), local);

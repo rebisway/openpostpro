@@ -32,6 +32,7 @@
 #include <file.h>
 #include <logger.h>
 #include <drill.h>
+#include "travel_sort.h"
 #include <moveTo.h>
 
 
@@ -752,23 +753,105 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 			else
 				levels.push_back(0);
 
-			// we loop into the passes, then into toolpaths
+			// The independent contours (follow, offset, drilling) which follow each other are sorted to shorten the rapid moves of the tool.
+			// A pocket is sorted by itself (its finishing pass stays at the end). The other toolpaths (spiral, move) keep their order and the order of
+			// their curves, and are the limit of a group of sorted ones.
+			struct Item
+			{
+				Toolpath* toolpath;
+				Curve curve;
+			};
+			std::vector<std::vector<Item>> runs;
+			std::vector<bool> run_sorted;
+			// a run of independent contours takes the next independent toolpath
+			std::vector<bool> run_open;
+			for (Toolpath* t : g->toolpaths())
+			{
+				std::vector<Curve> curves = t->coordinates();
+
+				// a pocket: all the curves are sorted together (the parts of the pocket are machined one after the other, not the rings of
+				// a part, then the rings of the next part...) but the finishing pass stays at the end
+				if (t->type() == GraphicType::CamPocket)
+				{
+					const size_t split = curves.size() - std::min(t->final_count(), curves.size());
+					for (int part = 0; part < 2; part++)
+					{
+						runs.push_back(std::vector<Item>());
+						run_sorted.push_back(true);
+						run_open.push_back(false);
+						for (size_t i = part == 0 ? 0 : split; i < (part == 0 ? split : curves.size()); i++)
+							runs.back().push_back({ t, curves[i] });
+					}
+					continue;
+				}
+
+				const bool independent = t->type() == GraphicType::CamFollow || t->type() == GraphicType::CamOffset || t->type() == GraphicType::CamDrill;
+				if (runs.empty() || !independent || !run_open.back())
+				{
+					runs.push_back(std::vector<Item>());
+					run_sorted.push_back(independent);
+					run_open.push_back(independent);
+				}
+				for (Curve& c : curves)
+					runs.back().push_back({ t, c });
+			}
+			glm::vec2 cursor(0.0f);
+			for (size_t r = 0; r < runs.size(); r++)
+			{
+				if (!run_sorted[r])
+					continue;
+				std::vector<glm::vec2> starts, ends;
+				for (Item& item : runs[r])
+				{
+					starts.push_back(item.curve.front().point);
+					ends.push_back(item.curve.back().point);
+				}
+				auto order = sort_by_travel(starts, ends, cursor);
+				std::vector<Item> sorted;
+				for (int i : order)
+					sorted.push_back(runs[r][i]);
+				runs[r] = sorted;
+			}
+
+			// we loop into the passes, then into the curves
 			for (size_t level = 0; level < levels.size(); level++)
 			{
 				const float z = levels[level];
 
-				for (Toolpath* t : g->toolpaths())
+				// the sorted ones are done backward every other pass: the tool starts where the previous pass ended
+				std::vector<const Item*> sequence;
+				for (size_t r = 0; r < runs.size(); r++)
 				{
+					if (run_sorted[r] && level % 2 == 1)
+						for (size_t i = runs[r].size(); i > 0; i--)
+							sequence.push_back(&runs[r][i - 1]);
+					else
+						for (Item& item : runs[r])
+							sequence.push_back(&item);
+				}
+
+				Toolpath* current = nullptr;
+				ToolRadiusCompensation compensation = ToolRadiusCompensation::None;
+				for (const Item* item : sequence)
+				{
+					Toolpath* t = item->toolpath;
+					Curve c = item->curve;
+
 					// drillings and moves are done once, with the first pass
 					if (level > 0 && (t->type() == GraphicType::CamDrill || t->type() == GraphicType::CamMoveTo))
 						continue;
 
-					output += comment("TOOLPATH [" + t->name() + "]");
-					output += start_toolpath();
-					// radius compensation (G41 / G42) of the toolpath: only a compensated "follow" has one
-					ToolRadiusCompensation compensation = t->radius_compensation();
+					if (t != current)
+					{
+						if (current != nullptr)
+							output += stop_toolpath();
+						current = t;
+						output += comment("TOOLPATH [" + t->name() + "]");
+						output += start_toolpath();
+						// radius compensation (G41 / G42) of the toolpath: only a compensated "follow" has one
+						compensation = t->radius_compensation();
+					}
 
-					for (auto c : t->coordinates())
 					{
 						_pos = get_current_position();
 
@@ -860,9 +943,10 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 							output += stop_tool_radius_compensation(compensation);
 						}
 
-						output += stop_toolpath();
 					}
 				}
+				if (current != nullptr)
+					output += stop_toolpath();
 			}
 
 			output += stop_tool_length_compensation(g->tool_length_compensation());

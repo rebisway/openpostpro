@@ -39,6 +39,8 @@ private:
 	float _angle = 0.0f;
 	bool _contours = true;
 	bool _outward = false;
+	// number of curves of the toolpath which are the finishing pass (the last ones)
+	size_t _final_count = 0;
 
 public:
 	GraphicType type() override { return GraphicType::CamPocket; }
@@ -82,6 +84,7 @@ public:
 	void refresh(TreeCurve* value) override;
 	void scaled() override;
 	std::vector<Curve> coordinates() override;
+	size_t final_count() override { return _final_count; }
 
 	void properties() override;
 

@@ -154,6 +154,9 @@ public:
 	virtual void cw(bool value);
 
 	virtual std::vector<Curve> coordinates() { return std::vector<Curve>(); }
+
+	// number of curves at the end of coordinates() which have to be machined after all the others (the finishing pass of a pocket)
+	virtual size_t final_count() { return 0; }
 };
 
 #endif
