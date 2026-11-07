@@ -53,6 +53,14 @@ A button of the Groups tab computes the toolpaths again from their shapes (the s
 
 CAM operations have configurable parameters. Because the project is still young, the results, especially outline, offset, and pocket calculations, may not be reliable for every shape or machining situation.
 
+## 🎞️ Simulation
+
+The **Simulation** tab plays a G-code program on a block of material, in 3D, before it is sent to a machine. It loads the output of the current post-processor (or any G-code file, which can also be dropped on the window), shows the toolpaths (feed and rapid moves), the tool and the material taken away by it (flat, ball, bull nose, V cutter or plasma torch), and measures the time of the machining from the feed rates.
+
+- Play, pause, step by command or by line, go back, go to a line (a click in the text of the program), go to the final result, speeds from x1 to x500 and full speed. The stops (M0, optional M1) and the dwells of the program are executed as a machine does, and skipped when the simulator goes fast.
+- The program is translated by a **Python translator** (`simulator/gcode.py` for generic G-code: moves, arcs, helices, canned cycles, units, planes, spindle, coolant, tools) into a few simple commands which the simulator plays. A translator for another controller or format only needs the three methods `start`, `next` and `close` (see [`docs/SIMULATOR.fr.md`](docs/SIMULATOR.fr.md)).
+- It is a check of the program, not a model of the machine: the cutter radius compensation (G41 / G42) is not applied, and the axes A, B, C are ignored.
+
 ## 🧩 Python post-processors
 
 Post-processors are written in Python, making machine-output customization accessible without changing the C++ application. They can be cloned and edited from the application.

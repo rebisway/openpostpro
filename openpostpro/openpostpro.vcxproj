@@ -122,7 +122,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\third\IMGUI_third\ImGuiColortextEdit;$(ProjectDir)src\test;$(ProjectDir)src\ui;$(ProjectDir)src\common;$(ProjectDir)src\third\;$(ProjectDir)src\third\IMGUI;$(ProjectDir)src\third\IMGUI\backends;$(ProjectDir)src\cad;$(ProjectDir)src\postpro;$(ProjectDir)src\script;$(ProjectDir)src\cam;$(ProjectDir)src\python;$(ProjectDir)src\third\GLM\;$(ProjectDir)src\third\gl3w\;$(ProjectDir)src\third\stb\;$(ProjectDir)src\third\freetype;$(ProjectDir)src\third\siglot;$(ProjectDir)src\third\python\313;$(ProjectDir)postcallback;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\third\IMGUI_third\ImGuiColortextEdit;$(ProjectDir)src\test;$(ProjectDir)src\ui;$(ProjectDir)src\common;$(ProjectDir)src\third\;$(ProjectDir)src\third\IMGUI;$(ProjectDir)src\third\IMGUI\backends;$(ProjectDir)src\cad;$(ProjectDir)src\postpro;$(ProjectDir)src\script;$(ProjectDir)src\cam;$(ProjectDir)src\sim;$(ProjectDir)src\python;$(ProjectDir)src\third\GLM\;$(ProjectDir)src\third\gl3w\;$(ProjectDir)src\third\stb\;$(ProjectDir)src\third\freetype;$(ProjectDir)src\third\siglot;$(ProjectDir)src\third\python\313;$(ProjectDir)postcallback;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -150,7 +150,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;_WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)src\third\IMGUI_third\ImGuiColortextEdit;$(ProjectDir)src\test;$(ProjectDir)src\ui;$(ProjectDir)src\common;$(ProjectDir)src\third\;$(ProjectDir)src\third\IMGUI;$(ProjectDir)src\third\IMGUI\backends;$(ProjectDir)src\cad;$(ProjectDir)src\postpro;$(ProjectDir)src\script;$(ProjectDir)src\cam;$(ProjectDir)src\python;$(ProjectDir)src\third\GLM\;$(ProjectDir)src\third\gl3w\;$(ProjectDir)src\third\stb\;$(ProjectDir)src\third\freetype;$(ProjectDir)src\third\siglot;$(ProjectDir)src\third\python\313;$(ProjectDir)postcallback;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\third\IMGUI_third\ImGuiColortextEdit;$(ProjectDir)src\test;$(ProjectDir)src\ui;$(ProjectDir)src\common;$(ProjectDir)src\third\;$(ProjectDir)src\third\IMGUI;$(ProjectDir)src\third\IMGUI\backends;$(ProjectDir)src\cad;$(ProjectDir)src\postpro;$(ProjectDir)src\script;$(ProjectDir)src\cam;$(ProjectDir)src\sim;$(ProjectDir)src\python;$(ProjectDir)src\third\GLM\;$(ProjectDir)src\third\gl3w\;$(ProjectDir)src\third\stb\;$(ProjectDir)src\third\freetype;$(ProjectDir)src\third\siglot;$(ProjectDir)src\third\python\313;$(ProjectDir)postcallback;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -283,6 +283,16 @@
     <ClCompile Include="src\ui\renderer.cpp" />
     <ClCompile Include="src\ui\renderer_opengl.cpp" />
     <ClCompile Include="src\ui\window.cpp" />
+    <ClCompile Include="src\ui\bridge.cpp" />
+    <ClCompile Include="src\ui\mod_sim.cpp" />
+    <ClCompile Include="src\ui\orbit_cam.cpp" />
+    <ClCompile Include="src\sim\sim_geometry.cpp" />
+    <ClCompile Include="src\sim\sim_program.cpp" />
+    <ClCompile Include="src\sim\sim_player.cpp" />
+    <ClCompile Include="src\sim\sim_material.cpp" />
+    <ClCompile Include="src\sim\sim_translator.cpp" />
+    <ClCompile Include="src\sim\sim_loader.cpp" />
+    <ClCompile Include="src\sim\sim_view.cpp" />
     <None Include="postpro\postcore.py" />
     <None Include="script\cadcore.py" />
     <None Include="script\oblong.py" />
@@ -362,6 +372,17 @@
     <ClInclude Include="src\ui\renderer.h" />
     <ClInclude Include="src\ui\renderer_opengl.h" />
     <ClInclude Include="src\ui\window.h" />
+    <ClInclude Include="src\ui\bridge.h" />
+    <ClInclude Include="src\ui\mod_sim.h" />
+    <ClInclude Include="src\ui\orbit_cam.h" />
+    <ClInclude Include="src\sim\sim_types.h" />
+    <ClInclude Include="src\sim\sim_geometry.h" />
+    <ClInclude Include="src\sim\sim_program.h" />
+    <ClInclude Include="src\sim\sim_player.h" />
+    <ClInclude Include="src\sim\sim_material.h" />
+    <ClInclude Include="src\sim\sim_translator.h" />
+    <ClInclude Include="src\sim\sim_loader.h" />
+    <ClInclude Include="src\sim\sim_view.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="lang\en-uk.txt" />

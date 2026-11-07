@@ -12,3 +12,5 @@ xcopy /y .\postpro\*.py .\x64\Debug\postpro\
 xcopy /y .\postpro\*.py .\x64\Release\postpro\
 xcopy /y .\script\*.py .\x64\Debug\script\
 xcopy /y .\script\*.py .\x64\Release\script\
+xcopy /y .\simulator\*.py .\x64\Debug\simulator\
+xcopy /y .\simulator\*.py .\x64\Release\simulator\

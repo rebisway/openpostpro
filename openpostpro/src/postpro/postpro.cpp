@@ -829,7 +829,21 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 								if (z == g->depth())
 									break;
 								else
+								{
 									z = std::max(z - g->pass(), g->depth());
+
+									// With a compensation, or when the path does not end where it starts (an entry and an exit), the next
+									// pass can not begin with a move from the end of the path: the tool goes up, the compensation is
+									// cancelled in the air, then the tool goes back to the entry, the compensation is called again, and
+									// the next plunge is vertical
+									if (compensation != ToolRadiusCompensation::None || glm::distance(c.back().point, c.front().point) > 0.0001f)
+									{
+										output += rapid('Z', g->safe());
+										output += stop_tool_radius_compensation(compensation);
+										output += rapid(glm::vec3(c[0].point.x, c[0].point.y, g->safe()));
+										output += start_tool_radius_compensation(compensation);
+									}
+								}
 							}
 						}
 						else

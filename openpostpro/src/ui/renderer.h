@@ -92,6 +92,21 @@ public:
 	virtual void delete_buffer(Buffer* buffer) {}
 	virtual Texture* load_texture(std::string path) { return NULL; }
 	virtual void delete_texture(Texture* texture) {}
+
+	// A texture of one floating point number for each pixel (a map of heights, read by a shader with texelFetch). It is not filtered.
+	// `data` can be NULL (the texture is then filled with zero)
+	virtual Texture* create_float_texture(int width, int height, const float* data) { return NULL; }
+	// Replaces a rectangle of the texture. `data` points to the first number of the rectangle, `row_length` is the number of
+	// numbers between two rows of the source (the width of the whole map when the rectangle is a part of it)
+	virtual void update_float_texture(Texture* texture, int x, int y, int width, int height, const float* data, int row_length) {}
+	// Binds the texture to a unit, the shader reads it with a sampler2D which has this unit as its value
+	virtual void bind_texture(Texture* texture, int unit) {}
+
+	// Draws vertices which the vertex shader makes from gl_VertexID: nothing is read from a buffer
+	virtual void draw_arrays(int primitive, int count) {}
+
+	// The test of depth, for the scenes in 3D
+	virtual void depth_test(bool state) {}
 };
 
 class Buffer

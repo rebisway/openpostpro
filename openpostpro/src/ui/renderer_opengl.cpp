@@ -336,6 +336,73 @@ void OpenGlRenderer::delete_texture(Texture* texture)
 	delete (GlTexture*)texture;
 }
 
+Texture* OpenGlRenderer::create_float_texture(int width, int height, const float* data)
+{
+	GlTexture* texture = new GlTexture();
+	GLuint id = 0;
+	glGenTextures(1, &id);
+	glBindTexture(GL_TEXTURE_2D, id);
+
+	std::vector<float> zero;
+	if (data == nullptr)
+	{
+		zero.assign((size_t)width * height, 0.0f);
+		data = zero.data();
+	}
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data);
+	// a float texture is not filtered: the shader reads the numbers with texelFetch
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	texture->width(width);
+	texture->height(height);
+	texture->id((void*)(size_t)id);
+	return texture;
+}
+
+void OpenGlRenderer::update_float_texture(Texture* texture, int x, int y, int width, int height, const float* data, int row_length)
+{
+	if (texture == nullptr || data == nullptr)
+		return;
+	glBindTexture(GL_TEXTURE_2D, (GLuint)(size_t)texture->id());
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, row_length);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, x, y, width, height, GL_RED, GL_FLOAT, data);
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void OpenGlRenderer::bind_texture(Texture* texture, int unit)
+{
+	glActiveTexture(GL_TEXTURE0 + unit);
+	glBindTexture(GL_TEXTURE_2D, texture ? (GLuint)(size_t)texture->id() : 0);
+}
+
+void OpenGlRenderer::draw_arrays(int primitive, int count)
+{
+	// the core profile needs a vertex array, even when there is nothing in it
+	if (_empty_vao == 0)
+		glGenVertexArrays(1, &_empty_vao);
+	glBindVertexArray(_empty_vao);
+	glDrawArrays(primitive, 0, count);
+	glBindVertexArray(0);
+}
+
+void OpenGlRenderer::depth_test(bool state)
+{
+	if (state)
+	{
+		glEnable(GL_DEPTH_TEST);
+		glDepthFunc(GL_LEQUAL);
+	}
+	else
+		glDisable(GL_DEPTH_TEST);
+}
+
 
 GlBuffer::GlBuffer(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normales, int usage) 
 {
@@ -727,7 +794,9 @@ void GlBuffer::draw(int primitive, int count, int* indice)
 
 GlTexture::~GlTexture()
 {
-	glDeleteTextures(1, (GLuint*)id());
+	// id() holds the number of the texture, not the address of a number
+	GLuint texture = (GLuint)(size_t)id();
+	glDeleteTextures(1, &texture);
 }
 
 void GlTexture::load(std::string path)

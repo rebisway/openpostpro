@@ -42,6 +42,8 @@
 
 #include "mod_log.h"
 #include "mod_output.h"
+#include "mod_sim.h"
+#include "bridge.h"
 #include "mod_cad.h"
 #include "mod_script.h"
 
@@ -130,11 +132,58 @@ void Application::initialize()
 	// Class to instanciate
 	_modules.push_back(new ModCad(this));
 	_modules.push_back(new ModOutput(this));
+	_modules.push_back(new ModSim(this));
 	_modules.push_back(new ModLog(this));
 	auto script_module = new ModScript(this);
 	script_module->on_compiled = [this](const std::string& path) { reload_script(path); };
 	_modules.push_back(script_module);
 	_current_module = _modules[0];
+
+#ifdef _DEBUG
+	// the commands of the test bridge which belong to the application (see bridge.h)
+	bridge::application = [this](const std::vector<std::string>& c) -> bool
+	{
+		if (c[0] == "module" && c.size() > 1)
+		{
+			// "module sim", "module cad": the tab of the module is shown
+			for (Module* m : _modules)
+			{
+				std::string code = m->code();
+				std::transform(code.begin(), code.end(), code.begin(), [](unsigned char ch) { return (char)std::tolower(ch); });
+				if (code == "mod_" + c[1] || code == c[1])
+				{
+					m->show(true);
+					m->selected(true);
+					_current_module = m;
+					bridge::log("module " + m->code());
+					return true;
+				}
+			}
+			return false;
+		}
+		if (c[0] == "open" && c.size() > 1)
+		{
+			load_file(c[1]);
+			bridge::log("document " + c[1]);
+			return true;
+		}
+		if (c[0] == "post")
+		{
+			// the post-processor of the menu, then the output is shown
+			if (_current_postpro == nullptr)
+				return false;
+			_current_postpro->run(_document, config.output_path, std::to_string(_version));
+			bridge::log("post-processor run, output " + _document->output());
+			return true;
+		}
+		if (c[0] == "sim")
+		{
+			ModSim* sim = (ModSim*)module("MOD_SIM");
+			return sim != nullptr && sim->command(c);
+		}
+		return false;
+	};
+#endif
 	// parameters (simple and effective...)
 
 	switch (config.display_style)
@@ -243,6 +292,23 @@ void Application::initialize()
 			}
 		}
 	}
+
+	/////////////////////////////////////////
+	// Initialize the translators of the simulator //
+	/////////////////////////////////////////
+	appl = environment::combine_path(environment::application_path(), "simulator");
+	path = environment::combine_path(environment::application_data_path(), "simulator");
+	if (!std::filesystem::exists(path))
+		std::filesystem::create_directory(path);
+	if (std::filesystem::exists(appl))
+	{
+		for (const auto& entry : std::filesystem::directory_iterator(appl))
+		{
+			auto dst = environment::combine_path(path, entry.path().filename().string());
+			file::write_all_text(dst, file::read_all_text(entry.path().string()));
+		}
+	}
+	Script::add_module_path(path);
 
 	////////////////////////////////
 	// Initialize the cad scripts //
@@ -923,6 +989,16 @@ void Application::render_menu()
 				auto m = module("MOD_OUTPUT");
 				m->show(true);
 				m->selected(true);
+			}
+			if (_current_postpro != nullptr && ImGui::MenuItem(Lang::l("POST_SIMULATE")))
+			{
+				// the same as the run of the post-processor, then the output is simulated
+				_current_postpro->run(_document, config.output_path, std::to_string(_version));
+				auto sim = (ModSim*)module("MOD_SIM");
+				sim->simulate_output();
+				sim->show(true);
+				sim->selected(true);
+				_current_module = sim;
 			}
 			ImGui::Separator();
 			// the configuration needs properties, the delivered post-processors cannot be edited (they are copied again at each start)

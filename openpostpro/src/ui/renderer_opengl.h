@@ -82,6 +82,15 @@ public:
 	void delete_buffer(Buffer* buffer) override;
 	Texture* load_texture(std::string path) override;
 	void delete_texture(Texture* texture) override;
+
+	Texture* create_float_texture(int width, int height, const float* data) override;
+	void update_float_texture(Texture* texture, int x, int y, int width, int height, const float* data, int row_length) override;
+	void bind_texture(Texture* texture, int unit) override;
+	void draw_arrays(int primitive, int count) override;
+	void depth_test(bool state) override;
+
+private:
+	unsigned int _empty_vao = 0;		// the vertex array of the draws without buffer
 };
 
 

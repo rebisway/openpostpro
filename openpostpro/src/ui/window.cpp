@@ -22,6 +22,7 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "environment.h"
+#include "bridge.h"
 #include <filesystem>
 
 #pragma region initialisation/finalization
@@ -206,6 +207,37 @@ void Window::doEvents()
 {
 	glfwPollEvents();
 }
+
+void Window::simulate_cursor(double x, double y)
+{
+	ImGui_ImplGlfw_CursorPosCallback(_window, x, y);
+	cursor_position_callback(_window, x, y);
+}
+
+void Window::simulate_button(int button, int action, int mods)
+{
+	ImGui_ImplGlfw_MouseButtonCallback(_window, button, action, mods);
+	mouse_button_callback(_window, button, action, mods);
+}
+
+void Window::simulate_scroll(double x, double y)
+{
+	ImGui_ImplGlfw_ScrollCallback(_window, x, y);
+	scroll_callback(_window, x, y);
+}
+
+void Window::simulate_key(int key, int action, int mods)
+{
+	int scancode = glfwGetKeyScancode(key);
+	ImGui_ImplGlfw_KeyCallback(_window, key, scancode, action, mods);
+	key_callback(_window, key, scancode, action, mods);
+}
+
+void Window::simulate_char(unsigned int codepoint)
+{
+	ImGui_ImplGlfw_CharCallback(_window, codepoint);
+	character_callback(_window, codepoint);
+}
 #pragma endregion
 
 #pragma region rendering loop
@@ -215,6 +247,9 @@ void Window::run()
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glClearColor(0.3f, 0.3f, 0.32f, 1.0f);
+
+		// the test bridge (Debug build, when it is asked for) gives its events before the frame is built
+		bridge::poll(this);
 
 		onRenderFrame();
 
@@ -231,6 +266,8 @@ void Window::run()
 
 
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		bridge::after_render(this);
 
 		glfwSwapBuffers(_window);
 		glfwPollEvents();

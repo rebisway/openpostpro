@@ -199,6 +199,14 @@ public:
 
 #pragma endregion
 
+	// Events given by the program (the test bridge) as if they came from the person: they go through the same callbacks as the
+	// ones of GLFW (the interface first, then the modules)
+	void simulate_cursor(double x, double y);
+	void simulate_button(int button, int action, int mods);
+	void simulate_scroll(double x, double y);
+	void simulate_key(int key, int action, int mods);
+	void simulate_char(unsigned int codepoint);
+
 	void show();
 	void hide();
 	void close();
