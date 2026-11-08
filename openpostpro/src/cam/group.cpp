@@ -336,6 +336,9 @@ void Group::ui()
 			_tool_focus = false;
 		}
 		typed = ImGui::InputText("##TOOL_NUMBER", input, sizeof(input), ImGuiInputTextFlags_EnterReturnsTrue);
+		// leaving the field (Tab, a click elsewhere) validates it too; Escape cancels
+		if (ImGui::IsItemDeactivatedAfterEdit() && !ImGui::IsKeyPressed(ImGuiKey_Escape))
+			typed = true;
 		if (ImGui::IsItemDeactivated())
 			_tool_editing = false;
 	}

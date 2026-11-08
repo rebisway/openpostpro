@@ -85,6 +85,9 @@ void MachinesWindow::draw(Document* document)
 		if (ImGui::Button(use) && machine != nullptr && document != nullptr)
 			document->machine(*machine);
 		ImGui::EndDisabled();
+		// the label is short: the tooltip says what it does
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+			ImGui::SetTooltip("%s", Lang::l("MACHINE_USE_HINT"));
 		ImGui::SameLine();
 		ImGui::BeginDisabled(document == nullptr || !document->has_machine());
 		if (ImGui::Button(none) && document != nullptr)
@@ -100,7 +103,9 @@ void MachinesWindow::draw(Document* document)
 		char name[64];
 		sprintf_s(name, "%s", machine->name.c_str());
 		ImGui::TextUnformatted(Lang::l("TOOLS_NAME"));
-		if (ImGui::InputText("##M_NAME", name, sizeof(name), ImGuiInputTextFlags_EnterReturnsTrue))
+		ImGui::InputText("##M_NAME", name, sizeof(name));
+		// the name is applied when the field is left (Enter, Tab or a click elsewhere), not only with Enter
+		if (ImGui::IsItemDeactivatedAfterEdit())
 		{
 			// refused when another machine has this name
 			std::string old = machine->name;

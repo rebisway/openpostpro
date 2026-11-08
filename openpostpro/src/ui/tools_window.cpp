@@ -108,7 +108,9 @@ void ToolsWindow::draw()
 		const int step_none = 0;
 
 		ImGui::TextUnformatted(Lang::l("TOOL_NUMBER"));
-		if (ImGui::InputInt("##T_NUMBER", &_new_number, step_none, step_none, ImGuiInputTextFlags_EnterReturnsTrue))
+		ImGui::InputInt("##T_NUMBER", &_new_number, step_none, step_none);
+		// the number is applied when the field is left (Enter, Tab or a click elsewhere), not only with Enter
+		if (ImGui::IsItemDeactivatedAfterEdit())
 		{
 			// refused when another tool has this number
 			if (table.renumber(_selected, _new_number))
