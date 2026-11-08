@@ -42,6 +42,7 @@ struct Tool
 	int number = 1;
 	std::string name;
 	ToolType type = ToolType::Mill;
+	int flutes = 2;				// number of teeth (for the computation of the feed)
 	float diameter = 6;			// cutting width for a torch
 	float feed = 1000;			// cutting speed
 	float plunge_feed = 500;

@@ -11,11 +11,15 @@
 //   (vertical, oblique on a line entry and on an arc entry, the next passes, no room, no segment) through the same code as the
 //   post-processor (cut_path.h), with a recording object in place of the Python post-processor.
 //
+//   The table of the feeds (feeds.h): speed from the cutting speed, feed from the teeth, the limit of the spindle, the interpolation of the
+//   feed per tooth, the values given to a tool, and the number of teeth saved in the table of the tools (an old line has two).
+//
 // Build: tests/cpp/build_tools.bat   Run: tests/cpp/test_tools.exe   (exit code 0 = all checks pass)
 // The data folder is a temporary one (OPP_PROFILE): the tools of the user are not touched.
 #include <follow.h>
 #include <group.h>
 #include <tool.h>
+#include <feeds.h>
 #include <cut_path.h>
 #include <strings.h>
 #include <environment.h>
@@ -173,6 +177,54 @@ int main()
 		CHECK(!o.oblique() && !o.is_torch() && o.tool_type() == ToolType::Mill, "old group: no oblique plunge, a mill");
 		CHECK(near(o.pass(), 1) && near(o.spindle_speed(), 0) && o.spindle_cw() && o.cooling() == CoolingType::None, "old group: default pass, spindle, cooling");
 		CHECK(o.tool_number() == 2 && near(o.tool_radius(), 0.75f), "old group: the old fields are read");
+	}
+
+	std::puts("feeds: the table");
+	{
+		const FeedMaterial* aluminium = nullptr;
+		for (const FeedMaterial& m : feeds::materials())
+			if (std::string(m.key) == "ALUMINIUM")
+				aluminium = &m;
+		CHECK(aluminium != nullptr, "aluminium is in the table");
+		if (aluminium)
+		{
+			// 6 mm, 2 teeth: n = 250 * 1000 / (pi * 6) = 13263 rpm, fz = 0.05, F = 1326 mm/min
+			feeds::Result r = feeds::compute(*aluminium, 6, 2);
+			CHECK(near(r.spindle_speed, 13263) && near(r.feed, 1326) && !r.limited, "aluminium 6 mm, 2 teeth");
+			CHECK(near(r.pass, 3.0f) && near(r.plunge_feed, std::round(1326 * 0.4f)) && r.cooling == CoolingType::Mist, "pass, plunge and cooling");
+			// the spindle of the machine is slower: the feed follows the speed
+			feeds::Result slow = feeds::compute(*aluminium, 6, 2, 10000);
+			CHECK(slow.limited && near(slow.spindle_speed, 10000) && near(slow.feed, 1000), "limited by the maximum speed");
+			// between two columns of the table: 9 mm is in the middle of 6 and 12
+			CHECK(near(feeds::feed_per_tooth(*aluminium, 9), 0.065f), "fz is interpolated");
+			CHECK(near(feeds::feed_per_tooth(*aluminium, 1), 0.02f) && near(feeds::feed_per_tooth(*aluminium, 50), 0.10f), "fz outside of the table");
+			feeds::Result four = feeds::compute(*aluminium, 6, 4);
+			CHECK(near(four.feed, std::round(13263 * 4 * 0.05f)), "the feed follows the number of teeth");
+			CHECK(feeds::compute(*aluminium, 0, 2).feed == 0 && feeds::compute(*aluminium, 6, 0).feed == 0, "no diameter or no tooth: nothing");
+
+			Tool t;
+			feeds::apply(r, t);
+			CHECK(near(t.feed, 1326) && near(t.spindle_speed, 13263) && near(t.pass, 3.0f), "applied to a tool");
+		}
+		// a harder material is slower than a softer one at the same diameter
+		float previous = 1e9f;
+		for (const char* key : { "ALUMINIUM", "STEEL", "STAINLESS" })
+			for (const FeedMaterial& m : feeds::materials())
+				if (std::string(m.key) == key)
+				{
+					float f = feeds::compute(m, 6, 2).feed;
+					CHECK(f < previous, "the harder the material, the slower the feed");
+					previous = f;
+				}
+
+		ToolTable table;
+		Tool a; a.number = 1; a.flutes = 3;
+		table.add(a);
+		ToolTable back;
+		back.read(table.write());
+		CHECK(back.find(1) && back.find(1)->flutes == 3, "the number of teeth is saved");
+		back.read("5;old tool;0;6;1000;500;1;0;1;0\n");
+		CHECK(back.find(5) && back.find(5)->flutes == 2, "an old line has the default number of teeth");
 	}
 
 	std::puts("plunge: vertical");

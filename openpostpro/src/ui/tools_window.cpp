@@ -19,6 +19,8 @@
 #include <imgui.h>
 #include <lang.h>
 #include <logger.h>
+#include <feeds.h>
+#include <algorithm>
 #include <cstdio>
 
 void ToolsWindow::draw()
@@ -134,6 +136,40 @@ void ToolsWindow::draw()
 				tool->cooling = (CoolingType)c;
 				changed = true;
 			}
+
+			// the table of the feeds: speed, feed, plunge, pass and cooling from the material, the diameter and the number of teeth
+			ImGui::Separator();
+			ImGui::TextUnformatted(Lang::l("TOOLS_FLUTES"));
+			if (ImGui::InputInt("##T_FLUTES", &tool->flutes, 0, 0))
+			{
+				tool->flutes = (std::max)(1, tool->flutes);
+				changed = true;
+			}
+			const auto& materials = feeds::materials();
+			ImGui::TextUnformatted(Lang::l("TOOLS_MATERIAL"));
+			std::string preview = Lang::t(std::string("MATERIAL_") + materials[_material].key);
+			if (ImGui::BeginCombo("##T_MATERIAL", preview.c_str()))
+			{
+				for (int i = 0; i < (int)materials.size(); i++)
+				{
+					std::string name = Lang::t(std::string("MATERIAL_") + materials[i].key);
+					if (ImGui::Selectable(name.c_str(), i == _material))
+						_material = i;
+				}
+				ImGui::EndCombo();
+			}
+			ImGui::TextUnformatted(Lang::l("TOOLS_MAX_RPM"));
+			ImGui::InputFloat("##T_MAX_RPM", &_max_rpm, 0, 0, "%.0f");
+			if (ImGui::Button(Lang::l("TOOLS_COMPUTE")))
+			{
+				feeds::Result result = feeds::compute(materials[_material], tool->diameter, tool->flutes, _max_rpm);
+				feeds::apply(result, *tool);
+				_rpm_limited = result.limited;
+				changed = true;
+			}
+			if (_rpm_limited)
+				ImGui::TextWrapped("%s", Lang::l("TOOLS_RPM_LIMITED"));
+			ImGui::TextDisabled("%s", Lang::l("TOOLS_COMPUTE_HINT"));
 		}
 		ImGui::PopItemWidth();
 	}

@@ -214,6 +214,7 @@
     <ClCompile Include="src\cam\toolpath.cpp" />
     <ClCompile Include="src\cam\group.cpp" />
     <ClCompile Include="src\cam\tool.cpp" />
+    <ClCompile Include="src\cam\feeds.cpp" />
     <ClCompile Include="src\common\clipboard.cpp" />
     <ClCompile Include="src\common\curve.cpp" />
     <ClCompile Include="src\common\dialog.cpp" />
@@ -335,6 +336,7 @@
     <ClInclude Include="src\cam\toolpath.h" />
     <ClInclude Include="src\cam\group.h" />
     <ClInclude Include="src\cam\tool.h" />
+    <ClInclude Include="src\cam\feeds.h" />
     <ClInclude Include="src\common\pch.h" />
     <ClInclude Include="src\common\clipboard.h" />
     <ClInclude Include="src\common\curve.h" />

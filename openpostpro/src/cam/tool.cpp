@@ -66,7 +66,7 @@ bool ToolTable::renumber(int old_number, int new_number)
 	return true;
 }
 
-// number;name;type;diameter;feed;plunge;pass;spindle;cw;cooling
+// number;name;type;diameter;feed;plunge;pass;spindle;cw;cooling;flutes
 std::string ToolTable::write() const
 {
 	std::string text;
@@ -75,7 +75,7 @@ std::string ToolTable::write() const
 		text += std::to_string(t.number) + ';' + stringex::replace(t.name, ";", "U003B") + ';' + std::to_string((int)t.type) + ';' +
 			stringex::to_string(t.diameter) + ';' + stringex::to_string(t.feed) + ';' + stringex::to_string(t.plunge_feed) + ';' +
 			stringex::to_string(t.pass) + ';' + stringex::to_string(t.spindle_speed) + ';' + std::to_string((int)t.spindle_cw) + ';' +
-			std::to_string((int)t.cooling) + '\n';
+			std::to_string((int)t.cooling) + ';' + std::to_string(t.flutes) + '\n';
 	}
 	return text;
 }
@@ -105,6 +105,7 @@ void ToolTable::read(const std::string& text)
 			if (6 < d.size()) t.pass = std::stof(d[6]);
 			if (7 < d.size()) t.spindle_speed = std::stof(d[7]);
 			if (8 < d.size()) t.spindle_cw = std::stoi(d[8]) != 0;
+			if (10 < d.size()) t.flutes = std::max(1, std::stoi(d[10]));
 			if (9 < d.size()) { int v = std::stoi(d[9]); t.cooling = v >= 0 && v <= (int)CoolingType::Mist ? (CoolingType)v : CoolingType::None; }
 			_tools.push_back(t);
 		}

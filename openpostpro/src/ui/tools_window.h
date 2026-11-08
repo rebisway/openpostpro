@@ -25,6 +25,9 @@ private:
 	bool _open = false;
 	int _selected = -1;			// number of the tool being edited
 	int _new_number = 0;		// number typed in the edit box
+	int _material = 0;			// material of the computation of the feeds (see feeds.h)
+	bool _rpm_limited = false;	// the last computation was limited by the maximum speed
+	float _max_rpm = 24000;		// the spindle of the machine
 	int _edited = -2;			// the tool for which _new_number was set
 
 public:
