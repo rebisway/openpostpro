@@ -8,6 +8,8 @@ The current version is **1.0**. The project is stable and usable, but some geome
 
 User manual: [MANUAL.en.md](docs/MANUAL.en.md) · [Manuel d'utilisation](docs/MANUAL.fr.md)
 
+Version française : [README.fr.md](README.fr.md)
+
 ![OpenPostPro](https://github.com/user-attachments/assets/fc224d77-bbef-4d37-98aa-c54a5e4b89e1)
 
 ## ✏️ Draw and prepare geometry
