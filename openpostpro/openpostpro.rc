@@ -1,0 +1,2 @@
+// Icon of the executable (Windows). Other systems: the icon of the window is set at the start (Window::set_icon).
+1 ICON "textures/openpostpro.ico"

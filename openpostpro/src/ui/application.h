@@ -53,6 +53,8 @@ private:
 	glm::vec2 _top_left = glm::vec2();
 	glm::vec2 _bottom_right = glm::vec2();
 
+	Texture* _splash = nullptr;				// the image of the start, drawn while the application loads
+	bool _splash_on = true;
 	bool _display_preferences = false;
 	bool _display_first_run = false;		// language and unit are asked at the very first start
 	std::string _first_language = "";
@@ -79,6 +81,11 @@ public:
 	~Application();
 
 	void initialize() override;
+
+	// draws one frame of the start screen with the message (the application is loading and does not run its loop yet). The events of the window
+	// are not read: the callbacks need the modules, which do not exist yet
+	void splash(const std::string& message);
+	void splash_end();
 	void finalize() override;
 
 	void onSizeChanged(float width, float height) override;

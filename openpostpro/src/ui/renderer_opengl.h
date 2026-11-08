@@ -53,6 +53,8 @@ public:
 
 
 	void initialize_GLFW() override;
+	// loads the functions of OpenGL (a context must be current); harmless when it is done again. False if it failed
+	static bool load_functions();
 	void initialize() override;
 	void finalize() override;
 	

@@ -303,6 +303,9 @@
     <None Include="script\oblong.py" />
   </ItemGroup>
   <ItemGroup>
+    <ResourceCompile Include="openpostpro.rc" />
+  </ItemGroup>
+  <ItemGroup>
     <ClInclude Include="src\cad\arc.h" />
     <ClInclude Include="src\cad\cad.h" />
     <ClInclude Include="src\cad\extend.h" />

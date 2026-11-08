@@ -23,6 +23,8 @@
 #include <exception>
 
 #include <imgui.h>
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 #include "lang.h"
 #include <inifile.h>
@@ -56,6 +58,65 @@ Application::Application(std::string title) : Window(title)
 
 Application::~Application()
 {
+}
+
+void Application::splash(const std::string& message)
+{
+	if (!_splash_on)
+		return;
+	if (_splash == nullptr)
+	{
+		// the functions of OpenGL are loaded here when the renderers of the modules do not exist yet (loading twice is harmless)
+		if (!OpenGlRenderer::load_functions())
+		{
+			_splash_on = false;
+			return;
+		}
+		GlTexture* texture = new GlTexture();
+		texture->load("splash.png");
+		_splash = texture;
+	}
+	int fw = 0, fh = 0;
+	glfwGetFramebufferSize(glfw_window(), &fw, &fh);
+	glViewport(0, 0, fw, fh);
+	glClearColor(20.0f / 255.0f, 25.0f / 255.0f, 35.0f / 255.0f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		ImDrawList* list = ImGui::GetForegroundDrawList();
+		ImVec2 size((float)_splash->width(), (float)_splash->height());
+		ImVec2 pos(std::floor((io.DisplaySize.x - size.x) / 2), std::floor((io.DisplaySize.y - size.y) / 2));
+		if (_splash->id() != nullptr)
+			list->AddImage((ImTextureID)_splash->id(), pos, ImVec2(pos.x + size.x, pos.y + size.y));
+
+		// the name and the version under the logo, the step of the loading above the line
+		ImFont* font = ImGui::GetFont();
+		auto centered = [&](float size_px, float y, ImU32 color, const std::string& text)
+		{
+			ImVec2 extent = font->CalcTextSizeA(size_px, FLT_MAX, 0.0f, text.c_str());
+			list->AddText(font, size_px, ImVec2(pos.x + std::floor((size.x - extent.x) / 2), pos.y + y), color, text.c_str());
+		};
+		centered(34.0f, 196.0f, IM_COL32(240, 240, 240, 255), "OpenPostPro");
+		centered(15.0f, 232.0f, IM_COL32(255, 154, 31, 255), "v" + appinfo::version());
+		centered(14.0f, size.y - 52.0f, IM_COL32(170, 175, 190, 255), message);
+	}
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	glfwSwapBuffers(glfw_window());
+}
+
+void Application::splash_end()
+{
+	_splash_on = false;
+	if (_splash != nullptr)
+	{
+		delete (GlTexture*)_splash;
+		_splash = nullptr;
+	}
 }
 
 void Application::initialize()
@@ -116,6 +177,9 @@ void Application::initialize()
 		if (std::find(languages.begin(), languages.end(), config.language) != languages.end())
 			Lang::load(config.language);
 	}
+
+	// the start screen, as soon as the language is known (the fonts of the application are added below)
+	splash(Lang::t("SPLASH_START"));
 
 	/*_textures.push_back(load_texture("image2.jpg"));
 	_textures.push_back(load_texture("box-4x.png"));
@@ -228,6 +292,10 @@ void Application::initialize()
 	if (std::filesystem::exists(font_path))
 	{
 		_font = io.Fonts->AddFontFromFileTTF(environment::combine_path(environment::combine_path(environment::application_path(), "fonts"), "Roboto-Medium.ttf").c_str(), 16);
+		// the start screen has already built the atlas of the fonts: it is built again with the new font
+		io.Fonts->ClearTexData();
+		ImGui_ImplOpenGL3_DestroyFontsTexture();
+		ImGui_ImplOpenGL3_CreateFontsTexture();
 	}
 	else
 	{
@@ -256,6 +324,8 @@ void Application::initialize()
 	_first_language = Lang::getName();
 	_first_unit = config.default_unit;
 
+	splash(Lang::t("SPLASH_DOCUMENT"));
+
 	// Default document
 	_document = new Document();
 	_document->unit(config.default_unit == 1 ? Unit::Inch : Unit::Millimeter);
@@ -263,6 +333,8 @@ void Application::initialize()
 		load_file(config.last_file_path);
 	else
 		new_document();
+
+	splash_end();
 
 	run_test(_document);
 
@@ -283,6 +355,7 @@ void Application::initialize()
 
 	auto appl = environment::combine_path(environment::application_path(), "postpro");
 	auto path = environment::combine_path(environment::application_data_path(), "postpro");
+	splash(Lang::t("SPLASH_SCRIPTS"));
 	Script::initialize_python();
 	Script::add_module_path(environment::combine_path(environment::application_data_path(), "postpro"));
 	Script::add_module_path(environment::combine_path(environment::application_data_path(), "script"));

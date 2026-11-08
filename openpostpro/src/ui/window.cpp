@@ -24,6 +24,7 @@
 #include "environment.h"
 #include "bridge.h"
 #include <filesystem>
+#include <stb_image.h>
 
 #pragma region initialisation/finalization
 Window::Window(std::string title)
@@ -72,6 +73,8 @@ Window::Window(std::string title)
 
 	// associate this object with the GLFW window
 	glfwSetWindowUserPointer(_window, this);
+
+	set_icon();
 
 	// register callbacks
 	glfwSetFramebufferSizeCallback(_window, framebuffer_size_callback);
@@ -125,6 +128,33 @@ Window::~Window()
 	// release GLFW library
 	glfwTerminate();
 
+}
+
+void Window::set_icon()
+{
+	const int sizes[] = { 16, 32, 64, 128, 256 };
+	GLFWimage images[5];
+	unsigned char* pixels[5] = {};
+	int count = 0;
+	for (int size : sizes)
+	{
+		auto path = environment::combine_path(environment::combine_path(environment::application_path(), "textures"), "icon_" + std::to_string(size) + ".png");
+		if (!std::filesystem::exists(path))
+			continue;
+		int w = 0, h = 0, n = 0;
+		unsigned char* data = stbi_load(path.c_str(), &w, &h, &n, 4);
+		if (data == nullptr)
+			continue;
+		images[count].width = w;
+		images[count].height = h;
+		images[count].pixels = data;
+		pixels[count] = data;
+		count++;
+	}
+	if (count > 0)
+		glfwSetWindowIcon(_window, count, images);	// the images are copied by GLFW
+	for (int i = 0; i < count; i++)
+		stbi_image_free(pixels[i]);
 }
 
 void Window::initialize()

@@ -172,6 +172,11 @@ public:
 
 #pragma region loop
 	virtual void initialize();
+
+	GLFWwindow* glfw_window() { return _window; }
+
+	// the icon of the window, from the png files of the textures folder (sizes 16 to 256)
+	void set_icon();
 	void run();
 	virtual void finalize();
 	virtual void doEvents();

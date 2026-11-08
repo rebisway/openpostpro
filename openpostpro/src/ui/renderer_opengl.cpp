@@ -66,6 +66,11 @@ void OpenGlRenderer::initialize_GLFW()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We do not want the legacy OpenGL
 }
 
+bool OpenGlRenderer::load_functions()
+{
+	return gl3wInit() == 0;
+}
+
 void OpenGlRenderer::initialize()
 {
 	bool err = gl3wInit() != 0;
