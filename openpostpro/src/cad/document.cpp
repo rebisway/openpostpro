@@ -37,6 +37,7 @@
 #include <pocket.h>
 #include <spiral.h>
 #include <drill.h>
+#include <parallel.h>
 
 Document::Document()
 {
@@ -589,6 +590,13 @@ void Document::read(std::string value)
 		return layer(shape->parent());
 	};
 
+	// the pockets are computed together when all the document is read (see below), not one by one while it is read
+	struct DeferPockets
+	{
+		DeferPockets() { Pocket::defer_read = true; }
+		~DeferPockets() { Pocket::defer_read = false; }
+	} defer_pockets;
+
 	for (std::string s : data)
 	{
 		if (s.size() > 0 && s[0] != '{')
@@ -708,6 +716,18 @@ void Document::read(std::string value)
 			if (g != nullptr)
 				id = std::max(id, g->id());
 		}
+	}
+
+	// the pockets (the long part of the opening of a document) are calculated on all the cores, then drawn from this thread
+	{
+		std::vector<Pocket*> pockets;
+		for (Group* g : _groups)
+			for (Toolpath* t : g->toolpaths())
+				if (t->type() == GraphicType::CamPocket && !((Pocket*)t)->calculated())
+					pockets.push_back((Pocket*)t);
+		parallel_for(pockets.size(), [&](size_t i) { pockets[i]->calculate(); });
+		for (Pocket* p : pockets)
+			p->generate();
 	}
 
 	// multitask coordinates computing

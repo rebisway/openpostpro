@@ -983,8 +983,26 @@ static void collect_regions(TreeCurve* node, std::vector<std::vector<Curve>>& re
 		collect_regions(next, regions);
 }
 
+bool Pocket::defer_read = false;
+
 void Pocket::update()
 {
+	calculate();
+	generate();
+}
+
+void Pocket::generate()
+{
+	if (_tree != nullptr)
+	{
+		generate_data(_computed);
+		generate_deco(_computed);
+	}
+}
+
+void Pocket::calculate()
+{
+	_calculated = true;
 	if (_tree != nullptr)
 	{
 		_computed.clear();
@@ -1073,9 +1091,6 @@ void Pocket::update()
 		// the finishing pass stays at the very end, whatever the order of the other curves
 		_final_count = last.size();
 		_computed.insert(_computed.end(), last.begin(), last.end());
-
-		generate_data(_computed);
-		generate_deco(_computed);
 	}
 }
 
@@ -1252,5 +1267,8 @@ void Pocket::read(std::string value, float version)
 
 		}
 	}
-	update();
+	// when a document is read, all its pockets are computed together afterwards
+	_calculated = false;
+	if (!defer_read)
+		update();
 }

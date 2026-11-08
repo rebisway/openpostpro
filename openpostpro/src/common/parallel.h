@@ -31,10 +31,17 @@ inline std::atomic<unsigned>& parallel_limit()
 	return limit;
 }
 
+// true in a thread of parallel_for: a parallel_for called from it is a plain loop (no more threads than cores)
+inline bool& parallel_inside()
+{
+	static thread_local bool inside = false;
+	return inside;
+}
+
 template <class F>
 void parallel_for(size_t count, F&& f)
 {
-	unsigned threads = parallel_limit().load();
+	unsigned threads = parallel_inside() ? 1 : parallel_limit().load();
 	if (threads == 0)
 		threads = (std::max)(1u, std::thread::hardware_concurrency());
 	threads = (unsigned)(std::min)((size_t)threads, count);
@@ -50,6 +57,8 @@ void parallel_for(size_t count, F&& f)
 	std::atomic<bool> failed{ false };
 	auto work = [&]()
 	{
+		const bool was_inside = parallel_inside();
+		parallel_inside() = true;
 		for (size_t i = next++; i < count && !failed; i = next++)
 		{
 			try
@@ -62,6 +71,7 @@ void parallel_for(size_t count, F&& f)
 					error = std::current_exception();
 			}
 		}
+		parallel_inside() = was_inside;
 	};
 	std::vector<std::thread> pool;
 	for (unsigned t = 1; t < threads; t++)

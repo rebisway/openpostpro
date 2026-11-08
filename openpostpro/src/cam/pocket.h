@@ -31,6 +31,7 @@ enum class PocketMode
 class Pocket : public Toolpath
 {
 private:
+	bool _calculated = true;	// false after a deferred read, until calculate()
 	std::vector<int> _indices;
 	bool _climb = true;
 	PocketMode _mode = PocketMode::Offset;
@@ -80,6 +81,14 @@ public:
 	std::vector<Curve> merge(std::vector<Curve>& curves);
 
 	void update() override;
+
+	// update() in two parts: calculate() makes the curves (the long part, it only reads and writes this pocket: pockets can be calculated
+	// on several threads), generate() makes the buffers of the drawing (graphic card, on the main thread only)
+	void calculate();
+	void generate();
+	// while it is true, read() does not compute the pocket: the caller does it (calculate, then generate), for all the pockets at once
+	static bool defer_read;
+	bool calculated() { return _calculated; }
 	// a pocket keeps the whole tree of its shapes
 	void refresh(TreeCurve* value) override;
 	void scaled() override;
