@@ -231,8 +231,16 @@ public:
 	void set_reference_to_text();
 	// links a text to the shape (and the shapes connected to it) it follows, the change is undone in one step
 	void link_text(Text* text, Shape* shape);
+	// the coordinates of the curve a shape belongs to (the connected shapes), and if it is closed
+	std::vector<glm::vec2> chain_coordinates(Shape* shape, bool& closed);
+	Shape* find_shape(int id);
+	// the linked texts (the given ones, or all of them) read their curve again: after a move of the curve, a change of the origin...
+	// the position along the curve is kept. Returns the number of texts updated
+	int refresh_texts(const std::vector<Text*>& only = std::vector<Text*>());
 	// text waiting for the click on the curve to follow, nullptr if there is none
 	Text* _link_text = nullptr;
+	// the click which chose the curve is not a selection: the text stays selected when the button is released
+	bool _link_done = false;
 	void draw_link_hint();
 	std::vector<Shape*> look_for_siblings(Shape* s);
 	void connect_shapes();
