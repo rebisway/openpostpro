@@ -229,6 +229,7 @@
     <ClCompile Include="src\common\strings.cpp" />
     <ClCompile Include="src\import\dxf.cpp" />
     <ClCompile Include="src\import\dxfloader.cpp" />
+    <ClCompile Include="src\export\dxfexport.cpp" />
     <ClCompile Include="src\postpro\postpro.cpp" />
     <ClCompile Include="src\python\script.cpp" />
     <ClCompile Include="src\script\cad_script.cpp" />
@@ -355,6 +356,7 @@
     <ClInclude Include="src\common\strings.h" />
     <ClInclude Include="src\import\dxf.h" />
     <ClInclude Include="src\import\dxfloader.h" />
+    <ClInclude Include="src\export\dxfexport.h" />
     <ClInclude Include="src\postpro\postpro.h" />
     <ClInclude Include="src\postpro\travel_sort.h" />
     <ClInclude Include="src\postpro\cut_path.h" />

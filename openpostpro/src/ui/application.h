@@ -117,6 +117,7 @@ public:
 	void load_file(std::string path);
 	void save_file(std::string path);
 	void load_dxf(std::string path);
+	void export_dxf(std::string path);
 
 	Module* module(std::string code);
 

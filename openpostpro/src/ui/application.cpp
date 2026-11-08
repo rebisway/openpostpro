@@ -35,6 +35,7 @@
 
 #include "test_cad.h"
 #include <../import/dxfloader.h>
+#include <../export/dxfexport.h>
 #include <dialog.h>
 #include <file.h>
 #include <strings.h>
@@ -980,6 +981,15 @@ void Application::render_menu()
 				if ( dialog::open_file_dialog("", path, "DXF", "*.dxf") )
 					load_dxf(path);
 			}
+			if (ImGui::MenuItem(Lang::l("FILE_EXPORT_DXF"), NULL, false)) {
+				std::string path("");
+				if (dialog::save_file_dialog("", path, "DXF", "*.dxf"))
+				{
+					if (!stringex::end_with(path, ".dxf"))
+						path += ".dxf";
+					export_dxf(path);
+				}
+			}
 			ImGui::Separator();
 			if (ImGui::MenuItem(Lang::l("FILE_EXIT"), "ALT+X")) 
 			{ 
@@ -1593,6 +1603,18 @@ void Application::save_file(std::string path)
 			Logger::log(std::string("ERROR : ") + e.what());
 		}
 	}
+}
+
+void Application::export_dxf(std::string path)
+{
+	// only the selected shapes if there are some, else the whole drawing
+	bool selection = false;
+	for (Graphic* g : _document->selected())
+		selection = selection || dynamic_cast<Shape*>(g) != nullptr;
+	if (DxfExport::write(_document, path, selection))
+		Logger::log("DXF exported : " + path + (selection ? " (selection)" : ""));
+	else
+		Logger::log("ERROR : the DXF file can not be written : " + path);
 }
 
 void Application::load_dxf(std::string path)
