@@ -16,6 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "sim_material.h"
+#include "sim_footprint.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -147,6 +148,9 @@ void SimMaterial::cut(const glm::dvec3& a, const glm::dvec3& b, const SimTool& t
 	// long moves are cut by pieces, so that the zone looked at for each piece stays small
 	double length = glm::distance(glm::dvec2(a), glm::dvec2(b));
 	double piece = std::max(tool.radius, 6.0 * _step);
+	// a flat tool at a constant height does not compute anything for each column: the pieces can be long
+	if ((tool.shape == SimToolShape::Flat || tool.shape == SimToolShape::Plasma) && std::fabs(b.z - a.z) < 1e-12)
+		piece *= 8.0;
 	int count = std::max(1, (int)std::ceil(length / piece));
 	for (int i = 0; i < count; i++)
 	{
@@ -181,34 +185,48 @@ void SimMaterial::cut_piece(const glm::dvec3& a, const glm::dvec3& b, const SimT
 	double r2 = r * r;
 	float bottom = (float)_bottom;
 
+	// a flat tool which does not change its height cuts every column under it at the same height: nothing to compute
+	const bool constant = flat && level;
+	const float constant_height = through ? bottom : (float)std::max(a.z, _bottom);
+	const glm::dvec2 a2(a.x, a.y), b2(b.x, b.y);
+
 	for (int iy = y0; iy <= y1; iy++)
 	{
 		double py = _origin_y + iy * _step;
-		for (int ix = x0; ix <= x1; ix++)
+		// the columns of the row which are under the tool
+		double x_low, x_high;
+		if (!footprint_row(a2, b2, r, py, x_low, x_high))
+			continue;
+		const int first = std::max(x0, (int)std::ceil((x_low - _origin_x) / _step));
+		const int last = std::min(x1, (int)std::floor((x_high - _origin_x) / _step));
+		for (int ix = first; ix <= last; ix++)
 		{
 			double px = _origin_x + ix * _step;
-
-			// the nearest point of the move, and its two ends (a plunge only has the lowest end)
-			double t = l2 < 1e-18 ? 0.0 : std::clamp(((px - a.x) * d.x + (py - a.y) * d.y) / l2, 0.0, 1.0);
-			double best = std::numeric_limits<double>::max();
-			bool touched = false;
-			int candidates = level ? 1 : 3;
-			double ts[3] = { t, 0.0, 1.0 };
-			for (int k = 0; k < candidates; k++)
+			float h = constant_height;
+			if (!constant)
 			{
-				double tt = ts[k];
-				double ex = px - (a.x + d.x * tt), ey = py - (a.y + d.y * tt);
-				double dist2 = ex * ex + ey * ey;
-				if (dist2 > r2)
+				// the nearest point of the move, and its two ends (a plunge only has the lowest end)
+				double t = l2 < 1e-18 ? 0.0 : std::clamp(((px - a.x) * d.x + (py - a.y) * d.y) / l2, 0.0, 1.0);
+				double best = std::numeric_limits<double>::max();
+				bool touched = false;
+				int candidates = level ? 1 : 3;
+				double ts[3] = { t, 0.0, 1.0 };
+				for (int k = 0; k < candidates; k++)
+				{
+					double tt = ts[k];
+					double ex = px - (a.x + d.x * tt), ey = py - (a.y + d.y * tt);
+					double dist2 = ex * ex + ey * ey;
+					if (dist2 > r2)
+						continue;
+					touched = true;
+					double z = a.z + (b.z - a.z) * tt;
+					best = std::min(best, flat ? z : z + profile(tool, std::sqrt(dist2)));
+				}
+				if (!touched)
 					continue;
-				touched = true;
-				double z = a.z + (b.z - a.z) * tt;
-				best = std::min(best, flat ? z : z + profile(tool, std::sqrt(dist2)));
+				h = through ? bottom : (float)std::max(best, _bottom);
 			}
-			if (!touched)
-				continue;
 
-			float h = through ? bottom : (float)std::max(best, _bottom);
 			size_t index = (size_t)iy * _width + ix;
 			if (h < _heights[index])
 			{

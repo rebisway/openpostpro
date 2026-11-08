@@ -332,7 +332,10 @@ void ModSim::update(double seconds)
 	_player.full_speed(_full_speed);
 	_player.set_speed(SPEEDS[std::clamp(_speed_index, 0, SPEED_COUNT - 1)]);
 	bool working = _player.playing() || _player.going();
-	_player.update(seconds, 0.008);
+	// the time of the work of each frame: when the player goes to the end of the program (or at full speed), the faster the better, and
+	// the frames are fewer (each one costs the sending and the drawing of the material): the interface answers a little less often
+	const double budget = (_player.going() || _full_speed) ? 0.030 : 0.008;
+	_player.update(seconds, budget);
 	if (working)
 		_real_time += seconds;
 

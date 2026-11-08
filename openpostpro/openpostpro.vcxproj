@@ -292,6 +292,7 @@
     <ClCompile Include="src\sim\sim_material.cpp" />
     <ClCompile Include="src\sim\sim_model.cpp" />
     <ClCompile Include="src\sim\sim_model_grid.cpp" />
+    <ClCompile Include="src\sim\sim_model_tiles.cpp" />
     <ClCompile Include="src\sim\sim_translator.cpp" />
     <ClCompile Include="src\sim\sim_loader.cpp" />
     <ClCompile Include="src\sim\sim_view.cpp" />
@@ -383,8 +384,10 @@
     <ClInclude Include="src\sim\sim_program.h" />
     <ClInclude Include="src\sim\sim_player.h" />
     <ClInclude Include="src\sim\sim_material.h" />
+    <ClInclude Include="src\sim\sim_footprint.h" />
     <ClInclude Include="src\sim\sim_model.h" />
     <ClInclude Include="src\sim\sim_model_grid.h" />
+    <ClInclude Include="src\sim\sim_model_tiles.h" />
     <ClInclude Include="src\sim\sim_translator.h" />
     <ClInclude Include="src\sim\sim_loader.h" />
     <ClInclude Include="src\sim\sim_view.h" />

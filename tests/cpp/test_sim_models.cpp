@@ -67,6 +67,7 @@ static Result run(int method, const SimBlock& block, const std::vector<Cut>& cut
 	t = std::chrono::steady_clock::now();
 	for (const Cut& c : cuts)
 		model->cut(c.a, c.b, tool);
+	model->upload();		// without graphics: the tiles which are plateaus are simplified
 	r.cut_ms = since(t);
 	r.volume = model->removed_volume();
 	r.cells = model->cells();

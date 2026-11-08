@@ -18,6 +18,7 @@
 #include "renderer_opengl.h"
 #include <sim_view.h>
 #include <sim_model_grid.h>
+#include <sim_model_tiles.h>
 #include <filesystem>
 #include <cstdio>
 #include <cstdlib>
@@ -135,7 +136,7 @@ int main()
 	glViewport(0, 0, W, H);
 
 	std::puts("programs");
-	for (const char* name : { "sim", "line3d" })
+	for (const char* name : { "sim", "simtile", "line3d" })
 	{
 		renderer.load_program(name, SHADER_DIR);
 		renderer.use_program(name);
@@ -267,6 +268,58 @@ int main()
 	flat = after.rgba;
 	for (size_t i = 3; i < flat.size(); i += 4) flat[i] = 255;
 	stbi_write_png((folder / "sim_render.png").string().c_str(), W, H, 4, flat.data(), W * 4);
+
+	std::puts("the same program with the model of tiles");
+	{
+		SimModelTiles tiles;
+		tiles.setup(block);
+		SimView tile_view(&renderer);
+		tile_view.set_model(tiles);
+		CHECK(gl_errors() == 0, "no OpenGL error with the tiles");
+		SimPlayer tile_player;
+		tile_player.on_move = [&](const SimMove& m) { tiles.cut(m.from, m.to, tool); tile_view.add_move(m); };
+		tile_player.on_reset = [&]() { tiles.reset(); tile_view.clear_paths(); };
+		tile_player.program(&prog);
+		tile_player.go_to_end();
+		tile_player.update(0, 5.0);
+		tile_view.upload();
+		CHECK(gl_errors() == 0, "no OpenGL error after sending the tiles");
+		tile_view.camera().view(0);
+		tile_view.fit();
+		tile_view.show_axes = false;
+		tile_view.show_feed = tile_view.show_rapid = tile_view.show_tool = false;		// the paths are not at the same pixels (the framing is not the same)
+		renderer.clear(tile_view.background.r, tile_view.background.g, tile_view.background.b, 1.0f);
+		tile_view.draw(W, H);
+		CHECK(gl_errors() == 0, "no OpenGL error after drawing the tiles");
+		Picture tp = read_picture();
+		std::printf("  %s\n", tiles.describe().c_str());
+
+		// the same points of the scene look the same as with the grid
+		auto same = [&](glm::vec3 world, const char* what) {
+			glm::ivec2 a = project(view, world), b = project(tile_view, world);
+			glm::vec3 ca = top.at(a.x, a.y), cb = tp.at(b.x, b.y);
+			if (!near_color(ca, cb, 0.06f))
+				std::printf("  %s: grid %g %g %g, tiles %g %g %g\n", what, ca.r, ca.g, ca.b, cb.r, cb.g, cb.b);
+			CHECK(near_color(ca, cb, 0.06f), what);
+		};
+		same(glm::vec3(0, 0, -2), "tiles: the bottom of the pocket");
+		same(glm::vec3(-20, 12, 0), "tiles: the top which was not touched");
+		same(glm::vec3(0, 6.0f, 0), "tiles: between the pocket and the circle");
+		same(glm::vec3(26, 0, -1), "tiles: the circle cut around");
+		glm::ivec2 in_tiles = project(tile_view, glm::vec3(0, 0, -2)), out_tiles = project(tile_view, glm::vec3(-20, 12, 0));
+		CHECK(!near_color(tp.at(in_tiles.x, in_tiles.y), tp.at(out_tiles.x, out_tiles.y), 0.04f), "tiles: seen from above the pocket is not like the top");
+		CHECK(std::fabs(tiles.removed_volume() - grid.removed_volume()) / grid.removed_volume() < 0.03, "tiles: the volume is the one of the grid");
+
+		// a second program played after a reset gives the same blocks (the atlas is made again)
+		tile_player.stop();
+		tile_view.upload();
+		CHECK(tiles.removed_volume() == 0.0, "tiles: a reset gives back the block");
+		tile_player.go_to_end();
+		tile_player.update(0, 5.0);
+		tile_view.upload();
+		CHECK(gl_errors() == 0, "no OpenGL error after a reset and a new program");
+		CHECK(std::fabs(tiles.removed_volume() - grid.removed_volume()) / grid.removed_volume() < 0.03, "tiles: the same volume after a reset");
+	}
 
 	std::puts("a block cut through by a torch");
 	{

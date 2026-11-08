@@ -17,17 +17,19 @@
 
 #include "sim_model.h"
 #include "sim_model_grid.h"
+#include "sim_model_tiles.h"
 
 // The methods, in the order of the choice of the interface
 int SimModel::method_count()
 {
-	return 1;
+	return 2;
 }
 
 const char* SimModel::method_name(int method)
 {
 	switch (method)
 	{
+	case 1: return "Tiles";
 	default: return "Grid";
 	}
 }
@@ -36,6 +38,7 @@ std::unique_ptr<SimModel> SimModel::create(int method)
 {
 	switch (method)
 	{
+	case 1: return std::make_unique<SimModelTiles>();
 	default: return std::make_unique<SimModelGrid>();
 	}
 }
