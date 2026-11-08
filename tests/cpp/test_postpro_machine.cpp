@@ -222,6 +222,24 @@ int main(int argc, char** argv)
 	}
 
 	Script::finalize_python();
+	// a document saved without output file has the line "0;output;" (split drops the empty field): it must be read, not crash
+	std::puts("a document without output file");
+	{
+		Document doc;
+		doc.render(&renderer);
+		bool read = true;
+		try
+		{
+			doc.read("{OPENPOSTPRO}\n0;version;0.1\n0;output;\n0;unit;0\n{LAYERS}\n1;1;Layer_1;(1:1:0:1);1;0\n{GROUPS}\n{SHAPES}\n{TOOLPATH}\n");
+		}
+		catch (const std::exception&)
+		{
+			read = false;
+		}
+		CHECK(read, "a document with an empty output line is read");
+		CHECK(doc.output().empty(), "its output file is empty");
+	}
+
 	std::printf("%d checks, %d failed\n", g_run, g_fail);
 	if (argc < 2)
 		std::filesystem::remove_all(profile);	// with an argument the programs are kept, to be read

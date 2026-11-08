@@ -615,8 +615,9 @@ void Document::read(std::string value)
 				values = stringex::split(s, ';');
 				if (values[1] == "version")
 					version = std::stof(values[2]);
+				// split() drops empty fields: a document without output file ("0;output;") has no third value
 				if (values[1] == "output")
-					_output = values[2];
+					_output = values.size() > 2 ? values[2] : std::string();
 				if (values[1] == "machine" && values.size() > 2)
 				{
 					// the fields of the machine are the ones of its line of the table, after "0;machine;"
