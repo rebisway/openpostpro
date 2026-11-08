@@ -164,7 +164,7 @@ bool compare_curve_level(Curve& v1, Curve& v2)
 }
 
 
-int Curve::counter[10];
+thread_local int Curve::counter[10];
 
 int Curve::tag()
 {

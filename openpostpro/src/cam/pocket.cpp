@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <parallel.h>
 #include "pocket.h"
 #include <imgui.h>
 #include <lang.h>
@@ -947,6 +948,41 @@ void Pocket::refresh(TreeCurve* value)
 	compute();
 }
 
+// The machined regions of a tree: an outline (even level) with its islands, which are the curves directly inside it. What is inside an
+// island is machined too, but it is another region, separated from the first one by the material of the island: its outline is a
+// new one. The levels of a region are 1 for the outline and 2 for the islands (the algorithms pair the levels 1-2, 3-4...), as in a simple pocket.
+static void collect_regions(TreeCurve* node, std::vector<std::vector<Curve>>& regions)
+{
+	if (node == nullptr)
+		return;
+	std::vector<Curve> region;
+	if (node->curve != nullptr && node->curve->size() > 0)
+	{
+		Curve outline = *node->curve;
+		outline.level(1);
+		region.push_back(outline);
+	}
+	std::vector<TreeCurve*> inside;
+	for (TreeCurve* island : node->children)
+	{
+		if (island->curve != nullptr && island->curve->size() > 0)
+		{
+			Curve c = *island->curve;
+			c.level(2);
+			region.push_back(c);
+		}
+		inside.insert(inside.end(), island->children.begin(), island->children.end());
+	}
+	if (!region.empty())
+	{
+		for (size_t i = 0; i < region.size(); i++)
+			region[i].index((int)i);
+		regions.push_back(region);
+	}
+	for (TreeCurve* next : inside)
+		collect_regions(next, regions);
+}
+
 void Pocket::update()
 {
 	if (_tree != nullptr)
@@ -958,15 +994,28 @@ void Pocket::update()
 
 		_tree->cw_alter(!cw());
 
-		for (TreeCurve* t : _tree->children)
+		// The parts (a region: an outline with the islands inside it; the inside of a letter is another one) are independent: they are computed together, each one in
+		// its own result, and put one after the other in the order of the tree, as a sequential loop does
+		struct Part
 		{
+			std::vector<Curve> computed;
+			std::vector<Curve> last;
+		};
+		std::vector<std::vector<Curve>> regions;
+		for (TreeCurve* top : _tree->children)
+			collect_regions(top, regions);
+		std::vector<Part> parts(regions.size());
+		parallel_for(parts.size(), [&](size_t index)
+		{
+			std::vector<Curve>& computed = parts[index].computed;
+			std::vector<Curve>& last = parts[index].last;
 			std::vector<Curve> inner;
-			bool cw = t->curve->cw();
-			_original = t->curves();
+			std::vector<Curve> original = regions[index];
+			bool cw = original[0].cw();
 
 
 			// we first proceed to an offset with the radius
-			for (Curve& c : _original)
+			for (Curve& c : original)
 			{
 				c.reduce(0.25f);
 				auto curves = c.offset((c.cw() == cw ? -radius() : radius()));
@@ -1001,7 +1050,7 @@ void Pocket::update()
 			}
 
 
-			_computed.insert(_computed.end(), process.begin(), process.end());
+			computed.insert(computed.end(), process.begin(), process.end());
 
 			// the last offset is the finishing pass : the first one when there is a finishing value, the only one otherwise. The zigzag
 			// can be machined without the contour of its area
@@ -1009,11 +1058,16 @@ void Pocket::update()
 			if (_finishing > 0)
 			{
 				if (contours)
-					_computed.insert(_computed.end(), finish.begin(), finish.end());
+					computed.insert(computed.end(), finish.begin(), finish.end());
 				last.insert(last.end(), inner.begin(), inner.end());
 			}
 			else if (contours)
 				last.insert(last.end(), finish.begin(), finish.end());
+		});
+		for (Part& part : parts)
+		{
+			_computed.insert(_computed.end(), part.computed.begin(), part.computed.end());
+			last.insert(last.end(), part.last.begin(), part.last.end());
 		}
 
 		// the finishing pass stays at the very end, whatever the order of the other curves

@@ -121,7 +121,7 @@ private:
 	Position _tag_inside = Position::outline;
 
 public:
-	static int counter[10];
+	static thread_local int counter[10];	// debug counters (one set per thread: the toolpaths are computed in parallel)
 	std::vector<glm::vec2> intersection_points; // for debug purpose
 
 	int tag();
