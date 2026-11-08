@@ -2,13 +2,13 @@
 
 *English version: [TOOLS-MACHINES.en.md](TOOLS-MACHINES.en.md).*
 
-Cette page décrit comment sont définis un **outil** et une **machine**, et ce qu'ils changent dans les groupes, le post-processeur et le simulateur. Les scripts CAO sont dans [CAD-SCRIPTS.fr.md](CAD-SCRIPTS.fr.md), les post-processeurs dans [POSTPROCESSOR.fr.md](POSTPROCESSOR.fr.md), le simulateur dans [SIMULATOR.fr.md](SIMULATOR.fr.md).
+Cette page décrit comment sont définis un **outil** et une **machine**, et ce qu'ils changent dans les opérations, le post-processeur et le simulateur. Les scripts CAO sont dans [CAD-SCRIPTS.fr.md](CAD-SCRIPTS.fr.md), les post-processeurs dans [POSTPROCESSOR.fr.md](POSTPROCESSOR.fr.md), le simulateur dans [SIMULATOR.fr.md](SIMULATOR.fr.md).
 
-Contenu : la base d'outils, l'outil d'un groupe, les torches (plasma, jet d'eau, électro-érosion), la descente oblique, l'abaque de coupe, les machines, et les tests.
+Contenu : la base d'outils, l'outil d'une opération, les torches (plasma, jet d'eau, électro-érosion), la descente oblique, l'abaque de coupe, les machines, et les tests.
 
 ```mermaid
 flowchart LR
-  T["Base d'outils<br/>(tools.txt)"]:::data -->|"valeurs copiées"| G["Groupe<br/>(enregistré dans le document)"]:::app
+  T["Base d'outils<br/>(tools.txt)"]:::data -->|"valeurs copiées"| G["Opération<br/>(enregistré dans le document)"]:::app
   M["Base de machines<br/>(machines.txt)"]:::data -->|"copie"| D["Document"]:::app
   G --> P["Post-processeur"]:::app
   D --> P
@@ -34,29 +34,29 @@ flowchart LR
 
 Le fichier a une ligne par outil, `numéro;nom;type;diamètre;avance;descente;passe;broche;horaire;refroidissement;dents`. Une ligne à laquelle il manque les derniers champs (fichier d'une version plus ancienne) est lue avec les valeurs par défaut, et une ligne abîmée est ignorée.
 
-## 2. L'outil d'un groupe
+## 2. L'outil d'une opération
 
-Dans les propriétés d'un groupe, le champ **Outil** fonctionne comme une liste éditable :
+Dans les propriétés d'une opération, le champ **Outil** fonctionne comme une liste éditable :
 
 - Quand le numéro est celui d'un outil de la base, le champ affiche son **nom** (`T2  Fraise 6 mm`) ; le texte complet est dans l'infobulle. Sinon il affiche le numéro.
 - Un clic sur le champ permet de saisir un numéro (Entrée valide, Échap annule). La flèche à droite ouvre la liste des outils.
-- Choisir un outil **copie ses valeurs dans le groupe** : rayon (diamètre / 2), avance, avance de finition, descente, hauteur de passe, vitesse et sens de la broche, refroidissement, et son type. Elles restent modifiables dans le groupe. Modifier ensuite l'outil dans la base ne change pas les groupes qui l'ont déjà utilisé : le groupe est autonome, et un document ouvert sur un autre ordinateur garde ses valeurs.
+- Choisir un outil **copie ses valeurs dans l'opération** : rayon (diamètre / 2), avance, avance de finition, descente, hauteur de passe, vitesse et sens de la broche, refroidissement, et son type. Elles restent modifiables dans l'opération. Modifier ensuite l'outil dans la base ne change pas les opérations qui l'ont déjà utilisé : l'opération est autonome, et un document ouvert sur un autre ordinateur garde ses valeurs.
 
-Le groupe enregistre ces nouvelles valeurs dans le document (type d'outil, hauteur de passe, vitesse et sens de la broche, refroidissement, descente oblique). Un document écrit avant que ces champs existent est lu avec les valeurs par défaut.
+L'opération enregistre ces nouvelles valeurs dans le document (type d'outil, hauteur de passe, vitesse et sens de la broche, refroidissement, descente oblique). Un document écrit avant que ces champs existent est lu avec les valeurs par défaut.
 
 ## 3. Les torches
 
-Un outil dont le type n'est pas *Fraise* est une **torche**. Un groupe qui l'utilise :
+Un outil dont le type n'est pas *Fraise* est une **torche**. Une opération qui l'utilise :
 
 - cache ce qu'une torche n'a pas : vitesse et sens de broche, refroidissement, descente, hauteur de passe, descente oblique ;
-- est post-traité en **une seule passe** à la profondeur du groupe (la hauteur de coupe), sans paliers ;
-- désactive les boutons **Poche** et **Perçage** de la barre d'outils du dessin tant qu'il est le groupe courant.
+- est post-traité en **une seule passe** à la profondeur de l'opération (la hauteur de coupe), sans paliers ;
+- désactive les boutons **Poche** et **Perçage** de la barre d'outils du dessin tant qu'il est l'opération courante.
 
-Dans le simulateur, quand le premier groupe du document utilise une torche, l'outil est une torche plasma : elle coupe le bloc **de part en part** le long de ses déplacements d'usinage (G1, G2, G3), quelle que soit sa hauteur (une torche reste au-dessus de la tôle, à 0,5 mm par exemple). Quand le programme allume la torche (M3 ou la commande torche), elle ne coupe que pendant qu'elle est allumée ; si le programme ne l'allume jamais, tous les déplacements d'usinage coupent.
+Dans le simulateur, quand le première opération du document utilise une torche, l'outil est une torche plasma : elle coupe le bloc **de part en part** le long de ses déplacements d'usinage (G1, G2, G3), quelle que soit sa hauteur (une torche reste au-dessus de la tôle, à 0,5 mm par exemple). Quand le programme allume la torche (M3 ou la commande torche), elle ne coupe que pendant qu'elle est allumée ; si le programme ne l'allume jamais, tous les déplacements d'usinage coupent.
 
 ## 4. Descente oblique
 
-Au début d'un parcours avec une **entrée** (une ligne ou un arc, réglage *Départ* du groupe), l'outil peut descendre le long de l'entrée au lieu de plonger à la verticale. La case **Descente oblique** s'affiche dans le groupe quand le départ n'est pas *Normal* (et pour une fraise seulement).
+Au début d'un parcours avec une **entrée** (une ligne ou un arc, réglage *Départ* de l'opération), l'outil peut descendre le long de l'entrée au lieu de plonger à la verticale. La case **Descente oblique** s'affiche dans l'opération quand le départ n'est pas *Normal* (et pour une fraise seulement).
 
 - L'outil va à la hauteur de la surface au-dessus du début de l'entrée (rapide), puis fait l'entrée en descendant, à l'avance de descente, et arrive à la profondeur de la passe à la fin de l'entrée. Un arc donne une hélice.
 - La première passe part de l'origine (la surface) ; les suivantes, de la profondeur de la passe précédente.
@@ -108,7 +108,7 @@ Sans fenêtre (voir l'en-tête de chaque fichier pour ce qu'il vérifie) :
 
 | Test | Vérifie |
 |---|---|
-| `test_tools` | la base d'outils (numéros, texte et fichier, anciennes lignes), les valeurs données à un groupe, le groupe enregistré et relu (ancien groupe), la descente oblique (ligne, arc, passes suivantes, pas de place), l'abaque de coupe, les machines (zone, axes, arcs, base) |
+| `test_tools` | la base d'outils (numéros, texte et fichier, anciennes lignes), les valeurs données à une opération, l'opération enregistrée et relue (ancienne opération), la descente oblique (ligne, arc, passes suivantes, pas de place), l'abaque de coupe, les machines (zone, axes, arcs, base) |
 | `test_postpro_machine` | le vrai post-processeur avec le Python du système sur une machine sans axe inversé, puis avec X, Y, X et Y, Z inversés, lignes et arcs, et l'avertissement d'un parcours hors de la zone |
 | `test_sim_core` | entre autres, les axes inversés du simulateur (`SimProgram::mirror`) |
 | `test_sim_torch` | la coupe de part en part d'une torche au-dessus du dessus du bloc |

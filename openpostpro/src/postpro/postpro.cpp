@@ -739,7 +739,7 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 	{
 		if (g->generate())
 		{
-			output += comment("GROUP [" + g->name() + "]");
+			output += comment("OPERATION [" + g->name() + "]");
 
 			if (!g->pre_command().empty())
 				output += line(g->pre_command());

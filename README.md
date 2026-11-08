@@ -42,7 +42,7 @@ Guide: [Writing a CAD script](docs/CAD-SCRIPTS.en.md) · [Écrire un script CAO]
 
 ## ⚙️ CAM operations
 
-Create toolpath operations from your drawing, grouped by tool, with the depth, the pass depth, and the feeds set per group:
+Create toolpaths from your drawing, organized in **operations** (a tool with its depth, pass depth and feeds, and the toolpaths machined with it):
 
 - **Follow** — follow selected geometry, with an optional entry and exit (a line or a quarter of circle) and the **radius compensation** of the tool, or the kerf of a plasma torch (G41 / G42): the tool is centered on the line, outside or inside of the shape, and the side is deduced from the direction of the path
 - **Offset** — create interior or exterior offsets
@@ -52,9 +52,9 @@ Create toolpath operations from your drawing, grouped by tool, with the depth, t
 - **Move to** — add a positioning move
 - **Tabs** (holding bridges) on closed follow and offset paths, with independent positions that can be moved with a slider, and a choice of the start point of the path
 
-A button of the Groups tab computes the toolpaths again from their shapes (the selected ones, or all of them) after the drawing has been modified.
+A button of the Operations tab computes the toolpaths again from their shapes (the selected ones, or all of them) after the drawing has been modified.
 
-**Tools and machines.** A **table of tools** (cutters and torches: plasma, water jet, wire EDM) gives a group its diameter, feeds, pass depth, spindle and cooling, and a **table of cutting data** by material computes them from the diameter and the number of teeth. A group which uses a torch hides the settings it does not have, and the pocket and drilling buttons are disabled. The tool can **go down obliquely** along the entry of a path instead of plunging. A **machine** gives the area of the table, the zero and the direction of the axes (X counting from the right to the left, for instance): the area is drawn under the drawing, and the post-processor and the simulator follow the axes.
+**Tools and machines.** A **table of tools** (cutters and torches: plasma, water jet, wire EDM) gives an operation its diameter, feeds, pass depth, spindle and cooling, and a **table of cutting data** by material computes them from the diameter and the number of teeth. An operation which uses a torch hides the settings it does not have, and the pocket and drilling buttons are disabled. The tool can **go down obliquely** along the entry of a path instead of plunging. A **machine** gives the area of the table, the zero and the direction of the axes (X counting from the right to the left, for instance): the area is drawn under the drawing, and the post-processor and the simulator follow the axes.
 
 Guide: [Tools, torches and machines](docs/TOOLS-MACHINES.en.md) · [Outils, torches et machines](docs/TOOLS-MACHINES.fr.md)
 
