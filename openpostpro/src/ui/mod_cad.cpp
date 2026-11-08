@@ -43,6 +43,7 @@
 #include <offset.h>
 #include <drill.h>
 #include <pocket.h>
+#include <tool.h>
 #include<chrono>
 
 ModCad::ModCad(Window* window) : Module(window)
@@ -1098,6 +1099,8 @@ void ModCad::render_GUI()
 		ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
 		if (ImGui::BeginTabItem(Lang::l("LAYER")))
 		{
+			// the icons of the toolbars share a column counter: it must not leave the first icon on the line of the tabs
+			_shortcut_column = 0;
 			if (set_shortcut("BTN_ADD", ImVec2(15, 15)))
 			{
 				add_layer();
@@ -1195,6 +1198,8 @@ void ModCad::render_GUI()
 		}
 		if (ImGui::BeginTabItem(Lang::l("GROUP"), 0, _tab_flags))
 		{
+			// the icons of the toolbars share a column counter: it must not leave the first icon on the line of the tabs
+			_shortcut_column = 0;
 			if (set_shortcut("BTN_ADD", ImVec2(15,15)))
 			{
 				add_group();
@@ -1216,31 +1221,6 @@ void ModCad::render_GUI()
 				if (_document->selected().size() > 0 && (_document->selected()[0]->type() == GraphicType::Group || _document->selected()[0]->toolpath()))
 					_document->down(_document->selected()[0]);
 			}
-
-			// display of the toolpaths: all of them at once (the icon is the state), the machining direction and the starts.
-			// The last two are the options of the preferences, the decorations are drawn again when they change
-			ImGui::SameLine(0, 14);
-			if (set_shortcut(_document->show_toolpaths() ? "CAM_TOOLPATHS_VISIBLE" : "CAM_TOOLPATHS_HIDDEN", ImVec2(15, 15)))
-				_document->show_toolpaths(!_document->show_toolpaths());
-			ImGui::SameLine();
-			if (set_shortcut("CAM_SHOW_DIRECTION", ImVec2(15, 15), config.show_cam_arrow))
-			{
-				config.show_cam_arrow = !config.show_cam_arrow;
-				for (Group* g : _document->groups())
-					g->scaled();
-			}
-			ImGui::SameLine();
-			if (set_shortcut("CAM_SHOW_START", ImVec2(15, 15), config.show_cam_start))
-			{
-				config.show_cam_start = !config.show_cam_start;
-				for (Group* g : _document->groups())
-					g->scaled();
-			}
-
-			// computes the toolpaths again from their shapes (the selected ones, or all of them)
-			ImGui::SameLine();
-			if (set_shortcut("CAM_REFRESH", ImVec2(15, 15)))
-				cam_refresh();
 
 			_tab_flags = 0;
 			for (Group* g : _document->groups())
@@ -1321,6 +1301,40 @@ void ModCad::render_GUI()
 	if (_document->selected().size() == 0)
 	{
 		ImGui::Begin("###OBJECT");
+		ImGui::End();
+	}
+
+	// display of the toolpaths, at the top center of the drawing, on the line of the first icon of the right column: all of them at once
+	// (the icon is the state), the machining direction and the starts (options of the preferences, the decorations are drawn again when
+	// they change), and the computation of all the toolpaths again
+	{
+		// a button is the icon and its frame (1 pixel on each side); the window adds its padding
+		const float size = 20.0f, space = ImGui::GetStyle().ItemSpacing.x;
+		const ImVec2 pad = ImGui::GetStyle().WindowPadding;
+		const float box_w = 4 * (size + 2) + 3 * space + 2 * pad.x, box_h = size + 2 + 2 * pad.y;
+		ImGui::SetNextWindowPos(ImVec2((_width - box_w) / 2, 60.0f));
+		ImGui::SetNextWindowSize(ImVec2(box_w, box_h));
+		ImGui::Begin("###CAM_DISPLAY", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize);
+		_shortcut_column = 0;
+		if (set_shortcut(_document->show_toolpaths() ? "CAM_TOOLPATHS_VISIBLE" : "CAM_TOOLPATHS_HIDDEN", ImVec2(size, size)))
+			_document->show_toolpaths(!_document->show_toolpaths());
+		ImGui::SameLine();
+		if (set_shortcut("CAM_SHOW_DIRECTION", ImVec2(size, size), config.show_cam_arrow))
+		{
+			config.show_cam_arrow = !config.show_cam_arrow;
+			for (Group* g : _document->groups())
+				g->scaled();
+		}
+		ImGui::SameLine();
+		if (set_shortcut("CAM_SHOW_START", ImVec2(size, size), config.show_cam_start))
+		{
+			config.show_cam_start = !config.show_cam_start;
+			for (Group* g : _document->groups())
+				g->scaled();
+		}
+		ImGui::SameLine();
+		if (set_shortcut("CAM_REFRESH", ImVec2(size, size)))
+			cam_refresh();
 		ImGui::End();
 	}
 
@@ -1515,7 +1529,9 @@ void ModCad::render_GUI()
 		reset_display_boxes();
 		_cad_creation = GraphicType::CamMoveTo;
 	}
-	if (set_shortcut("CAM_DRILL", ImVec2(20, 20)))
+	// a torch (plasma, water jet, EDM) does not drill and does not clear a pocket
+	const bool mill = _document->current_group() == nullptr || !_document->current_group()->is_torch();
+	if (set_shortcut("CAM_DRILL", ImVec2(20, 20), false, mill))
 	{
 		reset_display_boxes();
 		_cad_creation = GraphicType::CamDrill;
@@ -1531,7 +1547,7 @@ void ModCad::render_GUI()
 		_btn_pos = ImGui::GetCursorScreenPos();
 		_display_offset_box = true;
 	}
-	if (set_shortcut("CAM_POCKET", ImVec2(20, 20)))
+	if (set_shortcut("CAM_POCKET", ImVec2(20, 20), false, mill))
 	{
 		reset_display_boxes();
 		_btn_pos = ImGui::GetCursorScreenPos();
@@ -1641,6 +1657,8 @@ void ModCad::render_GUI()
 		}
 		ImGui::End();
 	}
+
+	_tools_window.draw();
 
 	if (_display_pocket_box)
 	{
@@ -1966,6 +1984,10 @@ void ModCad::render_menu()
 		{
 			key_pressed(GLFW_KEY_F2, 0, GLFW_PRESS, 0);
 		}
+		if (ImGui::MenuItem(Lang::l("WORKSHOP_TOOLS")))
+		{
+			_tools_window.show();
+		}
 		if (ImGui::MenuItem(Lang::l("WORKSHOP_DELETE_TOOLPATH")))
 		{
 			if (_document->selected().size() == 1 && _document->selected()[0]->toolpath())
@@ -2133,7 +2155,7 @@ void ModCad::update()
 }
 
 
-bool ModCad::set_shortcut(std::string code, ImVec2 size, bool active)
+bool ModCad::set_shortcut(std::string code, ImVec2 size, bool active, bool enabled)
 {
 	Texture* t = _textures[code];
 	if (t != NULL)
@@ -2144,9 +2166,12 @@ bool ModCad::set_shortcut(std::string code, ImVec2 size, bool active)
 		_shortcut_column ^= 1;
 		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, { 1, 1 });
 		ImVec4 background = active ? ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive) : ImVec4(0, 0, 0, 1);
-		bool click = ImGui::ImageButton(code.c_str(), t->id(), size, ImVec2(0, 0), ImVec2(1.0f, 1.0f), background);
+		// a disabled button is dimmed and does not answer (an operation which the tool of the group can not do)
+		ImGui::BeginDisabled(!enabled);
+		bool click = ImGui::ImageButton(code.c_str(), t->id(), size, ImVec2(0, 0), ImVec2(1.0f, 1.0f), background) && enabled;
+		ImGui::EndDisabled();
 		ImGui::PopStyleVar();
-		if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 1)
+		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && GImGui->HoveredIdTimer > 1)
 			ImGui::SetTooltip(Lang::l(code));
 		return click;
 	}
