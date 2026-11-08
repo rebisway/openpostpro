@@ -25,6 +25,7 @@
 #include <inifile.h>
 #include <lang.h>
 #include <imgui.h>
+#include <dialog.h>
 #include <algorithm>
 
 void Script::initialize_python()
@@ -282,6 +283,7 @@ void Script::load_properties()
 	_use_properties = get_bool("use_properties");
 	_property_names.clear();
 	_property_keys.clear();
+	_property_files.clear();
 	_properties.clear();
 
 	for (int i = 0; i < _property_count; i++)
@@ -290,6 +292,37 @@ void Script::load_properties()
 		_property_names.push_back(get_string("get_property_description", "i", i));
 		auto key = get_string("get_property_key", "i", i);
 		_property_keys.push_back(key);
+
+		// the script says if the property is a file: ('open' or 'save', name of the filter, pattern of the filter) or None
+		PropertyFile file;
+		try
+		{
+			PyObject* f = get("get_property_file", "i", i);
+			if (f != NULL && (PyTuple_Check(f) || PyList_Check(f)) && PySequence_Size(f) >= 1)
+			{
+				PyObject* mode = PySequence_GetItem(f, 0);
+				if (mode != NULL && PyUnicode_Check(mode))
+					file.mode = std::string(py_utf8(mode)) == "save" ? 2 : 1;
+				Py_XDECREF(mode);
+				if (PySequence_Size(f) >= 3)
+				{
+					PyObject* name = PySequence_GetItem(f, 1);
+					PyObject* pattern = PySequence_GetItem(f, 2);
+					if (name != NULL && PyUnicode_Check(name))
+						file.filter_name = py_utf8(name);
+					if (pattern != NULL && PyUnicode_Check(pattern))
+						file.filter_pattern = py_utf8(pattern);
+					Py_XDECREF(name);
+					Py_XDECREF(pattern);
+				}
+			}
+			Py_XDECREF(f);
+		}
+		catch (const std::exception&)
+		{
+			// a script without this method has no file property
+		}
+		_property_files.push_back(file);
 
 		// default typed value, replaced by the saved value
 		PyObject* p = get("get_property", "i", i);
@@ -391,10 +424,29 @@ MessageBoxResult Script::draw_properties()
 		else if (std::holds_alternative<std::string>(_properties_config[i]))
 		{
 			std::string value = std::get<std::string>(_properties_config[i]);
-			char t[200];
+			char t[260];
 			sprintf_s(t, "%s", value.c_str());
-			if (ImGui::InputText(id.c_str(), t, 200))
+			bool is_file = i < (int)_property_files.size() && _property_files[i].mode != 0;
+			if (is_file)
+			{
+				// the text, then a button which opens the file dialog of the system
+				float button = ImGui::CalcTextSize("...").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+				ImGui::SetNextItemWidth(-(button + ImGui::GetStyle().ItemSpacing.x));
+			}
+			if (ImGui::InputText(id.c_str(), t, sizeof(t)))
 				_properties_config[i] = std::string(t);
+			if (is_file)
+			{
+				ImGui::SameLine();
+				if (ImGui::Button(("...##FILE" + std::to_string(i)).c_str()))
+				{
+					std::string path = std::string(t);
+					auto& f = _property_files[i];
+					bool chosen = f.mode == 2 ? dialog::save_file_dialog(path, path, f.filter_name, f.filter_pattern) : dialog::open_file_dialog(path, path, f.filter_name, f.filter_pattern);
+					if (chosen)
+						_properties_config[i] = path;
+				}
+			}
 		}
 		else if (std::holds_alternative<std::vector<std::string>>(_properties_config[i]))
 		{

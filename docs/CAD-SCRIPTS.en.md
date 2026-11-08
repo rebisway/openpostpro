@@ -81,6 +81,7 @@ The commands are one per line: `M:id:L:x1:y1:x2:y2` (segment), `M:id:C:x:y:r` (c
 | `get_properties_count()` | none | number | number of parameters of the script |
 | `get_property_description(index)` | index from 0 | string | label of the parameter |
 | `get_property_key(index)` | index from 0 | string | optional: name used to save the value (default: the index) |
+| `get_property_file(index)` | index from 0 | `None` or `(mode, filter name, pattern)` | optional: makes a text property a file name, see below |
 | `use_properties()` | none | `bool` | optional: `False` if the script shows its own window (default `True`) |
 | `get_property(index)` | index from 0 | `bool`, `int`, `float`, `str` or `list` of `str` | current value |
 | `set_property(index, value)` | index, value | nothing | receives the saved value at startup, or the edited one |
@@ -140,6 +141,20 @@ for shape in self.core.selection:
 |---|---|
 | `self.core.log(text)` | writes a line `Script: text` in the log of the application (`print` is not visible) |
 | `self.core.set_layer(name)` | the shapes added after this call go into the layer of this name, created if it does not exist (the creation is undone with the script); without a name, they go back to the current layer. A modified shape keeps its layer |
+
+### File dialogs
+
+| Call | Effect |
+|---|---|
+| `self.core.open_file(title, filters, initial)` | displays a dialog box (`tkinter`) to choose a file to open; returns the path, or `''` if the dialog is cancelled or cannot be displayed. `filters` is a list of `(name, pattern)`, for example `[('SVG', '*.svg'), ('All files', '*.*')]`; a pattern can hold several extensions: `'*.gbr;*.drl'`. All the arguments are optional |
+| `self.core.save_file(title, filters, initial, extension)` | the same to choose a file to write; `extension` (`'.svg'`) is added to a name written without one |
+
+Prefer a **file property** when the file is a parameter of the script: return `('open', 'SVG', '*.svg')` (or `'save'`) from `get_property_file(index)` for the index of a text property, and the properties dialog box shows a `...` button which opens the file dialog of the application, next to the text. The method is optional: without it, a text property is a plain text field. The values are saved as for any other property. A script can still call `open_file` when the path is empty or wrong, as `svg_import.py` does.
+
+```python
+def get_property_file(self, index):
+	return ('open', 'SVG', '*.svg') if index == 0 else None
+```
 
 ### Messages
 
@@ -281,6 +296,6 @@ Four scripts read or write other file formats. They have no properties dialog of
 
 **SVG export**: the Bezier and Catmull-Rom polylines are written as cubic curves; the other curve modes (b-spline, natural cubic, Lagrange) are written by their control points, and the log says how many.
 
-**Gerber**: the apertures C, R, O and P, the flashes, the tracks (straight and arcs, in single or multiple quadrant mode), the regions (`G36`/`G37`), the polarity, the units and the number format. The shapes with a clear polarity go to the layer `<name>_clear`: they are not subtracted from the others. The overlapping shapes are not merged: use the boolean operations of the application on the closed shapes. The macro apertures (`AM`) are not read, the log counts them.
+**Gerber**: the apertures C, R, O and P, the flashes, the tracks (straight and arcs, in single or multiple quadrant mode), the regions (`G36`/`G37`), the polarity, the units and the number format. The shapes with a clear polarity go to the layer `<name>_clear`: they are not subtracted from the others. The overlapping shapes are not merged: use the boolean operations of the application on the closed shapes. The macro apertures (`AM`) are read (circle, vector line, center line, outline and polygon primitives, with variables and arithmetic): the `RoundRect` macro of KiCad becomes one rounded rectangle, the other macros one shape per primitive (overlapping, not merged); a primitive with a clear exposure is ignored and the log says so.
 
 **Excellon**: the tools, the holes and the slots (`G85`), metric or inch, with or without a decimal point.

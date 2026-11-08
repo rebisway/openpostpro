@@ -128,9 +128,72 @@ assert seg['type'] == 'arc' and seg['cw'] is True and pnear(seg['center'], (20.0
 in_mm = gerberparse.convert(inch, False, 'x')
 assert near(in_mm[0]['p2'][0] - in_mm[0]['p1'][0], 254.0), in_mm[0]
 
-# a macro aperture is reported, a track without aperture too
-warn = gerberparse.parse('%FSLAX24Y24*%\n%MOMM*%\n%AMTHERMAL*1,1,1.0,0,0*%\n%ADD10THERMAL,1*%\nD10*\nX0Y0D03*\nD11*\nX0Y0D01*\nM02*\n')
+# a macro which is not defined is reported, a track without aperture too
+warn = gerberparse.parse("""%FSLAX24Y24*%
+%MOMM*%
+%ADD10NOPE,1*%
+D10*
+X0Y0D03*
+D11*
+X0Y0D01*
+M02*
+""")
 assert len(warn.warnings) == 3 and not warn.objects, warn.warnings
+
+# macros: variables and arithmetic ($3 = $1 x 2), a circle and a center line, with a rotation
+macro = gerberparse.parse("""%FSLAX24Y24*%
+%MOMM*%
+%AMBAR*0 a comment*
+$3=$1x2*
+1,1,$3,0,0*
+21,1,$1,$2/2,1,0,45*%
+%ADD10BAR,1X4*%
+D10*
+X100000Y200000D03*
+M02*
+""")
+assert not macro.warnings, macro.warnings
+made = gerberparse.convert(macro)
+assert made[0]['type'] == 'circle' and pnear(made[0]['center'], (10.0, 20.0)) and near(made[0]['radius'], 1.0), made[0]
+# the center line: 1 x 2 (width $1 = 1, height $2/2 = 2) centered on (1, 0), turned by 45 degrees around the origin
+bar = made[1]
+assert bar['type'] == 'polyline' and len(bar['points']) == 5, bar
+cx = sum(p[0] for p in bar['points'][:4]) / 4.0 - 10.0
+cy = sum(p[1] for p in bar['points'][:4]) / 4.0 - 20.0
+assert near(cx, math.cos(math.radians(45)), 1e-6) and near(cy, math.sin(math.radians(45)), 1e-6), (cx, cy)
+assert near(math.dist(bar['points'][0], bar['points'][1]), 1.0, 1e-6) and near(math.dist(bar['points'][1], bar['points'][2]), 2.0, 1e-6), bar
+
+# the RoundRect macro of KiCad: one rounded rectangle, 2 x 1.3 with a radius of 0.25
+kicad = """%FSLAX46Y46*%
+%MOMM*%
+%AMRoundRect*
+0 Rectangle with rounded corners*
+0 $1 Rounding radius*
+4,1,4,$2,$3,$4,$5,$6,$7,$8,$9,$2,$3,0*
+1,1,$1+$1,$2,$3*
+1,1,$1+$1,$4,$5*
+1,1,$1+$1,$6,$7*
+1,1,$1+$1,$8,$9*
+20,1,$1+$1,$2,$3,$4,$5,0*
+20,1,$1+$1,$4,$5,$6,$7,0*
+20,1,$1+$1,$6,$7,$8,$9,0*
+20,1,$1+$1,$8,$9,$2,$3,0*%
+%ADD10RoundRect,0.250000X-1.000000X-0.650000X1.000000X-0.650000X1.000000X0.650000X-1.000000X0.650000X0*%
+D10*
+X10000000Y5000000D03*
+M02*
+"""
+parsed_kicad = gerberparse.parse(kicad)
+assert not parsed_kicad.warnings, parsed_kicad.warnings
+pad = gerberparse.convert(parsed_kicad)
+assert len(pad) == 1 and pad[0]['type'] == 'spline', pad
+check_spline(pad[0])
+arcs = [g for g in pad[0]['segments'] if g['type'] == 'arc']
+assert len(arcs) == 4 and all(near(g['radius'], 0.25) and g['cw'] is False for g in arcs), arcs
+xs = [g['point'][0] for g in pad[0]['segments']]
+ys = [g['point'][1] for g in pad[0]['segments']]
+# the pad is at (10, 5): 2 + 0.5 wide, 1.3 + 0.5 high
+assert near(min(xs), 10 - 1.25) and near(max(xs), 10 + 1.25) and near(min(ys), 5 - 0.9) and near(max(ys), 5 + 0.9), (min(xs), max(xs), min(ys), max(ys))
 
 # a rectangular aperture on a track: the hull of the two positions
 rect_track = gerberparse.parse('%FSLAX24Y24*%\n%MOMM*%\n%ADD10R,1X0.5*%\nD10*\nX0Y0D02*\nX30000Y0D01*\nM02*\n')

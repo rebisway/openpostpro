@@ -195,7 +195,7 @@ class Cadscript:
 	# dialog box: returns False if cancelled. Ok is accepted when potrace and the bitmap exist.
 	def ask(self):
 		import tkinter as tk
-		from tkinter import filedialog, messagebox
+		from tkinter import messagebox
 		t = self.lang
 		window = tk.Tk()
 		window.title(t['description'])
@@ -206,7 +206,7 @@ class Cadscript:
 		state = {'ok': False}
 
 		def browse(var, title, types):
-			name = filedialog.askopenfilename(parent=window, title=title, filetypes=types)
+			name = self.core.open_file(title, types, var.get())
 			if name:
 				var.set(name)
 

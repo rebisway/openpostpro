@@ -63,6 +63,14 @@ protected:
 	std::vector<PropertyValue> _properties_config;	// working copy edited by the dialog box
 	std::vector<std::string> _property_names;		// texts displayed in the dialog box
 	std::vector<std::string> _property_keys;		// names used to save the values
+	// a text property can be a file name: a button opens the file dialog of the system (see get_property_file of the script)
+	struct PropertyFile
+	{
+		int mode = 0;								// 0: not a file, 1: file to open, 2: file to save
+		std::string filter_name;
+		std::string filter_pattern;
+	};
+	std::vector<PropertyFile> _property_files;
 
 	PyObject* _py_core_module = nullptr;
 	PyObject* _py_core_class = nullptr;

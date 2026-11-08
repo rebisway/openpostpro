@@ -107,6 +107,12 @@ class Postcore:
 			return self.postpro.get_property_key(index)
 		return str(index)
 
+	# a text property can be a file name: the post-processor returns ('open' or 'save', 'Name of the filter', '*.ext;*.ext2') and the dialog box shows a button to choose the file
+	def get_property_file(self, index):
+		if hasattr(self.postpro, 'get_property_file'):
+			return self.postpro.get_property_file(index)
+		return None
+
 	# optional in the post-processor: false if it manages its own dialog box
 	def use_properties(self):
 		if hasattr(self.postpro, 'use_properties'):

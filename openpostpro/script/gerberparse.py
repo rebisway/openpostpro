@@ -24,7 +24,8 @@
 #
 # Gerber: the apertures C, R, O and P; the flashes (D03), the tracks (D01, straight and arcs in single or multiple quadrant mode),
 # the regions (G36/G37), the polarity (shapes of a clear polarity go to the layer "<name>_clear": they are not subtracted),
-# the units and the number format. The macro apertures (AM) are not read: their flashes are counted in the warnings.
+# the units and the number format, the macro apertures (AM: circle, vector line, center line, outline and polygon primitives, with their
+# variables and arithmetic; the RoundRect macro of KiCad becomes one rounded rectangle, the other macros one shape per primitive).
 # Excellon: the tools, the holes and the slots (G85), metric or inch, with or without a decimal point.
 
 import math
@@ -87,6 +88,104 @@ def sweep_angle(p0, p1, c, cw):
 	return sweep
 
 
+# value of an expression of a macro: numbers, $n variables, + - x / and parentheses
+def evaluate(expression, variables):
+	text = expression.strip().replace('x', '*').replace('X', '*')
+	text = re.sub(r'\$(\d+)', lambda m: '(%r)' % variables.get(int(m.group(1)), 0.0), text)
+	if not re.match(r'^[\d.eE+\-*/() ]*$', text) or not text.strip():
+		return 0.0
+	try:
+		return float(eval(text, {'__builtins__': {}}, {}))
+	except (SyntaxError, ZeroDivisionError, TypeError, ValueError):
+		return 0.0
+
+
+def rotate_point(p, degrees):
+	a = math.radians(degrees)
+	return (p[0] * math.cos(a) - p[1] * math.sin(a), p[0] * math.sin(a) + p[1] * math.cos(a))
+
+
+# the primitives of a macro for the parameters of an aperture: dictionaries with their points in the local coordinates
+# ('circle': center and radius, 'polygon': points, closed). Returns (primitives, warnings)
+def macro_primitives(name, body, params):
+	variables = {i + 1: v for i, v in enumerate(params)}
+	primitives = []
+	warnings = []
+	for word in body:
+		word = word.strip()
+		if not word or word.startswith('0 ') or word == '0':
+			continue
+		m = re.match(r'^\$(\d+)\s*=(.*)$', word)
+		if m:
+			variables[int(m.group(1))] = evaluate(m.group(2), variables)
+			continue
+		values = [evaluate(v, variables) for v in word.split(',')]
+		code = int(values[0])
+		exposure = values[1] if len(values) > 1 else 1.0
+		if exposure == 0:
+			warnings.append('macro %s: a primitive of a clear exposure is ignored' % name)
+			continue
+		try:
+			if code == 1:
+				rotation = values[5] if len(values) > 5 else 0.0
+				primitives.append({'kind': 'circle', 'center': rotate_point((values[3], values[4]), rotation), 'radius': values[2] / 2.0})
+			elif code == 20:
+				rotation = values[7] if len(values) > 7 else 0.0
+				p0, p1 = (values[3], values[4]), (values[5], values[6])
+				d = math.hypot(p1[0] - p0[0], p1[1] - p0[1])
+				h = values[2] / 2.0
+				if d > EPS:
+					nx, ny = -(p1[1] - p0[1]) / d * h, (p1[0] - p0[0]) / d * h
+					corners = [(p0[0] + nx, p0[1] + ny), (p1[0] + nx, p1[1] + ny), (p1[0] - nx, p1[1] - ny), (p0[0] - nx, p0[1] - ny)]
+					points = [rotate_point(c, rotation) for c in corners]
+					primitives.append({'kind': 'polygon', 'points': points + [points[0]]})
+			elif code == 21:
+				rotation = values[6] if len(values) > 6 else 0.0
+				w, h, cx, cy = values[2] / 2.0, values[3] / 2.0, values[4], values[5]
+				points = [rotate_point(c, rotation) for c in ((cx - w, cy - h), (cx + w, cy - h), (cx + w, cy + h), (cx - w, cy + h))]
+				primitives.append({'kind': 'polygon', 'points': points + [points[0]]})
+			elif code == 4:
+				count = int(values[2]) + 1
+				rotation = values[3 + 2 * count] if len(values) > 3 + 2 * count else 0.0
+				points = [rotate_point((values[3 + 2 * k], values[4 + 2 * k]), rotation) for k in range(count)]
+				if points[0] != points[-1]:
+					points.append(points[0])
+				primitives.append({'kind': 'polygon', 'points': points})
+			elif code == 5:
+				count = max(3, int(values[2]))
+				rotation = values[6] if len(values) > 6 else 0.0
+				cx, cy, r = values[3], values[4], values[5] / 2.0
+				points = [(cx + r * math.cos(math.radians(rotation) + 2 * math.pi * k / count), cy + r * math.sin(math.radians(rotation) + 2 * math.pi * k / count)) for k in range(count)]
+				primitives.append({'kind': 'polygon', 'points': points + [points[0]]})
+			else:
+				warnings.append('macro %s: primitive %d not read' % (name, code))
+		except IndexError:
+			warnings.append('macro %s: a primitive has too few parameters' % name)
+	return primitives, warnings
+
+
+# the rounded rectangle of the RoundRect macro of KiCad: the polygon of the four corners, enlarged by the radius
+def rounded_polygon(corners, radius):
+	points = list(corners[:-1]) if corners[0] == corners[-1] else list(corners)
+	area = sum(points[i][0] * points[(i + 1) % len(points)][1] - points[(i + 1) % len(points)][0] * points[i][1] for i in range(len(points)))
+	if area < 0:
+		points.reverse()
+	n = len(points)
+	normals = []
+	for i in range(n):
+		a, b = points[i], points[(i + 1) % n]
+		d = math.hypot(b[0] - a[0], b[1] - a[1])
+		normals.append((((b[1] - a[1]) / d, -(b[0] - a[0]) / d) if d > EPS else (0.0, 0.0)))
+	segments = []
+	for i in range(n):
+		p, q = points[i], points[(i + 1) % n]
+		ni, nj = normals[i], normals[(i + 1) % n]
+		segments.append({'type': 'line', 'point': (p[0] + radius * ni[0], p[1] + radius * ni[1])})
+		segments.append({'type': 'arc', 'point': (q[0] + radius * ni[0], q[1] + radius * ni[1]), 'center': q, 'radius': radius, 'cw': False})
+	segments.append({'type': 'line', 'point': segments[0]['point']})
+	return segments
+
+
 def parse_aperture(text, parsed):
 	m = re.match(r'ADD(\d+)([A-Za-z_][\w.$]*),?(.*)', text)
 	if not m:
@@ -99,7 +198,7 @@ def parse_aperture(text, parsed):
 		return code, {'shape': kind, 'w': values[0], 'h': values[1], 'hole': values[2] if len(values) > 2 else 0.0}
 	if kind == 'P' and len(values) >= 2:
 		return code, {'shape': 'P', 'd': values[0], 'n': int(values[1]), 'rotation': values[2] if len(values) > 2 else 0.0, 'hole': values[3] if len(values) > 3 else 0.0}
-	return code, {'shape': 'macro', 'name': kind}
+	return code, {'shape': 'macro', 'name': kind, 'params': values}
 
 
 def parse_gerber(text):
@@ -114,7 +213,8 @@ def parse_gerber(text):
 	region = None		# the contours of the region being drawn
 	contour = None
 	clear = False
-	macros_seen = set()
+	macros = {}
+	macro_block = None
 
 	def end_contour():
 		nonlocal contour
@@ -133,7 +233,7 @@ def parse_gerber(text):
 			for w in text[i + 1:j].split('*'):
 				w = w.strip()
 				if w:
-					words.append(('param', w))
+					words.append(('param', w, i))
 			i = j + 1
 		elif text[i] in ' \r\n\t':
 			i += 1
@@ -142,11 +242,14 @@ def parse_gerber(text):
 			j = n if j < 0 else j
 			w = text[i:j].strip()
 			if w:
-				words.append(('data', w))
+				words.append(('data', w, i))
 			i = j + 1
 
-	for kind, word in words:
+	for kind, word, block in words:
 		if kind == 'param':
+			if macro_block is not None and block == macro_block[0]:
+				macro_block[1].append(word)
+				continue
 			if word.startswith('FS'):
 				m = re.match(r'FS([LT]?)([AI]?)X(\d)(\d)Y(\d)(\d)', word)
 				if m:
@@ -158,9 +261,14 @@ def parse_gerber(text):
 			elif word.startswith('AD'):
 				a = parse_aperture(word, parsed)
 				if a:
-					apertures[a[0]] = a[1]
+					ap = a[1]
+					if ap['shape'] == 'macro' and ap['name'] in macros:
+						ap['prims'], notes = macro_primitives(ap['name'], macros[ap['name']], ap['params'])
+						parsed.warnings.extend(notes)
+					apertures[a[0]] = ap
 			elif word.startswith('AM'):
-				macros_seen.add(word[2:])
+				macros[word[2:]] = []
+				macro_block = (block, macros[word[2:]])
 			elif word.startswith('LP'):
 				clear = word[2:3] == 'C'
 			continue
@@ -227,8 +335,8 @@ def parse_gerber(text):
 		elif dcode == 3:
 			if aperture is None:
 				parsed.warnings.append('flash without aperture')
-			elif aperture['shape'] == 'macro':
-				parsed.warnings.append('macro aperture %s not read' % aperture['name'])
+			elif aperture['shape'] == 'macro' and 'prims' not in aperture:
+				parsed.warnings.append('macro aperture %s not defined' % aperture['name'])
 			else:
 				parsed.objects.append({'kind': 'flash', 'at': (nx, ny), 'aperture': aperture, 'clear': clear})
 		elif dcode == 1 or (dcode is None and ('X' in numbers or 'Y' in numbers)):
@@ -243,7 +351,7 @@ def parse_gerber(text):
 			elif aperture is None:
 				parsed.warnings.append('draw without aperture')
 			elif aperture['shape'] == 'macro':
-				parsed.warnings.append('macro aperture %s not read' % aperture['name'])
+				parsed.warnings.append('a track with the macro aperture %s is not allowed' % aperture['name'])
 			else:
 				parsed.objects.append({'kind': 'track', 'from': (x, y), 'segment': segment, 'aperture': aperture, 'clear': clear})
 		x, y = nx, ny
@@ -378,8 +486,28 @@ def rectangle(center, w, h):
 	return [{'type': 'polyline', 'points': [(cx - w / 2.0, cy - h / 2.0), (cx + w / 2.0, cy - h / 2.0), (cx + w / 2.0, cy + h / 2.0), (cx - w / 2.0, cy + h / 2.0), (cx - w / 2.0, cy - h / 2.0)]}]
 
 
+def macro_shapes(center, ap):
+	shapes = []
+	prims = ap['prims']
+	# the macro of KiCad: a polygon of four corners, four circles and four rectangles, which together make a rounded rectangle
+	if ap['name'] == 'RoundRect' and len(ap['params']) >= 9 and prims and prims[0]['kind'] == 'polygon':
+		corners = [(p[0] + center[0], p[1] + center[1]) for p in prims[0]['points']]
+		r = ap['params'][0]
+		if r <= EPS:
+			return [{'type': 'polyline', 'points': corners}]
+		return [{'type': 'spline', 'segments': rounded_polygon(corners, r)}]
+	for p in prims:
+		if p['kind'] == 'circle':
+			shapes.append({'type': 'circle', 'center': (p['center'][0] + center[0], p['center'][1] + center[1]), 'radius': p['radius']})
+		else:
+			shapes.append({'type': 'polyline', 'points': [(q[0] + center[0], q[1] + center[1]) for q in p['points']]})
+	return shapes
+
+
 def flash_shapes(center, ap):
 	shape = ap['shape']
+	if shape == 'macro':
+		return macro_shapes(center, ap)
 	if shape == 'C':
 		shapes = [{'type': 'circle', 'center': center, 'radius': ap['d'] / 2.0}]
 	elif shape == 'R':

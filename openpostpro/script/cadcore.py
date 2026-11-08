@@ -182,6 +182,43 @@ class Cadcore:
         except Exception:
             pass
 
+    # file dialogs (tkinter), the same as the buttons of the properties: the path which is chosen, '' if the dialog is cancelled or can not be displayed.
+    # filters: list of (name, pattern), for example [('SVG', '*.svg'), ('All files', '*.*')]; a pattern can hold several extensions: '*.gbr;*.drl'
+    def open_file(self, title='', filters=None, initial=''):
+        return self._file_dialog(False, title, filters, initial, '')
+
+    # extension: added to a name written without one (for example '.svg')
+    def save_file(self, title='', filters=None, initial='', extension=''):
+        return self._file_dialog(True, title, filters, initial, extension)
+
+    def _file_dialog(self, save, title, filters, initial, extension):
+        try:
+            import os
+            import tkinter
+            from tkinter import filedialog
+            window = tkinter.Tk()
+            window.withdraw()
+            window.attributes('-topmost', True)
+            options = {'parent': window, 'title': title if title else self.script.get_description()}
+            if filters:
+                options['filetypes'] = [(name, pattern.replace(';', ' ')) for name, pattern in filters]
+            if initial:
+                folder, name = os.path.split(initial)
+                if folder and os.path.isdir(folder):
+                    options['initialdir'] = folder
+                if name:
+                    options['initialfile'] = name
+            if save:
+                if extension:
+                    options['defaultextension'] = extension
+                path = filedialog.asksaveasfilename(**options)
+            else:
+                path = filedialog.askopenfilename(**options)
+            window.destroy()
+            return path if path else ''
+        except Exception:
+            return ''
+
     def get_output(self):
         return self.output
 
@@ -202,6 +239,12 @@ class Cadcore:
         if hasattr(self.script, 'get_property_key'):
             return self.script.get_property_key(index)
         return str(index)
+
+    # a text property can be a file name: the script returns ('open' or 'save', 'Name of the filter', '*.ext;*.ext2') and the dialog box shows a button to choose the file
+    def get_property_file(self, index):
+        if hasattr(self.script, 'get_property_file'):
+            return self.script.get_property_file(index)
+        return None
 	
     def get_properties_count(self):
         return self.script.get_properties_count()

@@ -81,6 +81,7 @@ Les commandes sont une par ligne : `M:id:L:x1:y1:x2:y2` (segment), `M:id:C:x:y:r
 | `get_properties_count()` | aucun | nombre | nombre de paramètres du script |
 | `get_property_description(index)` | indice depuis 0 | chaîne | libellé du paramètre |
 | `get_property_key(index)` | indice depuis 0 | chaîne | optionnel : nom utilisé pour sauvegarder la valeur (par défaut : l'indice) |
+| `get_property_file(index)` | indice depuis 0 | `None` ou `(mode, nom du filtre, motif)` | optionnel : fait d'une propriété texte un nom de fichier, voir plus bas |
 | `use_properties()` | aucun | `bool` | optionnel : `False` si le script affiche sa propre fenêtre (défaut `True`) |
 | `get_property(index)` | indice depuis 0 | `bool`, `int`, `float`, `str` ou `list` de `str` | valeur courante |
 | `set_property(index, value)` | indice, valeur | rien | reçoit la valeur sauvegardée au démarrage, ou la valeur modifiée |
@@ -140,6 +141,20 @@ for shape in self.core.selection:
 |---|---|
 | `self.core.log(text)` | écrit une ligne `Script: text` dans le journal de l'application (`print` n'est pas visible) |
 | `self.core.set_layer(name)` | les formes ajoutées après cet appel vont dans le calque de ce nom, créé s'il n'existe pas (la création s'annule avec le script) ; sans nom, elles retournent dans le calque courant. Une forme modifiée garde son calque |
+
+### Boîtes de fichier
+
+| Appel | Effet |
+|---|---|
+| `self.core.open_file(title, filters, initial)` | affiche une boîte (`tkinter`) pour choisir un fichier à ouvrir ; renvoie le chemin, ou `''` si la boîte est annulée ou ne peut pas être affichée. `filters` est une liste de `(nom, motif)`, par exemple `[('SVG', '*.svg'), ('Tous les fichiers', '*.*')]` ; un motif peut contenir plusieurs extensions : `'*.gbr;*.drl'`. Tous les arguments sont optionnels |
+| `self.core.save_file(title, filters, initial, extension)` | la même pour choisir un fichier à écrire ; `extension` (`'.svg'`) est ajoutée à un nom écrit sans extension |
+
+Préférez une **propriété fichier** quand le fichier est un paramètre du script : renvoyez `('open', 'SVG', '*.svg')` (ou `'save'`) depuis `get_property_file(index)` pour l'indice d'une propriété texte, et la boîte de propriétés affiche à côté du texte un bouton `...` qui ouvre la boîte de fichier de l'application. La méthode est optionnelle : sans elle, une propriété texte est un simple champ de texte. Les valeurs sont sauvegardées comme celles des autres propriétés. Un script peut aussi appeler `open_file` quand le chemin est vide ou faux, comme le fait `svg_import.py`.
+
+```python
+def get_property_file(self, index):
+	return ('open', 'SVG', '*.svg') if index == 0 else None
+```
 
 ### Messages
 
@@ -281,6 +296,6 @@ Quatre scripts lisent ou écrivent d'autres formats de fichier. Le fichier n'est
 
 **Export SVG** : les polylignes Bézier et Catmull-Rom sont écrites en courbes cubiques ; les autres modes de courbe (B-spline, cubique naturelle, Lagrange) sont écrits par leurs points de contrôle, et le journal dit combien.
 
-**Gerber** : les ouvertures C, R, O et P, les flashs, les pistes (droites et arcs, en mode quadrant simple ou multiple), les régions (`G36`/`G37`), la polarité, les unités et le format des nombres. Les formes de polarité claire vont dans le calque `<nom>_clear` : elles ne sont pas soustraites des autres. Les formes qui se chevauchent ne sont pas fusionnées : utilisez les opérations booléennes de l'application sur les formes fermées. Les ouvertures macro (`AM`) ne sont pas lues, le journal les compte.
+**Gerber** : les ouvertures C, R, O et P, les flashs, les pistes (droites et arcs, en mode quadrant simple ou multiple), les régions (`G36`/`G37`), la polarité, les unités et le format des nombres. Les formes de polarité claire vont dans le calque `<nom>_clear` : elles ne sont pas soustraites des autres. Les formes qui se chevauchent ne sont pas fusionnées : utilisez les opérations booléennes de l'application sur les formes fermées. Les ouvertures macro (`AM`) sont lues (primitives cercle, ligne vecteur, ligne centrée, contour et polygone, avec variables et calculs) : la macro `RoundRect` de KiCad devient un seul rectangle arrondi, les autres macros une forme par primitive (qui se chevauchent, sans être fusionnées) ; une primitive d'exposition claire est ignorée et le journal le dit.
 
 **Excellon** : les outils, les trous et les rainures (`G85`), métrique ou pouce, avec ou sans point décimal.

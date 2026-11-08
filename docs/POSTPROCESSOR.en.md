@@ -80,6 +80,39 @@ stop_output()                 last characters of the file
 
 Drilling groups call `drilling`, `pecking`, `tapping` or `boring` in place of the plunge and the moves, then `cancel_canned_cycle()`.
 
+Order of the calls of the `postcore` engine for one file, and what each method of `Postpro` returns (text, which the engine assembles).
+
+```mermaid
+sequenceDiagram
+  participant App as Application
+  participant Core as postcore.py
+  participant Post as Postpro (user)
+  App->>Core: start_loop()
+  Core->>Post: start_output(), comment(...), start_program(), initial_position()
+  Post-->>Core: text returned by each method
+  App->>Core: tool group (tool n)
+  Core->>Post: comment(...), tool(n), spindle_speed(s), tool_*_compensation()
+  App->>Core: start_toolpath()
+  Core->>Post: comment(...), start_toolpath()
+  loop Z passes
+    App->>Core: rapid(safe z), rapid(x, y)
+    Core->>Post: rapid(axes, values)
+    App->>Core: feed(plunge), linear(z), feed(work)
+    Core->>Post: feed(f), linear(axes, values)
+    App->>Core: start_single_path()
+    App->>Core: linear / clockwise / counter_clockwise
+    Core->>Post: linear(...) / clockwise(...) / counter_clockwise(...)
+    App->>Core: stop_single_path(), rapid(safe z)
+    Core->>Post: stop_single_path(), rapid(...)
+  end
+  App->>Core: stop_toolpath()
+  Core->>Post: stop_toolpath(), tool_cancel_*_compensation()
+  App->>Core: end
+  Core->>Post: final_position(), stop_program(), stop_output()
+  Note over Core,Post: each method returns a string ('' if nothing), the engine adds the end of line and keeps x, y, z
+```
+
+
 ## 2. Identity
 
 | Method | Arguments | Returns | Meaning |
@@ -123,6 +156,7 @@ Properties are the parameters of the post-processor. The user edits them in the 
 | `get_properties_count()` | none | number | how many properties |
 | `get_property_description(index)` | index from 0 | string | label of the property |
 | `get_property_key(index)` | index from 0 | string | optional: name used to save the value (default: the index) |
+| `get_property_file(index)` | index from 0 | `None` or `(mode, filter name, pattern)` | optional: makes a text property a file name: `('open', 'Text', '*.txt')` or `'save'`; the dialog box shows a `...` button which opens the file dialog |
 | `get_property(index)` | index from 0 | see below | current value; its type selects the control |
 | `set_property(index, value)` | index, value | nothing | receives the value edited by the user |
 

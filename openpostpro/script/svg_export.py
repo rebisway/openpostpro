@@ -258,17 +258,7 @@ class Cadscript:
 		return '\n'.join(lines)
 
 	def ask_file(self):
-		try:
-			import tkinter
-			from tkinter import filedialog
-			window = tkinter.Tk()
-			window.withdraw()
-			window.attributes('-topmost', True)
-			name = filedialog.asksaveasfilename(parent=window, title=self.lang['dialog'], defaultextension='.svg', filetypes=[('SVG', '*.svg'), ('All', '*.*')])
-			window.destroy()
-			return name
-		except Exception:
-			return ''
+		return self.core.save_file(self.lang['dialog'], [('SVG', '*.svg'), ('All', '*.*')], '', '.svg')
 
 	def run(self):
 		shapes = list(self.core.selection) or list(self.core.drawing)

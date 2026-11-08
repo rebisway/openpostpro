@@ -112,18 +112,12 @@ class Cadscript:
 		else:
 			self.chord = float(val)
 
+	# the property "file" has a button which opens the file dialog of the application
+	def get_property_file(self, index):
+		return ('open', 'Airfoil', '*.dat;*.txt') if index == 0 else None
+
 	def ask_file(self):
-		try:
-			import tkinter
-			from tkinter import filedialog
-			window = tkinter.Tk()
-			window.withdraw()
-			window.attributes('-topmost', True)
-			name = filedialog.askopenfilename(parent=window, title=self.lang['dialog'], filetypes=[('Airfoil', '*.dat *.txt'), ('All', '*.*')])
-			window.destroy()
-			return name
-		except Exception:
-			return ''
+		return self.core.open_file(self.lang['dialog'], [('Airfoil', '*.dat;*.txt'), ('All', '*.*')])
 
 	def run(self):
 		path = self.file

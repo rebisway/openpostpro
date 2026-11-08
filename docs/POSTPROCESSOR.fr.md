@@ -80,6 +80,39 @@ stop_output()                 derniers caractères du fichier
 
 Les groupes de perçage appellent `drilling`, `pecking`, `tapping` ou `boring` à la place de la plongée et des déplacements, puis `cancel_canned_cycle()`.
 
+Ordre des appels du moteur `postcore` pour un fichier, et ce que renvoie chaque méthode de `Postpro` (du texte, que le moteur assemble).
+
+```mermaid
+sequenceDiagram
+  participant App as Application
+  participant Core as postcore.py
+  participant Post as Postpro (utilisateur)
+  App->>Core: start_loop()
+  Core->>Post: start_output(), comment(...), start_program(), initial_position()
+  Post-->>Core: texte renvoyé par chaque méthode
+  App->>Core: groupe d'outil (outil n)
+  Core->>Post: comment(...), tool(n), spindle_speed(s), tool_*_compensation()
+  App->>Core: start_toolpath()
+  Core->>Post: comment(...), start_toolpath()
+  loop passes en Z
+    App->>Core: rapid(z sûr), rapid(x, y)
+    Core->>Post: rapid(axes, values)
+    App->>Core: feed(plongée), linear(z), feed(travail)
+    Core->>Post: feed(f), linear(axes, values)
+    App->>Core: start_single_path()
+    App->>Core: linear / clockwise / counter_clockwise
+    Core->>Post: linear(...) / clockwise(...) / counter_clockwise(...)
+    App->>Core: stop_single_path(), rapid(z sûr)
+    Core->>Post: stop_single_path(), rapid(...)
+  end
+  App->>Core: stop_toolpath()
+  Core->>Post: stop_toolpath(), tool_cancel_*_compensation()
+  App->>Core: fin
+  Core->>Post: final_position(), stop_program(), stop_output()
+  Note over Core,Post: chaque méthode renvoie une chaîne ('' si rien), le moteur ajoute la fin de ligne et garde x, y, z
+```
+
+
 ## 2. Identité
 
 | Méthode | Arguments | Retour | Rôle |
@@ -123,6 +156,7 @@ Les propriétés sont les paramètres du post-processeur. L'utilisateur les modi
 | `get_properties_count()` | aucun | nombre | nombre de propriétés |
 | `get_property_description(index)` | indice depuis 0 | chaîne | libellé de la propriété |
 | `get_property_key(index)` | indice depuis 0 | chaîne | optionnel : nom utilisé pour sauvegarder la valeur (par défaut : l'indice) |
+| `get_property_file(index)` | indice depuis 0 | `None` ou `(mode, nom du filtre, motif)` | optionnel : fait d'une propriété texte un nom de fichier : `('open', 'Texte', '*.txt')` ou `'save'` ; la boîte affiche un bouton `...` qui ouvre la boîte de fichier |
 | `get_property(index)` | indice depuis 0 | voir ci-dessous | valeur courante ; son type détermine le contrôle |
 | `set_property(index, value)` | indice, valeur | rien | reçoit la valeur saisie par l'utilisateur |
 

@@ -73,18 +73,12 @@ class Cadscript:
 		else:
 			self.scale = float(val)
 
+	# the property "file" has a button which opens the file dialog of the application
+	def get_property_file(self, index):
+		return ('open', 'SVG', '*.svg') if index == 0 else None
+
 	def ask_file(self):
-		try:
-			import tkinter
-			from tkinter import filedialog
-			window = tkinter.Tk()
-			window.withdraw()
-			window.attributes('-topmost', True)
-			name = filedialog.askopenfilename(parent=window, title=self.lang['dialog'], filetypes=[('SVG', '*.svg'), ('All', '*.*')])
-			window.destroy()
-			return name
-		except Exception:
-			return ''
+		return self.core.open_file(self.lang['dialog'], [('SVG', '*.svg'), ('All', '*.*')])
 
 	def run(self):
 		path = self.file
