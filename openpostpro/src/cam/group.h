@@ -49,6 +49,8 @@ private:
 	std::string _post_command = "";
 	StartPointType _start_point_type = StartPointType::normal;
 	float _start_point_offset = 0;
+	bool _tool_editing = false;	// the field of the tool is being typed (otherwise it shows the name of the tool of the table)
+	bool _tool_focus = false;
 	bool _oblique = false;		// the tool goes down along the entry of the offset start instead of vertically
 	bool _lead_out = false;		// the paths leave the contour (an exit) like they come to it (the entry)
 	int _repeat_x = 0;

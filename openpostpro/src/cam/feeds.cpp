@@ -17,6 +17,7 @@
 #include "feeds.h"
 #include <algorithm>
 #include <cmath>
+#include <glm/gtc/constants.hpp>
 
 namespace feeds
 {
@@ -57,8 +58,7 @@ namespace feeds
 		Result r;
 		if (diameter <= 0 || flutes <= 0)
 			return r;
-		const float pi = 3.14159265f;
-		float n = material.cutting_speed * 1000.0f / (pi * diameter);
+		float n = material.cutting_speed * 1000.0f / (glm::pi<float>() * diameter);
 		if (max_rpm > 0 && n > max_rpm)
 		{
 			n = max_rpm;

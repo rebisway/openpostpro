@@ -327,7 +327,38 @@ void Group::ui()
 	ImGui::TableSetColumnIndex(1);
 	// editable combo: the number of the tool is typed, or a tool of the table is chosen in the list
 	ImGui::SetNextItemWidth(-(ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x));
-	if (ImGui::InputText("##TOOL_NUMBER", input, sizeof(input), ImGuiInputTextFlags_EnterReturnsTrue))
+	bool typed = false;
+	if (_tool_editing)
+	{
+		if (_tool_focus)
+		{
+			ImGui::SetKeyboardFocusHere();
+			_tool_focus = false;
+		}
+		typed = ImGui::InputText("##TOOL_NUMBER", input, sizeof(input), ImGuiInputTextFlags_EnterReturnsTrue);
+		if (ImGui::IsItemDeactivated())
+			_tool_editing = false;
+	}
+	else
+	{
+		// the tool of the table is known by its name, a number alone otherwise; a click types the number
+		std::string shown = input;
+		if (Tool* known = _tool_number >= 0 ? tool_table().find(_tool_number) : nullptr)
+			shown = "T" + std::to_string(_tool_number) + "  " + known->name;
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_FrameBg));
+		ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(0.0f, 0.5f));
+		if (ImGui::Button((shown + "###TOOL_SHOWN").c_str(), ImVec2(ImGui::CalcItemWidth(), 0)))
+		{
+			_tool_editing = true;
+			_tool_focus = true;
+		}
+		// the name may be cut by the width of the field: the whole text is in the tooltip
+		if (!shown.empty() && ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s", shown.c_str());
+		ImGui::PopStyleVar();
+		ImGui::PopStyleColor();
+	}
+	if (typed)
 	{
 		try
 		{

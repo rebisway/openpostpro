@@ -64,12 +64,35 @@ void ToolsWindow::draw()
 	ImGui::BeginDisabled(tool == nullptr);
 	if (ImGui::Button(Lang::l("BTN_REMOVE")) && tool != nullptr)
 	{
+		// the next tool is selected, or the previous one when it was the last
+		size_t position = 0;
+		for (size_t i = 0; i < table.tools().size(); i++)
+			if (table.tools()[i].number == _selected)
+				position = i;
 		table.remove(_selected);
-		_selected = -1;
-		tool = nullptr;
+		const auto& rest = table.tools();
+		_selected = rest.empty() ? -1 : rest[(std::min)(position, rest.size() - 1)].number;
+		_edited = -2;
+		tool = table.find(_selected);
 		changed = true;
 	}
 	ImGui::EndDisabled();
+
+	// computation of the feeds from the table, at the right of the line (a mill only; the material and the teeth are below)
+	{
+		const char* label = Lang::l("TOOLS_COMPUTE");
+		float width = ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 2;
+		ImGui::SameLine((std::max)(0.0f, ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - width));
+		ImGui::BeginDisabled(tool == nullptr || tool->torch());
+		if (ImGui::Button(label) && tool != nullptr)
+		{
+			feeds::Result result = feeds::compute(feeds::materials()[_material], tool->diameter, tool->flutes, _max_rpm);
+			feeds::apply(result, *tool);
+			_rpm_limited = result.limited;
+			changed = true;
+		}
+		ImGui::EndDisabled();
+	}
 	ImGui::Separator();
 
 	if (tool != nullptr)
@@ -160,16 +183,12 @@ void ToolsWindow::draw()
 			}
 			ImGui::TextUnformatted(Lang::l("TOOLS_MAX_RPM"));
 			ImGui::InputFloat("##T_MAX_RPM", &_max_rpm, 0, 0, "%.0f");
-			if (ImGui::Button(Lang::l("TOOLS_COMPUTE")))
-			{
-				feeds::Result result = feeds::compute(materials[_material], tool->diameter, tool->flutes, _max_rpm);
-				feeds::apply(result, *tool);
-				_rpm_limited = result.limited;
-				changed = true;
-			}
 			if (_rpm_limited)
 				ImGui::TextWrapped("%s", Lang::l("TOOLS_RPM_LIMITED"));
-			ImGui::TextDisabled("%s", Lang::l("TOOLS_COMPUTE_HINT"));
+			// the hint is long: it goes to the next line when the window is narrow
+			ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+			ImGui::TextWrapped("%s", Lang::l("TOOLS_COMPUTE_HINT"));
+			ImGui::PopStyleColor();
 		}
 		ImGui::PopItemWidth();
 	}
