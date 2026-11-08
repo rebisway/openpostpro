@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 330" role="img" aria-label="Modèle de matière par tuiles">
+<style>
+:root{--bg:#fff;--fg:#222;--p:#cfe3f5;--d:#f2c27b;--ln:#7a8a99;--ac:#0f766e;--v:#d9ccf2}
+@media (prefers-color-scheme:dark){:root{--bg:#1e1f22;--fg:#e6e6e6;--p:#2d4660;--d:#9a6a22;--ln:#8a97a5;--ac:#5eead4;--v:#4b3a78}}
+text{font:13px sans-serif;fill:var(--fg)} .t{font-weight:bold;font-size:15px}
+</style>
+<rect width="760" height="330" style="fill:var(--bg)"/>
+<text x="20" y="24" class="t">Modèle de matière par tuiles</text>
+<rect x="20" y="45" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="45" y="75" text-anchor="middle">0</text>
+<rect x="70" y="45" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="120" y="45" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="170" y="45" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="195" y="75" text-anchor="middle">0</text>
+<rect x="220" y="45" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="270" y="45" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="320" y="45" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="345" y="75" text-anchor="middle">0</text>
+<rect x="20" y="95" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="70" y="95" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="120" y="95" width="50" height="50" style="fill:var(--d);stroke:var(--ln)"/>
+<path d="M130 95v50M120 105h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M140 95v50M120 115h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M150 95v50M120 125h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M160 95v50M120 135h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="170" y="95" width="50" height="50" style="fill:var(--d);stroke:var(--ln)"/>
+<path d="M180 95v50M170 105h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M190 95v50M170 115h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M200 95v50M170 125h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M210 95v50M170 135h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="220" y="95" width="50" height="50" style="fill:var(--d);stroke:var(--ln)"/>
+<path d="M230 95v50M220 105h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M240 95v50M220 115h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M250 95v50M220 125h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M260 95v50M220 135h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="270" y="95" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="295" y="125" text-anchor="middle">0</text>
+<rect x="320" y="95" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="20" y="145" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="70" y="145" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="95" y="175" text-anchor="middle">0</text>
+<rect x="120" y="145" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="170" y="145" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="220" y="145" width="50" height="50" style="fill:var(--d);stroke:var(--ln)"/>
+<path d="M230 145v50M220 155h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M240 145v50M220 165h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M250 145v50M220 175h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M260 145v50M220 185h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="270" y="145" width="50" height="50" style="fill:var(--d);stroke:var(--ln)"/>
+<path d="M280 145v50M270 155h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M290 145v50M270 165h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M300 145v50M270 175h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M310 145v50M270 185h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="320" y="145" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="20" y="195" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="45" y="225" text-anchor="middle">0</text>
+<rect x="70" y="195" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="120" y="195" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="170" y="195" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="195" y="225" text-anchor="middle">0</text>
+<rect x="220" y="195" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="270" y="195" width="50" height="50" style="fill:var(--d);stroke:var(--ln)"/>
+<path d="M280 195v50M270 205h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M290 195v50M270 215h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M300 195v50M270 225h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M310 195v50M270 235h50" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="320" y="195" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="345" y="225" text-anchor="middle">0</text>
+<rect x="20" y="245" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="70" y="245" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="120" y="245" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="145" y="275" text-anchor="middle">0</text>
+<rect x="170" y="245" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="220" y="245" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<rect x="270" y="245" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<text x="295" y="275" text-anchor="middle">0</text>
+<rect x="320" y="245" width="50" height="50" style="fill:var(--p);stroke:var(--ln)"/>
+<path d="M50 75 L150 120 L250 150 L300 235" fill="none" style="stroke:var(--ac)" stroke-width="3" stroke-dasharray="6 4"/>
+<text x="320" y="245" style="fill:var(--ac);fill:var(--ac)">trajet de la fraise</text>
+<rect x="20" y="305" width="14" height="14" style="fill:var(--p);stroke:var(--ln)"/><text x="40" y="317">Plateau : une seule hauteur (un nombre)</text>
+<rect x="300" y="305" width="14" height="14" style="fill:var(--d);stroke:var(--ln)"/><text x="320" y="317">Détail : grille de hauteurs (là où la fraise est passée)</text>
+<text x="470" y="60" class="t">Atlas : les tuiles à détail seulement</text>
+<rect x="470" y="75" width="80" height="80" style="fill:var(--d);stroke:var(--ln)"/><text x="510" y="119" text-anchor="middle">emplacement 0</text>
+<path d="M490 75v80M510 75v80M530 75v80M470 95h80M470 115h80M470 135h80" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="560" y="75" width="80" height="80" style="fill:var(--d);stroke:var(--ln)"/><text x="600" y="119" text-anchor="middle">emplacement 1</text>
+<path d="M580 75v80M600 75v80M620 75v80M560 95h80M560 115h80M560 135h80" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="650" y="75" width="80" height="80" style="fill:var(--d);stroke:var(--ln)"/><text x="690" y="119" text-anchor="middle">emplacement 2</text>
+<path d="M670 75v80M690 75v80M710 75v80M650 95h80M650 115h80M650 135h80" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="470" y="165" width="80" height="80" style="fill:var(--d);stroke:var(--ln)"/><text x="510" y="209" text-anchor="middle">emplacement 3</text>
+<path d="M490 165v80M510 165v80M530 165v80M470 185h80M470 205h80M470 225h80" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="560" y="165" width="80" height="80" style="fill:var(--d);stroke:var(--ln)"/><text x="600" y="209" text-anchor="middle">emplacement 4</text>
+<path d="M580 165v80M600 165v80M620 165v80M560 185h80M560 205h80M560 225h80" style="stroke:var(--ln)" stroke-width=".4"/>
+<rect x="650" y="165" width="80" height="80" style="fill:var(--d);stroke:var(--ln)"/><text x="690" y="209" text-anchor="middle">emplacement 5</text>
+<path d="M670 165v80M690 165v80M710 165v80M650 185h80M650 205h80M650 225h80" style="stroke:var(--ln)" stroke-width=".4"/>
+<path d="M245 120 C 400 20 440 60 470 110" fill="none" style="stroke:var(--ln)" stroke-dasharray="3 3"/>
+<text x="470" y="280" style="font-size:12px">Seules les tuiles touchées par la fraise coûtent de la mémoire.</text>
+<text x="470" y="297" style="font-size:12px">un plateau complet est simplifié à nouveau</text></svg>

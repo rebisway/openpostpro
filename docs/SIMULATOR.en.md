@@ -32,6 +32,21 @@ The application reads the text of the program and gives **one line at a time** t
 
 **The translator only translates.** Play, pause, step, going back, going to a line, the speed and the final result belong to the simulator: its buttons work whatever the program says, and a stop or a dwell of the program is a command like the others (section 4).
 
+Choosing the translator in the list of the Simulation tab: *Auto* takes the one which announces the extension of the file, otherwise `gcode`; a translator chosen in the list is forced.
+
+```mermaid
+flowchart TB
+  f["Loaded file (.plt, .nc...)"]:::app --> q{"List of the Simulation tab"}:::app
+  q -->|"Auto (default)"| e{"Does a translator announce<br/>the extension (extensions())?"}:::app
+  e -->|"yes"| t1["that translator"]:::user
+  e -->|"no"| t2["gcode"]:::user
+  q -->|"a translator is chosen"| t3["that translator,<br/>for every file"]:::user
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+
 ### Types
 
 - A command is a Python dictionary with a key `'cmd'`; numbers are `float` or `int`, flags are `bool`, names are `str`.
@@ -83,6 +98,33 @@ close()               once, at the end or when the translation is cancelled
 ```
 
 The translation is done by slices of 10 ms for each frame of the window, with a progress bar and a Cancel button: a program of 100 000 lines is translated in about 2 seconds of Python while the window stays smooth. Your methods must therefore be quick and must not wait for anything. They are all called from one thread, in order.
+
+The contract of a translator: `start`, `next` for each line, `close`, and the optional `extensions` method. It returns the commands of section 4.
+
+```mermaid
+flowchart TB
+  load["A program is loaded"]:::app --> st["start(options)<br/>→ {'unit': 'mm'}"]:::user
+  st --> nx["next(line) for each line, returns a list of commands"]:::user
+  nx -->|"next line"| nx
+  nx --> cl["close()"]:::user
+  nx --> cm["rapid · linear · arc · dwell · tool · spindle · coolant · torch · stop · message"]:::app
+  ex["extensions() (optional)"]:::user
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+One line of each format, translated to a command:
+
+```mermaid
+flowchart LR
+  h["HPGL<br/>PU100,200;"]:::app --> t1["hpgl.py: next(line)"]:::user --> c1["{'cmd': 'rapid', 'x': 2.5, 'y': 5.0, 'z': ...}"]:::app
+  g["G-code<br/>G1 X10 Y5 F300"]:::app --> t2["gcode.py: next(line)"]:::user --> c2["{'cmd': 'linear', 'x': 10, 'y': 5, 'z': ..., 'f': 300}"]:::app
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
 
 ## 3. Methods of `Translator`
 
@@ -179,3 +221,39 @@ class Translator:
 - Three axes X, Y, Z. The commands of a 4 or 5 axes program can be played in X, Y, Z, but the material is then not reliable.
 - The tool has one shape for the whole program (the tool changes are shown, not simulated).
 - The surface of the material is a grid of columns: a very steep wall shows the steps of the grid, and a narrow cut in a very large block may look dotted when the grid is made larger to stay under 2 million columns.
+
+
+## 9. Inside the simulator
+
+The player (`SimPlayer`) plays the commands and cuts the material model (`SimModel`), which the view (`SimView`) draws. The player works within a time budget on each frame of the window.
+
+```mermaid
+flowchart LR
+  prog["Translated program<br/>(commands)"]:::app --> player["SimPlayer<br/>(player: time, speed, pause)"]:::app
+  player -->|"cut from a to b"| model["SimModel"]:::app
+  model --- grid["SimModelGrid<br/>grid of heights"]:::app
+  model --- tiles["SimModelTiles<br/>tiles: plateau or detail"]:::app
+  model -->|"what to draw"| view["SimView<br/>(3D view)"]:::app
+  frame["Frame of the window"]:::app -->|"work budget: 8 ms,<br/>30 ms when the player goes to the end"| player
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+The flow of a cut: only the columns under the tool are looked at (`sim_footprint.h`).
+
+```mermaid
+flowchart LR
+  m["Move from a to b<br/>tool of radius r"]:::app --> cap["Capsule: segment + disc<br/>(sim_footprint.h)"]:::app
+  cap --> rows["For each row y:<br/>one interval of x"]:::app
+  rows --> col["Columns under the tool"]:::app
+  col --> h["Height of the tool over the column<br/>(flat, ball, V...)"]:::app
+  h --> mn["The height of the column<br/>only goes down"]:::app
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+The tiled model keeps a single number for a plateau, and a grid of heights only where the tool went. The tiles with detail are stored in an atlas.
+
+![Tiled material model: plateaus, tiles with detail, and atlas](img/tiles.en.svg)

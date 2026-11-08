@@ -32,6 +32,21 @@ L'application lit le texte du programme et donne **une ligne à la fois** à vot
 
 **Le traducteur ne fait que traduire.** La lecture, la pause, le pas à pas, le retour en arrière, l'aller à une ligne, la vitesse et le résultat final appartiennent au simulateur : ses boutons agissent quoi que dise le programme, et un arrêt ou une temporisation du programme est une commande comme les autres (section 4).
 
+Le choix du traducteur dans la liste de l'onglet Simulation : *Auto* prend celui qui annonce l'extension du fichier, sinon `gcode` ; un traducteur choisi est forcé.
+
+```mermaid
+flowchart TB
+  f["Fichier chargé (.plt, .nc...)"]:::app --> q{"Liste de l'onglet Simulation"}:::app
+  q -->|"Auto (défaut)"| e{"Un traducteur annonce<br/>l'extension (extensions()) ?"}:::app
+  e -->|"oui"| t1["ce traducteur"]:::user
+  e -->|"non"| t2["gcode"]:::user
+  q -->|"un traducteur choisi"| t3["ce traducteur,<br/>pour tous les fichiers"]:::user
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+
 ### Types
 
 - Une commande est un dictionnaire Python avec une clé `'cmd'` ; les nombres sont des `float` ou des `int`, les indicateurs des `bool`, les noms des `str`.
@@ -83,6 +98,33 @@ close()               une fois, à la fin ou quand la traduction est annulée
 ```
 
 La traduction se fait par tranches de 10 ms à chaque image de la fenêtre, avec une barre de progression et un bouton Annuler : un programme de 100 000 lignes est traduit en environ 2 secondes de Python pendant que la fenêtre reste fluide. Vos méthodes doivent donc être rapides et n'attendre rien. Elles sont toutes appelées depuis un seul fil, dans l'ordre.
+
+Le contrat d'un traducteur : `start`, `next` pour chaque ligne, `close`, et la méthode facultative `extensions`. Il rend les commandes de la section 4.
+
+```mermaid
+flowchart TB
+  load["Chargement d'un programme"]:::app --> st["start(options)<br/>→ {'unit': 'mm'}"]:::user
+  st --> nx["next(line) pour chaque ligne, renvoie une liste de commandes"]:::user
+  nx -->|"ligne suivante"| nx
+  nx --> cl["close()"]:::user
+  nx --> cm["rapid · linear · arc · dwell · tool · spindle · coolant · torch · stop · message"]:::app
+  ex["extensions() (facultative)"]:::user
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+Une ligne de chaque format, traduite en commande :
+
+```mermaid
+flowchart LR
+  h["HPGL<br/>PU100,200;"]:::app --> t1["hpgl.py: next(line)"]:::user --> c1["{'cmd': 'rapid', 'x': 2.5, 'y': 5.0, 'z': ...}"]:::app
+  g["G-code<br/>G1 X10 Y5 F300"]:::app --> t2["gcode.py: next(line)"]:::user --> c2["{'cmd': 'linear', 'x': 10, 'y': 5, 'z': ..., 'f': 300}"]:::app
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
 
 ## 3. Méthodes de `Translator`
 
@@ -179,3 +221,39 @@ class Translator:
 - Trois axes X, Y, Z. Les commandes d'un programme 4 ou 5 axes peuvent être jouées en X, Y, Z, mais la matière n'est alors pas fiable.
 - L'outil a une seule forme pour tout le programme (les changements d'outil sont affichés, pas simulés).
 - La surface de la matière est une grille de colonnes : une paroi très raide montre les marches de la grille, et une coupe étroite dans un très grand bloc peut paraître en pointillés quand la grille est agrandie pour rester sous 2 millions de colonnes.
+
+
+## 9. Intérieur du simulateur
+
+Le lecteur (`SimPlayer`) joue les commandes et coupe le modèle de matière (`SimModel`), que la vue (`SimView`) dessine. Le lecteur travaille dans un budget de temps à chaque image de la fenêtre.
+
+```mermaid
+flowchart LR
+  prog["Programme traduit<br/>(commandes)"]:::app --> player["SimPlayer<br/>(lecteur : temps, vitesse, pause)"]:::app
+  player -->|"coupe de a à b"| model["SimModel"]:::app
+  model --- grid["SimModelGrid<br/>grille de hauteurs"]:::app
+  model --- tiles["SimModelTiles<br/>tuiles : plateau ou détail"]:::app
+  model -->|"ce qu'il faut dessiner"| view["SimView<br/>(vue 3D)"]:::app
+  frame["Image de la fenêtre"]:::app -->|"budget de travail : 8 ms,<br/>30 ms quand le lecteur va à la fin"| player
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+Le flux d'une coupe : seules les colonnes sous la fraise sont regardées (`sim_footprint.h`).
+
+```mermaid
+flowchart LR
+  m["Déplacement de a à b<br/>fraise de rayon r"]:::app --> cap["Capsule : segment + disque<br/>(sim_footprint.h)"]:::app
+  cap --> rows["Pour chaque rangée y :<br/>un intervalle de x"]:::app
+  rows --> col["Colonnes sous la fraise"]:::app
+  col --> h["Hauteur de la fraise sur la colonne<br/>(plate, boule, V...)"]:::app
+  h --> mn["La hauteur de la colonne<br/>ne fait que baisser"]:::app
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+Le modèle par tuiles ne garde qu'un nombre pour un plateau, et une grille de hauteurs seulement là où la fraise est passée. Les tuiles à détail sont rangées dans un atlas.
+
+![Modèle de matière par tuiles : plateaux, tuiles à détail et atlas](img/tiles.fr.svg)
