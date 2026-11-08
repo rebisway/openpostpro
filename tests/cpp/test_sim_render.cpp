@@ -321,6 +321,69 @@ int main()
 		CHECK(std::fabs(tiles.removed_volume() - grid.removed_volume()) / grid.removed_volume() < 0.03, "tiles: the same volume after a reset");
 	}
 
+	std::puts("tiles: the atlas grows (a ball tool leaves no plateau, every tile has its heights)");
+	{
+		SimTool ball;
+		ball.shape = SimToolShape::Ball;
+		ball.radius = 0.5;
+		ball.length = 20;
+		SimBlock wide;
+		wide.low = glm::dvec2(-150, -150);
+		wide.high = glm::dvec2(150, 150);
+		wide.top = 0.0;
+		wide.bottom = -3.0;
+		wide.tool_radius = ball.radius;
+		wide.precision = 30.0;
+		wide.max_cells = 4000000;
+		wide.plateaus = false;
+		SimModelGrid wide_grid;
+		SimModelTiles wide_tiles;
+		wide_grid.setup(wide);
+		wide_tiles.setup(wide);
+		SimView grid_view(&renderer), tiles_view(&renderer);
+		grid_view.set_model(wide_grid);
+		tiles_view.set_model(wide_tiles);
+		// rasters on the whole block but a rim of 30 mm
+		for (double y = -120; y <= 120; y += 0.7)
+		{
+			wide_grid.cut(glm::dvec3(-120, y, -1), glm::dvec3(120, y, -1), ball);
+			wide_tiles.cut(glm::dvec3(-120, y, -1), glm::dvec3(120, y, -1), ball);
+		}
+		grid_view.upload();
+		tiles_view.upload();
+		CHECK(gl_errors() == 0, "no OpenGL error while the atlas grows");
+		std::printf("  %s\n", wide_tiles.describe().c_str());
+		CHECK(wide_tiles.describe().find("FULL") == std::string::npos, "the atlas has places for all the tiles");
+		CHECK(std::fabs(wide_tiles.removed_volume() - wide_grid.removed_volume()) / wide_grid.removed_volume() < 0.03, "the tiles took away what the grid took away");
+		for (SimView* v : { &grid_view, &tiles_view })
+		{
+			v->camera().view(0);
+			v->fit();
+			v->show_axes = false;
+			v->show_box = false;
+		}
+		Picture images[2];
+		SimView* views[2] = { &grid_view, &tiles_view };
+		for (int k = 0; k < 2; k++)
+		{
+			renderer.clear(views[k]->background.r, views[k]->background.g, views[k]->background.b, 1.0f);
+			views[k]->draw(W, H);
+			CHECK(gl_errors() == 0, "no OpenGL error after drawing the big block");
+			images[k] = read_picture();
+		}
+		// the same points: the floor between the rasters, the rim, and a point in the middle
+		for (glm::vec3 world : { glm::vec3(0, 0, -1), glm::vec3(60, -40, -1), glm::vec3(-100, 90, -1), glm::vec3(140, 140, 0), glm::vec3(-135, 0, 0) })
+		{
+			glm::ivec2 a = project(grid_view, world), b = project(tiles_view, world);
+			glm::vec3 ca = images[0].at(a.x, a.y), cb = images[1].at(b.x, b.y);
+			if (!near_color(ca, cb, 0.08f))
+				std::printf("  (%g, %g): grid %g %g %g, tiles %g %g %g\n", world.x, world.y, ca.r, ca.g, ca.b, cb.r, cb.g, cb.b);
+			CHECK(near_color(ca, cb, 0.08f), "the big block looks the same with the tiles and with the grid");
+		}
+		glm::ivec2 floor_pixel = project(tiles_view, glm::vec3(0, 0, -1)), rim_pixel = project(tiles_view, glm::vec3(-135, 0, 0));
+		CHECK(!near_color(images[1].at(floor_pixel.x, floor_pixel.y), images[1].at(rim_pixel.x, rim_pixel.y), 0.03f), "the machined floor is not like the rim");
+	}
+
 	std::puts("a block cut through by a torch");
 	{
 		SimTool torch;

@@ -84,11 +84,11 @@ static Result run(int method, const SimBlock& block, const std::vector<Cut>& cut
 	return r;
 }
 
-static void compare(const std::string& title, double low, double high, double margin, double tolerance)
+static void compare(const std::string& title, double low, double high, double margin, double tolerance, SimToolShape shape = SimToolShape::Flat)
 {
 	std::printf("%s\n", title.c_str());
 	SimTool tool;
-	tool.shape = SimToolShape::Flat;
+	tool.shape = shape;
 	tool.radius = 0.75;
 	tool.length = 20;
 
@@ -100,6 +100,7 @@ static void compare(const std::string& title, double low, double high, double ma
 	block.tool_radius = tool.radius;
 	block.precision = 15.0;
 	block.max_cells = 4000000;
+	block.plateaus = shape == SimToolShape::Flat;
 
 	const double island = (high - low) * 0.15;
 	const double center = (low + high) * 0.5;
@@ -117,6 +118,9 @@ static void compare(const std::string& title, double low, double high, double ma
 	std::printf("  %-10s %12s %10s %10s %12s  %s\n", "method", "cells", "memory KB", "cuts ms", "volume mm3", "detail");
 	for (const Result& r : results)
 		std::printf("  %-10s %12zu %10zu %10.1f %12.1f  %s\n", r.name.c_str(), r.cells, r.memory / 1024, r.cut_ms, r.volume, r.describe.c_str());
+
+	for (const Result& r : results)
+		CHECK(r.describe.find("FULL") == std::string::npos, "the model has room for all its heights");
 
 	// the reference: what the program takes away, about (area of the pocket - island) * 2 mm, and the groove
 	const double area = (high - low) * (high - low) - 3.14159265 * (island + 0.75) * (island + 0.75);
@@ -161,6 +165,7 @@ int main()
 
 	compare("a block of 100 x 100 mm, tool of 1.5 mm (every method can be fine)", 10, 90, 10, 0.2);
 	compare("a large block of 600 x 600 mm (the number of cells limits the grid)", 10, 590, 10, 0.6);
+	compare("a block of 100 x 100 mm with a ball tool (no plateau: every tile has heights)", 10, 90, 10, 0.2, SimToolShape::Ball);
 
 	std::printf("%d checks, %d failed\n", checks, failed);
 	return failed == 0 ? 0 : 1;

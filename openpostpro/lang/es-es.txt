@@ -314,3 +314,4 @@ PREF_SIM_FEED=Simulación: mecanizado
 PREF_SIM_RAPID=Simulación: rápidos
 SIM_MAX_CELLS=Celdas máx. (millones)
 SIM_METHOD=Método
+PREF_SIM_MATERIAL=Simulación: material

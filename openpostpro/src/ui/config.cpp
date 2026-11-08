@@ -60,6 +60,7 @@ void Config::read()
 	background2DColor = geometry::from_string(_ini.get_string("COLOR", "Background", "(0.25;0.25;0.25;0.0)"));		//glm::vec4(0.25f, 0.25f, 0.25f, 0.0f);
 	layerColor = geometry::from_string(_ini.get_string("COLOR", "Layer", "(0.278;0.78;1.0;1.0)"));					//glm::vec4(0.278f, 0.78f, 1.0f, 1.0f);
 	groupColor = geometry::from_string(_ini.get_string("COLOR", "Group", "(1;0.54902;0.0;1)"));				//glm::vec4(0.173f, 0.271f, 0.631f, 1.0f);
+	simMaterialColor = geometry::from_string(_ini.get_string("COLOR", "SimMaterial", "(0.78;0.64;0.46;1.0)"));
 	simFeedColor = geometry::from_string(_ini.get_string("COLOR", "SimFeed", "(0.1;0.8;0.2;1.0)"));
 	simRapidColor = geometry::from_string(_ini.get_string("COLOR", "SimRapid", "(1.0;0.15;0.15;1.0)"));
 	selectedCadColor = geometry::from_string(_ini.get_string("COLOR", "Selected", "(0.0;0.8;0.0;1.0)"));				//glm::vec4(0.0f, 0.8f, 0.0f, 1.0f);
@@ -103,6 +104,7 @@ void Config::write()
 	_ini.set("COLOR", "Layer", geometry::to_string(layerColor));
 	_ini.set("COLOR", "Group", geometry::to_string(groupColor));
 	_ini.set("COLOR", "Selected", geometry::to_string(selectedCadColor));
+	_ini.set("COLOR", "SimMaterial", geometry::to_string(simMaterialColor));
 	_ini.set("COLOR", "SimFeed", geometry::to_string(simFeedColor));
 	_ini.set("COLOR", "SimRapid", geometry::to_string(simRapidColor));
 
@@ -266,6 +268,11 @@ MessageBoxResult Config::drawUI()
 			if (ImGui::ColorEdit4("Selected", (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Selected", geometry::to_string(c));
+			}
+			c = geometry::from_string(_ini_temp.get_string("COLOR", "SimMaterial"));
+			if (ImGui::ColorEdit4(Lang::l("PREF_SIM_MATERIAL"), (float*)&c))
+			{
+				_ini_temp.set("COLOR", "SimMaterial", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "SimFeed"));
 			if (ImGui::ColorEdit4(Lang::l("PREF_SIM_FEED"), (float*)&c))

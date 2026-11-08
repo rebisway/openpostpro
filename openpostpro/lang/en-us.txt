@@ -314,3 +314,4 @@ PREF_SIM_FEED=Simulation: cutting
 PREF_SIM_RAPID=Simulation: rapids
 SIM_MAX_CELLS=Max cells (millions)
 SIM_METHOD=Method
+PREF_SIM_MATERIAL=Simulation: material

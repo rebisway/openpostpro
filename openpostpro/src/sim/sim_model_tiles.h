@@ -65,7 +65,9 @@ private:
 	Texture* _atlas = nullptr;
 	Texture* _flat_list = nullptr;
 	Texture* _detail_list = nullptr;
-	int _slots = 0;						// the places of the atlas
+	int _slots = 0;						// the places of the atlas now: it grows by doubling when it is full
+	int _slots_limit = 0;				// the most places it can have (a place for each tile)
+	bool _grow = false;					// a tile has no place: the atlas has to be larger
 	int _atlas_cols = 1;
 	std::vector<int> _free;				// the free places
 	std::vector<float> _info_data;		// what the graphic card has in tile_info (a copy to send the rows which changed in one call)
@@ -84,6 +86,8 @@ private:
 	void rebuild_lists();
 	void flush();
 	void release_graphics();
+	void make_atlas();
+	void grow_atlas();
 
 public:
 	~SimModelTiles() override;

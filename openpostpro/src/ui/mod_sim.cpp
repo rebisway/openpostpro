@@ -249,6 +249,7 @@ void ModSim::build_block()
 	block.precision = _precision;
 	block.max_cells = (int)(_max_cells * 1e6f);
 	block.through = _tool.shape == SimToolShape::Plasma;
+	block.plateaus = _tool.shape == SimToolShape::Flat || _tool.shape == SimToolShape::Plasma;
 	double start = glfwGetTime();
 	_model->setup(block);
 	_view->set_model(*_model);
@@ -407,6 +408,10 @@ void ModSim::render_GUI()
 
 	// the panels are submitted first, their size tells where the scene is drawn: under the buttons and at the left of the program
 	draw_controls();
+	// the material: its color, a darker one where the tool went, and for the sides
+	_view->top_color = config.simMaterialColor;
+	_view->cut_color = glm::vec4(glm::vec3(config.simMaterialColor) * 0.7f, config.simMaterialColor.a);
+	_view->side_color = glm::vec4(glm::vec3(config.simMaterialColor) * 0.87f, config.simMaterialColor.a);
 	_view->feed_color = config.simFeedColor;
 	_view->rapid_color = config.simRapidColor;
 	draw_overlays();
@@ -581,7 +586,7 @@ void ModSim::draw_controls()
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(90);
 		changed |= ImGui::InputFloat(Lang::l("SIM_MAX_CELLS"), &_max_cells, 1.0f, 4.0f, "%.0f");
-		_max_cells = std::clamp(_max_cells, 1.0f, 32.0f);
+		_max_cells = std::clamp(_max_cells, 1.0f, 128.0f);
 		ImGui::SetNextItemWidth(140);
 		if (ImGui::BeginCombo(Lang::l("SIM_METHOD"), SimModel::method_name(_method)))
 		{

@@ -40,6 +40,7 @@ struct SimBlock
 	double precision = 15;				// ... (precision, in percent) ...
 	int max_cells = 4000000;			// ... and the model keeps its memory and its drawing under this number of cells
 	bool through = false;				// a torch: the block has no bottom face, it is cut through
+	bool plateaus = true;				// the tool leaves flat floors (a flat tool): the models which simplify them can use a finer step
 };
 
 // What the drawing needs from the scene

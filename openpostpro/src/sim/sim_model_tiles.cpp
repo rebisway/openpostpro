@@ -24,9 +24,11 @@
 #include <limits>
 
 static const int LIST_WIDTH = 1024;			// the lists of tiles are in a texture of this width
-static const int ATLAS_WIDTH = 4096;		// the width of the atlas, in heights
-static const int MAX_SLOTS = 60000;
-// the whole grid (if every tile had its heights) may have this number of times the cells of the budget: the memory is only used where the tool goes
+static const int ATLAS_WIDTH = 16384;		// the width of the atlas, in heights
+static const int MAX_SLOTS = 240000;		// a place is 4.3 KB on the graphic card (a texture is 16384 high at most: 484 rows of 496 places)
+static const int INITIAL_SLOTS = 2048;		// the atlas starts small and grows where the tool goes
+// the whole grid (if every tile had its heights) may have this number of times the cells of the budget when the tool leaves plateaus
+// (the memory is only used where the tool goes); a tool with a round or a conical point leaves no plateau, the budget is the one of the grid
 static const int VIRTUAL_FACTOR = 4;
 
 SimModelTiles::~SimModelTiles()
@@ -51,8 +53,11 @@ void SimModelTiles::setup(const SimBlock& block)
 	_step = std::max(block.tool_radius * block.precision / 100.0, 0.01);
 	const double span_x = std::max(block.high.x - block.low.x, _step), span_y = std::max(block.high.y - block.low.y, _step);
 	double cells = (span_x / _step + 1.0) * (span_y / _step + 1.0);
-	const double budget = (double)block.max_cells * VIRTUAL_FACTOR;
-	if (block.max_cells > 0 && cells > budget)
+	// every tile can have its heights: the grid is limited by the number of places of the atlas as well
+	double budget = (double)MAX_SLOTS * T * T;
+	if (block.max_cells > 0)
+		budget = std::min(budget, (double)block.max_cells * (block.plateaus ? VIRTUAL_FACTOR : 1));
+	if (cells > budget)
 		_step *= std::sqrt(cells / budget);
 
 	_origin_x = block.low.x;
@@ -64,8 +69,11 @@ void SimModelTiles::setup(const SimBlock& block)
 	_nty = std::max(1, (int)std::ceil(span_y / _step / T));
 	_width = _ntx * T + 1;
 	_height = _nty * T + 1;
-	_slots = std::clamp(block.max_cells * 2 / (T * T), 256, MAX_SLOTS);
 	_tiles.assign((size_t)_ntx * _nty, Tile());
+	// a place in the atlas for each tile: no tile stays without its heights on the graphic card
+	_slots_limit = (int)std::min<size_t>(_tiles.size(), MAX_SLOTS);
+	_slots = std::min(_slots_limit, INITIAL_SLOTS);
+	_grow = false;
 	_warned = false;
 	reset();
 	// the graphic resources have the size of the old block: they are made again by create_graphics
@@ -280,10 +288,9 @@ void SimModelTiles::create_graphics(Renderer* render)
 		return;
 
 	_atlas_cols = ATLAS_WIDTH / V;
-	const int rows = (_slots + _atlas_cols - 1) / _atlas_cols;
 	const int list_rows = ((int)_tiles.size() + LIST_WIDTH - 1) / LIST_WIDTH;
 	_info = _render->create_float_texture(_ntx, _nty, nullptr);
-	_atlas = _render->create_float_texture(_atlas_cols * V, rows * V, nullptr);
+	make_atlas();
 	_flat_list = _render->create_float_texture(LIST_WIDTH, list_rows, nullptr);
 	_detail_list = _render->create_float_texture(LIST_WIDTH, list_rows, nullptr);
 	_info_data.assign(_tiles.size(), 0.0f);
@@ -292,6 +299,24 @@ void SimModelTiles::create_graphics(Renderer* render)
 	_pending.clear();
 	_full = true;
 	_lists_dirty = true;
+}
+
+void SimModelTiles::make_atlas()
+{
+	if (_atlas)
+		_render->delete_texture(_atlas);
+	const int rows = (_slots + _atlas_cols - 1) / _atlas_cols;
+	_atlas = _render->create_float_texture(_atlas_cols * V, rows * V, nullptr);
+}
+
+// The atlas is full: it has twice the places (up to a place for each tile) and everything is sent again
+void SimModelTiles::grow_atlas()
+{
+	_grow = false;
+	_slots = (int)std::min<long long>((long long)_slots * 2, _slots_limit);
+	make_atlas();
+	_pending.clear();
+	_full = true;
 }
 
 void SimModelTiles::reset_slots()
@@ -342,7 +367,11 @@ void SimModelTiles::settle(int index)
 			if (_free.empty())
 			{
 				// no place left: the tile stays as it was for the graphic card (it is tried again at its next change)
-				_warned = true;
+				// the atlas grows (at the end of the upload) if it can: the tile is sent again then
+				if (_slots < _slots_limit)
+					_grow = true;
+				else
+					_warned = true;
 				return;
 			}
 			t.slot = _free.back();
@@ -427,6 +456,13 @@ void SimModelTiles::upload()
 		flush();
 	if (graphics && _lists_dirty)
 		rebuild_lists();
+
+	// a larger atlas: everything is sent again (the tiles are in memory), as many times as the atlas has to double
+	if (graphics && _grow)
+	{
+		grow_atlas();
+		upload();
+	}
 }
 
 void SimModelTiles::draw(const SimLook& look)

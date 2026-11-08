@@ -70,7 +70,7 @@ private:
 	bool _was_paused = false;
 	bool _was_held = false;
 	bool _end_logged = false;					// the summary of the end of the program was written
-	int _method = 0;							// the method of the model of the material
+	int _method = 1;							// the method of the model of the material: the tiles (see SimModel::method_name)
 	float _max_cells = 4.0f;					// the most cells of the grid of the material, in millions: a large block with a small tool is limited by it
 	bool _optional_stop = true;
 	bool _tool_from_group = true;				// the radius of the tool comes from the first group of the document, until it is changed

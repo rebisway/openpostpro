@@ -343,12 +343,7 @@ Texture* OpenGlRenderer::create_float_texture(int width, int height, const float
 	glGenTextures(1, &id);
 	glBindTexture(GL_TEXTURE_2D, id);
 
-	std::vector<float> zero;
-	if (data == nullptr)
-	{
-		zero.assign((size_t)width * height, 0.0f);
-		data = zero.data();
-	}
+	// without data the texture is made but not filled (the caller sends what it reads)
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data);
 	// a float texture is not filtered: the shader reads the numbers with texelFetch
