@@ -361,6 +361,41 @@ void ModCad::view_changed()
 	updateCursor();
 }
 
+// The box of a shape, when it has one: a shape which was never computed has the empty box (-max, -max), and a box which is being
+// built has its corners the wrong way round. Such a box must not be used (it would be out of every area, and would spoil a fit).
+static bool shape_box(Shape* shape, glm::vec2& low, glm::vec2& high)
+{
+	// the box of a text is the one of the mouse: it holds the insertion point too, which is far from a text on an arc. The letters give the box
+	if (shape->type() == GraphicType::Text)
+	{
+		bool any = false;
+		low = glm::vec2((std::numeric_limits<float>::max)());
+		high = glm::vec2(-(std::numeric_limits<float>::max)());
+		for (const auto& polygon : ((Text*)shape)->coordinates())
+			for (const glm::vec2& p : polygon)
+			{
+				if (!std::isfinite(p.x) || !std::isfinite(p.y))
+					continue;
+				low = glm::min(low, p);
+				high = glm::max(high, p);
+				any = true;
+			}
+		return any;
+	}
+	auto& b = shape->bounds();
+	const float limit = 1e9f;
+	if (!std::isfinite(b.top_left.x) || !std::isfinite(b.top_left.y) || !std::isfinite(b.bottom_right.x) || !std::isfinite(b.bottom_right.y))
+		return false;
+	if (std::fabs(b.top_left.x) > limit || std::fabs(b.top_left.y) > limit || std::fabs(b.bottom_right.x) > limit || std::fabs(b.bottom_right.y) > limit)
+		return false;
+	// the top left corner is at the left and at the top
+	if (b.top_left.x > b.bottom_right.x || b.top_left.y < b.bottom_right.y)
+		return false;
+	low = glm::vec2(b.top_left.x, b.bottom_right.y);
+	high = glm::vec2(b.bottom_right.x, b.top_left.y);
+	return true;
+}
+
 void ModCad::draw_machine()
 {
 	if (_document == nullptr || !_document->has_machine() || _camera->width() <= 0)
@@ -382,12 +417,12 @@ void ModCad::draw_machine()
 			continue;
 		for (Shape* s : l->shapes())
 		{
-			auto& b = s->bounds();
-			if (!std::isfinite(b.top_left.x) || !std::isfinite(b.bottom_right.x))
+			glm::vec2 box_low, box_high;
+			if (!shape_box(s, box_low, box_high))
 				continue;
-			const float tolerance = 0.01f;
-			if ((std::min)(b.top_left.x, b.bottom_right.x) < low.x - tolerance || (std::max)(b.top_left.x, b.bottom_right.x) > high.x + tolerance ||
-				(std::min)(b.top_left.y, b.bottom_right.y) < low.y - tolerance || (std::max)(b.top_left.y, b.bottom_right.y) > high.y + tolerance)
+			// the box of a line which is straight is a little wider than the line (the precision of the mouse): the tolerance is that width
+			const float tolerance = Shape::precision * 2.0f;
+			if (box_low.x < low.x - tolerance || box_high.x > high.x + tolerance || box_low.y < low.y - tolerance || box_high.y > high.y + tolerance)
 			{
 				outside = true;
 				break;
@@ -434,22 +469,21 @@ void ModCad::fit_view()
 			continue;
 		for (Shape* s : l->shapes())
 		{
-			auto& b = s->bounds();
-			for (glm::vec2 p : { b.top_left, b.bottom_right })
-			{
-				if (!std::isfinite(p.x) || !std::isfinite(p.y))
-					continue;
-				min_x = (std::min)(min_x, p.x); max_x = (std::max)(max_x, p.x);
-				min_y = (std::min)(min_y, p.y); max_y = (std::max)(max_y, p.y);
-			}
+			glm::vec2 box_low, box_high;
+			if (!shape_box(s, box_low, box_high))
+				continue;
+			min_x = (std::min)(min_x, box_low.x); max_x = (std::max)(max_x, box_high.x);
+			min_y = (std::min)(min_y, box_low.y); max_y = (std::max)(max_y, box_high.y);
 		}
 	}
 
-	if (min_x > max_x && _document->has_machine())
+	// the table of the machine is part of what is shown (it is the frame of the drawing)
+	if (_document->has_machine())
 	{
 		glm::vec2 low, high;
 		_document->machine().area(low, high);
-		min_x = low.x; min_y = low.y; max_x = high.x; max_y = high.y;
+		min_x = (std::min)(min_x, low.x); min_y = (std::min)(min_y, low.y);
+		max_x = (std::max)(max_x, high.x); max_y = (std::max)(max_y, high.y);
 	}
 
 	float scale = 1.0f;
