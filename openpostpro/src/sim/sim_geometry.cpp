@@ -18,8 +18,8 @@
 #include "sim_geometry.h"
 #include <algorithm>
 #include <cmath>
+#include <glm/gtc/constants.hpp>
 
-static const double PI = 3.14159265358979323846;
 
 SimPath::SimPath(const glm::dvec3& from, const SimCommand& command)
 {
@@ -54,25 +54,25 @@ SimPath::SimPath(const glm::dvec3& from, const SimCommand& command)
 	if (command.cw)
 	{
 		while (sweep >= 0)
-			sweep -= 2 * PI;
+			sweep -= glm::two_pi<double>();
 		// the start and the end are the same point: a full circle
 		if (std::fabs(sweep) < 1e-9)
-			sweep = -2 * PI;
-		if (sweep < -2 * PI)
-			sweep += 2 * PI;
+			sweep = -glm::two_pi<double>();
+		if (sweep < -glm::two_pi<double>())
+			sweep += glm::two_pi<double>();
 	}
 	else
 	{
 		while (sweep <= 0)
-			sweep += 2 * PI;
+			sweep += glm::two_pi<double>();
 		if (std::fabs(sweep) < 1e-9)
-			sweep = 2 * PI;
-		if (sweep > 2 * PI)
-			sweep -= 2 * PI;
+			sweep = glm::two_pi<double>();
+		if (sweep > glm::two_pi<double>())
+			sweep -= glm::two_pi<double>();
 	}
 	// a start and an end which are the same point give a full circle, not a null arc
 	if (glm::distance(_from, _to) < 1e-9 && std::fabs(sweep) < 1e-6)
-		sweep = command.cw ? -2 * PI : 2 * PI;
+		sweep = command.cw ? -glm::two_pi<double>() : glm::two_pi<double>();
 	_sweep = sweep;
 
 	// the length is the one of the arc, with the helix if the third axis changes
@@ -106,7 +106,7 @@ int SimPath::pieces(double tolerance) const
 	double r = std::max(_radius_from, _radius_to);
 	if (r < 1e-9)
 		return 1;
-	double step = tolerance >= r ? PI : 2.0 * std::acos(1.0 - tolerance / r);
+	double step = tolerance >= r ? glm::pi<double>() : 2.0 * std::acos(1.0 - tolerance / r);
 	step = std::max(step, 0.01);
 	return std::max(1, (int)std::ceil(std::fabs(_sweep) / step));
 }
@@ -121,20 +121,20 @@ void SimPath::bounds(glm::dvec3& low, glm::dvec3& high) const
 	// the points of the circle on the axes which are inside of the arc
 	for (int k = 0; k < 4; k++)
 	{
-		double axis_angle = k * PI / 2.0;
+		double axis_angle = k * glm::half_pi<double>();
 		double d = axis_angle - _angle;
 		double s = _sweep;
 		bool inside;
 		if (s >= 0)
 		{
-			while (d < 0) d += 2 * PI;
-			while (d >= 2 * PI) d -= 2 * PI;
+			while (d < 0) d += glm::two_pi<double>();
+			while (d >= glm::two_pi<double>()) d -= glm::two_pi<double>();
 			inside = d <= s;
 		}
 		else
 		{
-			while (d > 0) d -= 2 * PI;
-			while (d <= -2 * PI) d += 2 * PI;
+			while (d > 0) d -= glm::two_pi<double>();
+			while (d <= -glm::two_pi<double>()) d += glm::two_pi<double>();
 			inside = d >= s;
 		}
 		if (inside)
