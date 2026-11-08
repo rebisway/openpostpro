@@ -275,6 +275,38 @@ void Script::apply_property(int i)
 		set("set_property", "is", i, std::get<std::vector<std::string>>(_properties[i])[0].c_str());
 }
 
+// the line breaks of a text are saved as a backslash and the letter n in the ini file (one line for each value), a backslash as two
+static std::string escape_lines(const std::string& text)
+{
+	std::string result;
+	for (char c : text)
+	{
+		if (c == '\\')
+			result += "\\\\";
+		else if (c == '\n')
+			result += "\\n";
+		else if (c != '\r')
+			result += c;
+	}
+	return result;
+}
+
+static std::string unescape_lines(const std::string& text)
+{
+	std::string result;
+	for (size_t i = 0; i < text.size(); i++)
+	{
+		if (text[i] == '\\' && i + 1 < text.size() && (text[i + 1] == 'n' || text[i + 1] == '\\'))
+		{
+			result += text[i + 1] == 'n' ? '\n' : '\\';
+			i++;
+		}
+		else
+			result += text[i];
+	}
+	return result;
+}
+
 void Script::load_properties()
 {
 	IniFile ini;
@@ -284,6 +316,7 @@ void Script::load_properties()
 	_property_names.clear();
 	_property_keys.clear();
 	_property_files.clear();
+	_property_multiline.clear();
 	_properties.clear();
 
 	for (int i = 0; i < _property_count; i++)
@@ -324,6 +357,20 @@ void Script::load_properties()
 		}
 		_property_files.push_back(file);
 
+		// the script says if the text has several lines (a script without this method has none)
+		bool multiline = false;
+		try
+		{
+			PyObject* m = get("get_property_multiline", "i", i);
+			multiline = m != NULL && PyObject_IsTrue(m) == 1;
+			Py_XDECREF(m);
+		}
+		catch (const std::exception&)
+		{
+		}
+		PyErr_Clear();
+		_property_multiline.push_back(multiline);
+
 		// default typed value, replaced by the saved value
 		PyObject* p = get("get_property", "i", i);
 		if (p != NULL)
@@ -335,7 +382,10 @@ void Script::load_properties()
 			else if (PyFloat_Check(p))
 				_properties.push_back(ini.get_float(_module, key, (float)PyFloat_AsDouble(p)));
 			else if (PyUnicode_Check(p))
-				_properties.push_back(ini.get_string(_module, key, std::string(py_utf8(p))));
+			{
+				std::string text = ini.get_string(_module, key, escape_lines(std::string(py_utf8(p))));
+				_properties.push_back(multiline ? unescape_lines(text) : text);
+			}
 			else if (PyList_Check(p))
 			{
 				// list: first item is the selected index, the others are the choices
@@ -369,7 +419,10 @@ void Script::save_properties()
 		else if (std::holds_alternative<float>(_properties[i]))
 			ini.set(_module, _property_keys[i], std::get<float>(_properties[i]));
 		else if (std::holds_alternative<std::string>(_properties[i]))
-			ini.set(_module, _property_keys[i], std::get<std::string>(_properties[i]));
+		{
+			const std::string& text = std::get<std::string>(_properties[i]);
+			ini.set(_module, _property_keys[i], i < _property_multiline.size() && _property_multiline[i] ? escape_lines(text) : text);
+		}
 		else if (std::holds_alternative<std::vector<std::string>>(_properties[i]))
 			ini.set(_module, _property_keys[i], std::get<std::vector<std::string>>(_properties[i])[0]);
 	}
@@ -387,7 +440,11 @@ MessageBoxResult Script::draw_properties()
 
 	ImGuiIO& io = ImGui::GetIO();
 	ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSize(ImVec2(350.0f, 100.0f + _property_count * 25));
+	int extra_lines = 0;		// the text boxes of several lines are higher
+	for (int i = 0; i < (int)_property_multiline.size(); i++)
+		if (_property_multiline[i])
+			extra_lines += 3;
+	ImGui::SetNextWindowSize(ImVec2(350.0f, 100.0f + _property_count * 25 + extra_lines * 19));
 	ImGui::Begin((_description + "###SCRIPT_PROPERTIES").c_str(), 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize);
 	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
 	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
@@ -426,6 +483,17 @@ MessageBoxResult Script::draw_properties()
 			std::string value = std::get<std::string>(_properties_config[i]);
 			char t[260];
 			sprintf_s(t, "%s", value.c_str());
+			bool multiline = i < (int)_property_multiline.size() && _property_multiline[i];
+			if (multiline)
+			{
+				// a text box of three lines, the lines of the text are written one after the other in the output
+				std::vector<char> buffer(4096, 0);
+				snprintf(buffer.data(), buffer.size(), "%s", value.c_str());
+				ImGui::SetNextItemWidth(-1);
+				if (ImGui::InputTextMultiline(id.c_str(), buffer.data(), buffer.size(), ImVec2(-1.0f, ImGui::GetTextLineHeight() * 3.0f + ImGui::GetStyle().FramePadding.y * 2.0f)))
+					_properties_config[i] = std::string(buffer.data());
+				continue;
+			}
 			bool is_file = i < (int)_property_files.size() && _property_files[i].mode != 0;
 			if (is_file)
 			{

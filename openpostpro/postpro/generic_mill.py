@@ -39,6 +39,7 @@ class Postpro:
 		# Program
 		self.pre_data = '%'		# first line written
 		self.post_data = '%'	# last line written
+		self.return_zero = False	# if true, the tool goes back to X0 Y0 at the safe height at the end of the program
 		
 		self.space = ''			# store a space character if not condensate mode
 		self.command_line = ''
@@ -51,9 +52,9 @@ class Postpro:
 		self.z_rapid_feedrate = 1000
 
 		# Dictionary to manage user interface strings
-		self.en_us = {'description': 'Generic Mill/Router', 'increment': 'Increment', 'use_inc': 'Numbering lines', 'cond': 'Condensed', 'decimales': 'Decimales number', 'ext': 'File extension', 'use_comment': 'Output comments', 'pre_data': 'File header', 'post_data': 'File footer', 'relative': 'IJK Relative', 'unit': 'Unit', 'millimeter': 'Millimeter', 'inch': 'Inch'}
-		self.fr_fr = {'description': 'Mill/Router Générique', 'increment': 'Incrémentation', 'use_inc': 'Numéroter les lignes', 'cond': 'Condensé', 'decimales': 'Nombre de décimales', 'ext': 'Extension du fichier', 'use_comment': 'Générer les commentaires', 'pre_data': 'Début de fichier', 'post_data': 'Fin du fichier', 'relative': 'IJK Relatif', 'unit': 'Unité', 'millimeter': 'Millimètre', 'inch': 'Pouce'}
-		self.es_es = {'description': 'Mill/Router Generico', 'increment': 'Incrementacion', 'use_inc': 'Numeracion de las lineas', 'cond': 'Condensado', 'decimales': 'Decimales', 'ext': 'Extencion del archivo', 'use_comment': 'Generar los comentarios', 'pre_data': 'Principio', 'post_data': 'Fin', 'relative': 'IJK Relativo', 'unit': 'Unidad', 'millimeter': 'Milímetro', 'inch': 'Pulgar'}
+		self.en_us = {'description': 'Generic Mill/Router', 'increment': 'Increment', 'use_inc': 'Numbering lines', 'cond': 'Condensed', 'decimales': 'Decimales number', 'ext': 'File extension', 'use_comment': 'Output comments', 'pre_data': 'File header', 'post_data': 'File footer', 'return_zero': 'Return to zero', 'relative': 'IJK Relative', 'unit': 'Unit', 'millimeter': 'Millimeter', 'inch': 'Inch'}
+		self.fr_fr = {'description': 'Mill/Router Générique', 'increment': 'Incrémentation', 'use_inc': 'Numéroter les lignes', 'cond': 'Condensé', 'decimales': 'Nombre de décimales', 'ext': 'Extension du fichier', 'use_comment': 'Générer les commentaires', 'pre_data': 'Début de fichier', 'post_data': 'Fin du fichier', 'return_zero': 'Retour 0', 'relative': 'IJK Relatif', 'unit': 'Unité', 'millimeter': 'Millimètre', 'inch': 'Pouce'}
+		self.es_es = {'description': 'Mill/Router Generico', 'increment': 'Incrementacion', 'use_inc': 'Numeracion de las lineas', 'cond': 'Condensado', 'decimales': 'Decimales', 'ext': 'Extencion del archivo', 'use_comment': 'Generar los comentarios', 'pre_data': 'Principio', 'post_data': 'Fin', 'return_zero': 'Volver a cero', 'relative': 'IJK Relativo', 'unit': 'Unidad', 'millimeter': 'Milímetro', 'inch': 'Pulgar'}
 
 		# Langue used
 		self.Language = {'en-us' : self.en_us, 'fr-fr' : self.fr_fr, 'es-es': self.es_es }
@@ -133,7 +134,7 @@ class Postpro:
 	
 	# return the number of properties (parameters)
 	def get_properties_count(self):
-		return 9
+		return 10
 	
 		# return the property description (the text displayed in the property box)
 	def get_property_description(self, index):
@@ -155,10 +156,16 @@ class Postpro:
 			return self.lang['post_data']
 		elif index == 8:
 			return self.lang['relative']
+		elif index == 9:
+			return self.lang['return_zero']
 
 	# return the name used to save the property value, it does not change with the language or the order
 	def get_property_key(self, index):
-		return ['use_inc', 'increment', 'cond', 'decimales', 'ext', 'use_comment', 'pre_data', 'post_data', 'relative'][index]
+		return ['use_inc', 'increment', 'cond', 'decimales', 'ext', 'use_comment', 'pre_data', 'post_data', 'relative', 'return_zero'][index]
+
+	# the properties which are edited on several lines
+	def get_property_multiline(self, index):
+		return index in (6, 7)
 
 	# return the property value
 	def get_property(self, index):
@@ -180,6 +187,8 @@ class Postpro:
 			return self.post_data
 		elif index == 8:
 			return self.relative
+		elif index == 9:
+			return self.return_zero
 		
 	# set the property value
 	def set_property(self, index, val):
@@ -205,7 +214,9 @@ class Postpro:
 			self.post_data = val
 		elif index == 8:
 			self.relative = val
-	
+		elif index == 9:
+			self.return_zero = val
+
 	##############################################
 	#              Helper definitions            #
 	##############################################
@@ -265,12 +276,12 @@ class Postpro:
 	# called before any other methods
 	# return the characters at the begining of the file, usually %, this is meanly used for RS232 communication
 	def start_output(self):
-		return self.pre_data + '\n'
+		return self.pre_data.rstrip('\n') + '\n'
 	
 	# called at the end of the whole process
 	# return the characters to specify that end of file is reached, usually %, this is meanly used for RS232 communication
 	def stop_output(self):
-		return self.post_data
+		return self.post_data.rstrip('\n')
 
 	# called as first program line
 	def start_program(self):
@@ -300,9 +311,12 @@ class Postpro:
 
 	# set the final tool position
 	def final_position(self):
+		output = ''
 		if self.core.z != self.safe:
-			return self.core.rapid(['Z'], [self.safe])
-		return ""
+			output += self.core.rapid(['Z'], [self.safe])
+		if self.return_zero:
+			output += self.core.rapid(['X', 'Y'], [0.0, 0.0])
+		return output
 	
 	# return a commented string
 	def comment(self, data):

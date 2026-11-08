@@ -43,6 +43,13 @@ class Postcore:
 				self.line_count = self.line_count + 1
 		return result
 
+	# several lines of text (a header, a command), each one is a program line
+	def lines(self, text):
+		result = ''
+		for t in str(text).replace(chr(13), '').split(chr(10)):
+			result += self.line(t)
+		return result
+
 	def get_current_position(self):
 		return [self.x, self.y, self.z]
 
@@ -112,6 +119,12 @@ class Postcore:
 		if hasattr(self.postpro, 'get_property_file'):
 			return self.postpro.get_property_file(index)
 		return None
+
+	# a text property can have several lines: the post-processor returns True and the dialog box shows a text box of three lines
+	def get_property_multiline(self, index):
+		if hasattr(self.postpro, 'get_property_multiline'):
+			return self.postpro.get_property_multiline(index)
+		return False
 
 	# optional in the post-processor: false if it manages its own dialog box
 	def use_properties(self):

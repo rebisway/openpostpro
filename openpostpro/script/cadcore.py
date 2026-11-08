@@ -246,6 +246,12 @@ class Cadcore:
             return self.script.get_property_file(index)
         return None
 	
+    # a text property can have several lines: the script returns True and the dialog box shows a text box of three lines
+    def get_property_multiline(self, index):
+        if hasattr(self.script, 'get_property_multiline'):
+            return self.script.get_property_multiline(index)
+        return False
+
     def get_properties_count(self):
         return self.script.get_properties_count()
 	    

@@ -90,3 +90,27 @@ assert core.rapid(['X', 'Y'], [1.0, 0.0]).strip() == 'PU 1016,0;'
 # tool = pen
 assert make(hpgl)[0].tool(3) == 'SP3;'
 print('ok')
+
+# the dialog box asks the core: the header and the footer of the file are edited on several lines, the others are not
+for module in (generic_mill, mach3_mill, generic_plasma, mach3_plasma):
+    post, core = make(module)
+    keys = [post.get_property_key(i) for i in range(post.get_properties_count())]
+    multi = [keys[i] for i in range(len(keys)) if core.get_property_multiline(i)]
+    assert 'pre_data' in multi and 'post_data' in multi, (module.__name__, multi)
+    assert 'ext' not in multi and 'cond' not in multi, (module.__name__, multi)
+print('multiline properties: ok')
+
+# return to zero: the tool goes back to X0 Y0 at the safe height at the end of the program, only when it is asked
+for module in (generic_mill, mach3_mill, generic_plasma, burny_plasma):
+    post, core = make(module)
+    keys = [post.get_property_key(i) for i in range(post.get_properties_count())]
+    assert 'return_zero' in keys, module.__name__
+    core.rapid(['X', 'Y'], [50.0, 20.0])
+    without = core.stop_program()
+    post, core = make(module)
+    post.set_property(keys.index('return_zero'), True)
+    core.rapid(['X', 'Y'], [50.0, 20.0])
+    with_zero = core.stop_program()
+    assert 'X0' in with_zero and 'Y0' in with_zero and 'X0' not in without, (module.__name__, without, with_zero)
+    assert with_zero.index('Z') < with_zero.index('X0'), module.__name__
+print('return to zero: ok')

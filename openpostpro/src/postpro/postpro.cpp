@@ -693,7 +693,7 @@ std::string Postpro::pause(int value)
 std::string Postpro::line(std::string value)
 {
 	std::string result = "";
-	value.erase(std::remove(value.begin(), value.end(), 'r'), value.end());
+	value.erase(std::remove(value.begin(), value.end(), '\r'), value.end());
 	auto lines = stringex::split(value, '\n');
 	for (auto l : lines)
 	{

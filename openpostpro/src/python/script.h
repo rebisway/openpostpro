@@ -71,6 +71,8 @@ protected:
 		std::string filter_pattern;
 	};
 	std::vector<PropertyFile> _property_files;
+	// a text property can have several lines: a text box with a few lines is shown (see get_property_multiline of the script); the line breaks are escaped in the ini file
+	std::vector<bool> _property_multiline;
 
 	PyObject* _py_core_module = nullptr;
 	PyObject* _py_core_class = nullptr;

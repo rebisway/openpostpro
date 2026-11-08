@@ -251,6 +251,16 @@ void Group::draw()
 	}
 }
 
+// a command of the operation (before or after its toolpaths): a text box of three lines, each line is a line of the program
+static void command_box(const char* id, std::string& value)
+{
+	std::vector<char> buffer(2048, 0);
+	snprintf(buffer.data(), buffer.size(), "%s", value.c_str());
+	ImGui::SetNextItemWidth(-1);
+	if (ImGui::InputTextMultiline(id, buffer.data(), buffer.size(), ImVec2(-1.0f, ImGui::GetTextLineHeight() * 3.0f + ImGui::GetStyle().FramePadding.y * 2.0f)))
+		value = buffer.data();
+}
+
 void Group::ui()
 {
 	char input[20];
@@ -620,41 +630,19 @@ void Group::ui()
 
 	// PRE COMMAND
 	ImGui::TableNextRow();
-	sprintf_s(input, "%s", _pre_command.c_str());
 	ImGui::TableSetColumnIndex(0);
 	ImGui::Spacing();
 	ImGui::Text(Lang::l("GROUP_PRE_COMMAND"));
 	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##GROUP_PRE_COMMAND", input, ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			_pre_command = input;
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
+	command_box("##GROUP_PRE_COMMAND", _pre_command);
 
 	// POST COMMAND
 	ImGui::TableNextRow();
-	sprintf_s(input, "%s", _post_command.c_str());
 	ImGui::TableSetColumnIndex(0);
 	ImGui::Spacing();
 	ImGui::Text(Lang::l("GROUP_POST_COMMAND"));
 	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##GROUP_POST_COMMAND", input, ImGuiInputTextFlags_EnterReturnsTrue))
-	{
-		try
-		{
-			_post_command = input;
-		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
+	command_box("##GROUP_POST_COMMAND", _post_command);
 
 	// START POINT
 	ImGui::TableNextRow();
@@ -738,8 +726,8 @@ std::string Group::write()
 		WF(_finition_offset) +
 		WN(0) +	// the radius compensation of the group does not exist any more: the field keeps its place in the file
 		WN(_tool_length_compensation) +
-		WS(_pre_command) +
-		WS(_post_command) +
+		WS(stringex::replace(_pre_command, "\n", "U000A")) +
+		WS(stringex::replace(_post_command, "\n", "U000A")) +
 		WN((int)_start_point_type) +
 		WF(_start_point_offset) +
 		WN((int)_lead_out) +
@@ -774,6 +762,8 @@ void Group::read(std::string value, float version)
 		RI(_tool_length_compensation, 13);
 		RS(_pre_command, 14);
 		RS(_post_command, 15);
+		_pre_command = stringex::replace(_pre_command, "U000A", "\n");
+		_post_command = stringex::replace(_post_command, "U000A", "\n");
 		if (16 < data.size()) _start_point_type = (StartPointType)std::stoi(data[16]);
 		RF(_start_point_offset, 17);
 		// older data have no exit
