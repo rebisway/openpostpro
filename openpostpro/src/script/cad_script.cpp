@@ -197,6 +197,23 @@ void CadScript::set_context(glm::vec2 mouse_pos, Document* doc)
 			}
 			set("set_selection", "O", list);
 			Py_DECREF(list);
+
+			// the whole drawing, for the scripts which export it (a visible layer or not)
+			PyObject* drawing = PyList_New(0);
+			for (Layer* layer : doc->layers())
+			{
+				for (Shape* shape : layer->shapes())
+				{
+					PyObject* item = shape_to_dict(shape);
+					if (item != NULL)
+					{
+						PyList_Append(drawing, item);
+						Py_DECREF(item);
+					}
+				}
+			}
+			set("set_drawing", "O", drawing);
+			Py_DECREF(drawing);
 		}
 	}
 	catch (const std::exception& e)

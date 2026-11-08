@@ -46,8 +46,10 @@ void Dxf::read(std::string path) {
 				else if (line == "TABLES") { 
 					section = (DxfSection*)new DxfTables(this);
 					_tables = (DxfTables*)section; 
-				} else if (line == "BLOCKS") 
+				} else if (line == "BLOCKS") {
 					section = (DxfSection*)new DxfBlocks(this);
+					_blocks = (DxfBlocks*)section;
+				}
 				else if (line == "ENTITIES") { 
 					section = (DxfSection*)new DxfEntities(this);
 					_entities = (DxfEntities*)section; 
@@ -99,6 +101,8 @@ Dxf::~Dxf()
 		delete _entities;
 	if (_tables != NULL)
 		delete _tables;
+	if (_blocks != NULL)
+		delete _blocks;
 }
 
 ///////////////////////// CODE /////////////////////
@@ -370,8 +374,13 @@ DxfEntities::~DxfEntities()
 void DxfEntities::read(std::ifstream& input)
 {
 	read_line(input);
+	read_items(input, _items, "ENDSEC");
+}
+
+void DxfSection::read_items(std::ifstream& input, std::vector<DxfEntity*>& items, const std::string& stop)
+{
 	DxfEntity* entity = NULL;
-	while (_val != "ENDSEC") {
+	while (_val != stop) {
 		entity = create_entity();
 		if (_val == "LINE")
 			_val = entity->read_line_entity(input);
@@ -416,7 +425,72 @@ void DxfEntities::read(std::ifstream& input)
 			}
 		}
 		if (entity != NULL)
-			_items.push_back(entity);
+			items.push_back(entity);
+	}
+}
+
+
+///////////////////////// BLOCKS /////////////////////
+
+DxfBlock::~DxfBlock()
+{
+	for (DxfEntity* e : _items)
+		delete e;
+	_items.clear();
+}
+
+DxfBlocks::~DxfBlocks()
+{
+	for (auto& b : _blocks)
+		delete b.second;
+	_blocks.clear();
+}
+
+DxfBlock* DxfBlocks::block(std::string name)
+{
+	auto it = _blocks.find(name);
+	return it == _blocks.end() ? nullptr : it->second;
+}
+
+void DxfBlocks::read(std::ifstream& input)
+{
+	read_line(input);
+	while (_val != "ENDSEC") {
+		if (_val != "BLOCK") {
+			// nothing else is expected between the blocks: skip to the next item
+			read_line(input);
+			while (_code != 0 && !input.eof())
+				read_line(input);
+			if (input.eof())
+				return;
+			continue;
+		}
+
+		DxfBlock* block = new DxfBlock();
+		float x = 0.0f, y = 0.0f;
+		read_line(input);
+		while (_code != 0) {
+			if (_code == 2)
+				block->name(_val);
+			else if (_code == 10)
+				x = std::stof(_val);
+			else if (_code == 20)
+				y = std::stof(_val);
+			read_line(input);
+		}
+		block->base(x, y);
+		read_items(input, block->items(), "ENDBLK");
+
+		// the end of the block: its own codes (handle, layer) are skipped
+		read_line(input);
+		while (_code != 0)
+			read_line(input);
+
+		// a block which has no name or which comes twice is dropped
+		if (block->name().empty() || _blocks.count(block->name()) > 0)
+			delete block;
+		else
+			_blocks[block->name()] = block;
 	}
 }
 
@@ -1319,6 +1393,7 @@ std::string DxfEntity::read_spline_entity(std::ifstream& input)
 {
 	read_line(input);
 	int si = 0;
+	int fi = 0;
 	while (_code != 0) {
 		switch (_code) {
 		case 5:		// Handle
@@ -1362,6 +1437,21 @@ std::string DxfEntity::read_spline_entity(std::ifstream& input)
 			break;
 		case 44:	// Fit-ref_point tolerance
 			_properties["ftolerance"] = std::stof(_val);
+			break;
+		case 40:	// Knot value
+			_properties["knot.list"] = (_properties.count("knot.list") ? std::get<std::string>(_properties["knot.list"]) + "," : std::string()) + _val;
+			break;
+		case 41:	// Weight
+			_properties["weight.list"] = (_properties.count("weight.list") ? std::get<std::string>(_properties["weight.list"]) + "," : std::string()) + _val;
+			break;
+		case 11:	// Fit ref_point X
+			_properties["f" + std::to_string(fi) + ".x"] = std::stof(_val);
+			break;
+		case 21:	// Fit ref_point Y
+			_properties["f" + std::to_string(fi) + ".y"] = std::stof(_val);
+			break;
+		case 31:	// Fit ref_point Z
+			fi++;
 			break;
 		case 10:	// Start ref_point X
 			_properties["p" + std::to_string(si) + ".x"] = std::stof(_val);

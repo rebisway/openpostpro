@@ -54,6 +54,22 @@ run()                               the script draws and may open a dialog
 
 A file without a `class Cadscript` is not a script: it is skipped and not listed in the menu. Use such a file for code shared by several scripts (`import my_tools`). When a script fails, the log gives the Python traceback, with the file and the line of the error.
 
+From the Python function to the drawing: the script calls the engine, which writes short text commands, read by the application when `run()` ends.
+
+```mermaid
+flowchart LR
+  run["run(): self.core.line(...)"]:::user --> core["cadcore.py"]:::eng
+  core -->|"self.output += 'M:7:L:0:0:10:5'"| txt["text, one command per line"]:::eng
+  txt -->|"end of run()"| app["Application: reads each line"]:::app
+  app --> doc["Document: the entity is created, the drawing is updated"]:::app
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+The commands are one per line: `M:id:L:x1:y1:x2:y2` (segment), `M:id:C:x:y:r` (circle), `M:id:A:...` (arc), `D:id` (delete), `G:text` (log), `Y:layer` (layer).
+
+
 ## 2. Methods of `Cadscript`
 
 | Method | Arguments | Returns | Meaning |
@@ -61,7 +77,7 @@ A file without a `class Cadscript` is not a script: it is skipped and not listed
 | `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` or `'es-es'` | nothing | selects the dictionary of interface strings |
 | `set_core(value)` | the engine | nothing | store it in `self.core`; do not modify |
 | `get_description()` | none | string | name shown in the Scripts menu |
-| `get_category()` | none | string | menu of the Scripts menu: `'generation'`, `'geometry'`, `'modify'`, `'import'` or `'examples'` (translated by the engine), or any other name used as it is |
+| `get_category()` | none | string | menu of the Scripts menu: `'generation'`, `'geometry'`, `'modify'`, `'import'`, `'export'` or `'examples'` (translated by the engine), or any other name used as it is |
 | `get_properties_count()` | none | number | number of parameters of the script |
 | `get_property_description(index)` | index from 0 | string | label of the parameter |
 | `get_property_key(index)` | index from 0 | string | optional: name used to save the value (default: the index) |
@@ -91,6 +107,7 @@ Use it as the origin of the shape.
 |---|---|---|
 | `self.core.unit` | `str` | unit of the document, `'mm'` or `'inch'`: all the coordinates are in this unit |
 | `self.core.selection` | `list` of `dict` | the shapes selected when the script is chosen (toolpaths are not listed) |
+| `self.core.drawing` | `list` of `dict` | all the shapes of the document, in every layer, in the same format: for the scripts which export the drawing |
 
 The selection is read when the script is chosen in the menu: it does not change while the properties dialog box is open. It is empty if nothing is selected. Each shape is a dictionary with the keys `id` (unique number of the shape in the document), `layer` (name of its layer) and `type`, then the keys of its type. Points are tuples `(x, y)`.
 
@@ -246,3 +263,24 @@ For a script with its own input window, see `script/oblong.py`: it builds a `tki
 | Polygons | `bounding_box`, `polygon_area` (signed), `is_ccw`, `is_closed`, `polyline_length`, `offset_polyline(points, d, closed)` (sharp corners) |
 
 Example: `geom.rotate((10, 0), (0, 0), 90)` returns `(0.0, 10.0)`.
+
+## 6. Import and export scripts
+
+Four scripts read or write other file formats. They have no properties dialog of their own for the file: when the file name is empty, they open a file dialog (`tkinter`). The logic is in libraries, so that it can be tested without the application.
+
+| File | Role |
+|---|---|
+| `svg_import.py` | imports an SVG file. The lower left corner of the page is at the mouse, the size is in millimeters (converted to inches if the document is in inches), the layers of Inkscape become layers |
+| `svg_export.py` | writes the selection, or the whole drawing if nothing is selected (`self.core.drawing`), into an SVG file in millimeters |
+| `gerber_import.py` | imports a Gerber (RS-274X) or Excellon file: pads, tracks, regions and holes. *Tracks as outlines*: each track becomes a closed shape of its width |
+| `svgparse.py` | library: `parse(text, scale)` gives a list of shapes (dictionaries) from an SVG text |
+| `gerberparse.py` | library: `parse(text)` reads a Gerber or Excellon text, `convert(parsed, outline, name)` gives the shapes |
+| `drawshapes.py` | library: `draw(core, shapes, x, y)` draws these shapes with the calls of the engine, `scale(shapes, k)` multiplies them |
+
+**SVG import**: `path` (M L H V C S Q T A Z, absolute and relative), `rect` (rounded corners too), `circle`, `ellipse`, `line`, `polyline`, `polygon`, `text`, `use`, groups and `transform`. Curves are cut into segments of 0.4 mm; a path made only of lines and arcs stays exact (a spline). Colors and stroke widths are ignored, the shapes with `display:none` are skipped.
+
+**SVG export**: the Bezier and Catmull-Rom polylines are written as cubic curves; the other curve modes (b-spline, natural cubic, Lagrange) are written by their control points, and the log says how many.
+
+**Gerber**: the apertures C, R, O and P, the flashes, the tracks (straight and arcs, in single or multiple quadrant mode), the regions (`G36`/`G37`), the polarity, the units and the number format. The shapes with a clear polarity go to the layer `<name>_clear`: they are not subtracted from the others. The overlapping shapes are not merged: use the boolean operations of the application on the closed shapes. The macro apertures (`AM`) are not read, the log counts them.
+
+**Excellon**: the tools, the holes and the slots (`G85`), metric or inch, with or without a decimal point.

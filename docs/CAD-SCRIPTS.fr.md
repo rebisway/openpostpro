@@ -54,6 +54,22 @@ run()                               le script dessine et peut ouvrir une fenêtr
 
 Un fichier sans `class Cadscript` n'est pas un script : il est ignoré et absent du menu. Utilisez-le pour du code partagé entre plusieurs scripts (`import mes_outils`). Quand un script échoue, le journal donne la trace Python, avec le fichier et la ligne de l'erreur.
 
+De la fonction Python au dessin : le script appelle le moteur, qui écrit des commandes courtes en texte, lues par l'application à la fin de `run()`.
+
+```mermaid
+flowchart LR
+  run["run(): self.core.line(...)"]:::user --> core["cadcore.py"]:::eng
+  core -->|"self.output += 'M:7:L:0:0:10:5'"| txt["texte, une commande par ligne"]:::eng
+  txt -->|"fin de run()"| app["Application : lit chaque ligne"]:::app
+  app --> doc["Document : l'entité est créée, le dessin est mis à jour"]:::app
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
+Les commandes sont une par ligne : `M:id:L:x1:y1:x2:y2` (segment), `M:id:C:x:y:r` (cercle), `M:id:A:...` (arc), `D:id` (supprime), `G:texte` (journal), `Y:calque` (calque).
+
+
 ## 2. Méthodes de `Cadscript`
 
 | Méthode | Arguments | Retour | Rôle |
@@ -61,7 +77,7 @@ Un fichier sans `class Cadscript` n'est pas un script : il est ignoré et absent
 | `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` ou `'es-es'` | rien | choisit le dictionnaire des textes de l'interface |
 | `set_core(value)` | le moteur | rien | à mémoriser dans `self.core` ; ne pas modifier |
 | `get_description()` | aucun | chaîne | nom affiché dans le menu Scripts |
-| `get_category()` | aucun | chaîne | menu du menu Scripts : `'generation'`, `'geometry'`, `'modify'`, `'import'` ou `'examples'` (traduits par le moteur), ou un autre nom utilisé tel quel |
+| `get_category()` | aucun | chaîne | menu du menu Scripts : `'generation'`, `'geometry'`, `'modify'`, `'import'`, `'export'` ou `'examples'` (traduits par le moteur), ou un autre nom utilisé tel quel |
 | `get_properties_count()` | aucun | nombre | nombre de paramètres du script |
 | `get_property_description(index)` | indice depuis 0 | chaîne | libellé du paramètre |
 | `get_property_key(index)` | indice depuis 0 | chaîne | optionnel : nom utilisé pour sauvegarder la valeur (par défaut : l'indice) |
@@ -91,6 +107,7 @@ Un script peut aussi gérer sa propre fenêtre (par exemple `tkinter`, pour ouvr
 |---|---|---|
 | `self.core.unit` | `str` | unité du document, `'mm'` ou `'inch'` : toutes les coordonnées sont dans cette unité |
 | `self.core.selection` | `list` de `dict` | les formes sélectionnées quand le script est choisi (les usinages ne sont pas listés) |
+| `self.core.drawing` | `list` de `dict` | toutes les formes du document, de tous les calques, au même format : pour les scripts qui exportent le dessin |
 
 La sélection est lue quand le script est choisi dans le menu : elle ne change pas tant que la boîte de propriétés est ouverte. Elle est vide si rien n'est sélectionné. Chaque forme est un dictionnaire avec les clés `id` (numéro unique de la forme dans le document), `layer` (nom de son calque) et `type`, puis les clés de son type. Les points sont des tuples `(x, y)`.
 
@@ -246,3 +263,24 @@ Pour un script avec sa propre fenêtre de saisie, voir `script/oblong.py` : il c
 | Polygones | `bounding_box`, `polygon_area` (signée), `is_ccw`, `is_closed`, `polyline_length`, `offset_polyline(points, d, closed)` (coins vifs) |
 
 Exemple : `geom.rotate((10, 0), (0, 0), 90)` renvoie `(0.0, 10.0)`.
+
+## 6. Scripts d'import et d'export
+
+Quatre scripts lisent ou écrivent d'autres formats de fichier. Le fichier n'est pas demandé dans une boîte de propriétés : quand son nom est vide, ils ouvrent une boîte de fichier (`tkinter`). La logique est dans des bibliothèques, pour pouvoir la tester sans l'application.
+
+| Fichier | Rôle |
+|---|---|
+| `svg_import.py` | importe un fichier SVG. Le coin inférieur gauche de la page est à la souris, la taille est en millimètres (convertie en pouces si le document est en pouces), les calques d'Inkscape deviennent des calques |
+| `svg_export.py` | écrit la sélection, ou tout le dessin si rien n'est sélectionné (`self.core.drawing`), dans un fichier SVG en millimètres |
+| `gerber_import.py` | importe un fichier Gerber (RS-274X) ou Excellon : pastilles, pistes, régions et trous. *Pistes en contours* : chaque piste devient une forme fermée de sa largeur |
+| `svgparse.py` | bibliothèque : `parse(text, scale)` donne une liste de formes (dictionnaires) à partir d'un texte SVG |
+| `gerberparse.py` | bibliothèque : `parse(text)` lit un texte Gerber ou Excellon, `convert(parsed, outline, name)` donne les formes |
+| `drawshapes.py` | bibliothèque : `draw(core, shapes, x, y)` dessine ces formes avec les appels du moteur, `scale(shapes, k)` les multiplie |
+
+**Import SVG** : `path` (M L H V C S Q T A Z, absolu et relatif), `rect` (coins arrondis aussi), `circle`, `ellipse`, `line`, `polyline`, `polygon`, `text`, `use`, les groupes et `transform`. Les courbes sont découpées en segments de 0,4 mm ; un chemin fait seulement de lignes et d'arcs reste exact (une spline). Les couleurs et les épaisseurs de trait sont ignorées, les formes `display:none` sont sautées.
+
+**Export SVG** : les polylignes Bézier et Catmull-Rom sont écrites en courbes cubiques ; les autres modes de courbe (B-spline, cubique naturelle, Lagrange) sont écrits par leurs points de contrôle, et le journal dit combien.
+
+**Gerber** : les ouvertures C, R, O et P, les flashs, les pistes (droites et arcs, en mode quadrant simple ou multiple), les régions (`G36`/`G37`), la polarité, les unités et le format des nombres. Les formes de polarité claire vont dans le calque `<nom>_clear` : elles ne sont pas soustraites des autres. Les formes qui se chevauchent ne sont pas fusionnées : utilisez les opérations booléennes de l'application sur les formes fermées. Les ouvertures macro (`AM`) ne sont pas lues, le journal les compte.
+
+**Excellon** : les outils, les trous et les rainures (`G85`), métrique ou pouce, avec ou sans point décimal.

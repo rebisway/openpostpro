@@ -105,6 +105,9 @@ public:
 
 	DxfEntity* create_entity();
 
+	// reads the entities from the current value (the type of the first one) until the value "stop" (ENDSEC, ENDBLK)
+	void read_items(std::ifstream& input, std::vector<DxfEntity*>& items, const std::string& stop);
+
 	virtual void read(std::ifstream& input);
 };
 
@@ -202,10 +205,39 @@ public:
 	DxfLayer* layer(std::string name);
 };
 
+// a block: entities drawn once and placed by the INSERT entities
+class DxfBlock
+{
+private:
+	std::string _name;
+	float _x = 0.0f;			// base point
+	float _y = 0.0f;
+	std::vector<DxfEntity*> _items;
+
+public:
+	std::string name() { return _name; }
+	void name(std::string value) { _name = value; }
+	float x() { return _x; }
+	float y() { return _y; }
+	void base(float x, float y) { _x = x; _y = y; }
+	std::vector<DxfEntity*>& items() { return _items; }
+
+	~DxfBlock();
+};
+
 class DxfBlocks : public DxfSection
 {
+private:
+	std::map<std::string, DxfBlock*> _blocks;
+
 public:
 	DxfBlocks(Dxf* parent) : DxfSection(parent) { _type = DxfSectionType::Blocks; }
+	~DxfBlocks();
+
+	// the block of this name, nullptr if there is none
+	DxfBlock* block(std::string name);
+
+	void read(std::ifstream& input) override;
 };
 
 class DxfObjects : public DxfSection
@@ -220,8 +252,11 @@ private:
 	std::vector<DxfSection*> _sections;
 	DxfEntities* _entities = NULL;
 	DxfTables* _tables = NULL;
+	DxfBlocks* _blocks = NULL;
 
 public:
+	// the blocks of the file, nullptr if the file has no BLOCKS section
+	DxfBlocks* blocks() { return _blocks; }
 	std::vector<DxfSection*> sections() { return _sections; }
 	DxfEntities* entities() { return _entities; }
 	DxfTables* tables() { return _tables; }

@@ -8,6 +8,34 @@ The current version is **0.6**. The project is still in an **early development s
 
 ![OpenPostPro](https://github.com/user-attachments/assets/fc224d77-bbef-4d37-98aa-c54a5e4b89e1)
 
+## 🗺️ How it fits together
+
+Overview: three zones, CAD, post-processor and simulator. The output file is the border between the machine and the check. The boxes have three colors: green = user Python (what you write), purple = engine Python (provided, do not edit), grey = OpenPostPro application (the C++ program).
+
+```mermaid
+flowchart LR
+  subgraph CAD["CAD"]
+    s["CAD script<br/>(user Python)"]:::user -->|"core.line(...), core.circle(...)"| cc["cadcore.py<br/>(provided engine Python)"]:::eng
+    cc -->|"text commands<br/>M:id:A:... D:id G:text Y:layer"| doc["Application: reads the commands,<br/>changes the Document"]:::app
+    doc --> par["Toolpaths<br/>(pockets, outlines)"]:::app
+  end
+  subgraph PP["Post-processor"]
+    app2["Application: walks<br/>the toolpaths"]:::app -->|"start_loop, rapid, linear..."| pc["postcore.py<br/>(provided engine Python)<br/>state: position, line number, feed"]:::eng
+    pc <-->|"calls the methods,<br/>gets text back"| post["Post-processor<br/>(user Python, one per machine)"]:::user
+    pc --> out["Output file<br/>(G-code, HPGL)"]:::app
+  end
+  subgraph SIM["Simulator"]
+    app3["Application: gives<br/>one line at a time"]:::app -->|"start, next, close, extensions"| tr["Translator<br/>(user Python, one per format)"]:::user
+    tr -->|"dictionaries"| cv["Application: simple commands<br/>(sim_translator.cpp)"]:::app
+    cv --> pl["Player"]:::app --> mat["Material model<br/>(grid or tiles)"]:::app --> vue["3D view"]:::app
+  end
+  par --> app2
+  out ==>|"border: machine | check"| app3
+  classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
+  classDef eng fill:#d9ccf2,stroke:#6d4fc2,color:#2a1a5c
+  classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
+```
+
 ## ✏️ Draw and prepare geometry
 
 OpenPostPro includes tools to create and edit 2D geometry directly:
@@ -19,7 +47,9 @@ OpenPostPro includes tools to create and edit 2D geometry directly:
 - **Contour** (Edit → Select): from the selection, selects every shape connected to it
 - **Check the drawing** (Drawing menu): finds the shapes of length zero, the shapes drawn twice, and the free ends (open contours), with markers on the drawing
 - Chamfer and fillet (CAD scripts), cut at intersections, and boolean operations to combine, subtract, or intersect supported shapes
-- DXF import for supported drawing entities, including lines, points, circles, arcs, ellipses, elliptical arcs, polylines, splines, and text. The ends of lines and arcs which are less than 0.01 apart are joined into one contour
+- DXF import for supported drawing entities, including lines, points, circles, arcs, ellipses, elliptical arcs, polylines, splines (B-splines and NURBS), texts, and blocks (INSERT, nested, with their position, scale and rotation). The ends of lines and arcs which are less than 0.01 apart are joined into one contour
+- DXF export (AutoCAD R12): lines, circles, arcs, points, polylines, splines of lines and arcs (kept exact with bulges), texts, layers and colors; only the selected shapes if there is a selection
+- SVG import and export, Gerber (RS-274X) and Excellon import: CAD scripts of the **Import** and **Export** menus
 - Document unit (millimetres or inches), with the conversion of an imported DXF or of the whole drawing
 - Layers (a layer can be locked: its shapes can not be moved, edited, deleted, cut or extended, but the magnet still snaps to them), undo and redo, and a magnet to snap to the points of the drawing
 
@@ -30,7 +60,7 @@ The application ships with a library of scripts, grouped by category in the **Sc
 
 - **Generation**: rectangle, hexagon, star, oblong hole, wheel spokes, exterior involute gear, airfoil from a coordinate file, grid of holes
 - **Geometry and modification**: linear and polar arrays, fillet, chamfer, center of gravity, scale of circles
-- **Import**: bitmap tracing with the external program Potrace
+- **Import** and **Export**: SVG import and export, Gerber and Excellon import (pads, tracks, regions, holes), bitmap tracing with the external program Potrace
 - **Examples**: small scripts to start from (middle of lines, rectangle...)
 
 The delivered scripts are read-only: use **Clone** to make your own editable copy, with a built-in editor that checks the syntax and shows the Python traceback in the log. Scripts are separate from post-processors: CAD scripts generate drawing geometry, while post-processors translate CAM operations into machine-specific output.

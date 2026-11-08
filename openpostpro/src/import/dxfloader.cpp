@@ -29,6 +29,9 @@
 #include <logger.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include "text.h"
+#include <algorithm>
+#include <regex>
+#include <sstream>
 
 int DxfLoader::_count = 0;
 
@@ -81,9 +84,23 @@ void DxfLoader::read(std::string path, Document* document)
 				{
 					layer->color(std::get<glm::vec4>(dl->properties("color")));
 				}
-				std::vector<Shape*> shapes = add_entity(e, document->render());
-				for (Shape* s : shapes)
+				std::vector<Placed> placed;
+				if (e->type() == "INSERT")
+					add_insert(dxf, e, document->render(), glm::mat4(1.0f), layer_name, 0, placed);
+				else
+					for (Shape* s : add_entity(e, document->render()))
+						placed.push_back({ s, layer_name });
+
+				for (Placed& p : placed)
 				{
+					Shape* s = p.shape;
+					Layer* target = p.layer == layer_name ? layer : document->layer(p.layer);
+					if (target != layer)
+					{
+						auto dl2 = layers[p.layer];
+						if (dl2 != nullptr)
+							target->color(std::get<glm::vec4>(dl2->properties("color")));
+					}
 					if (factor != 1.0)
 					{
 						s->transform(scale);
@@ -94,8 +111,8 @@ void DxfLoader::read(std::string path, Document* document)
 							text->inter(text->inter() * (float)factor);
 						}
 					}
-					layer->shapes().push_back(s);
-					s->parent(layer->name());
+					target->shapes().push_back(s);
+					s->parent(target->name());
 				}
 			}
 		}
@@ -129,6 +146,12 @@ std::vector<Shape*> DxfLoader::add_entity(DxfEntity* e, Renderer* r)
 		s = add_ellipse(e, r);
 	else if (e->type() == "LWPOLYLINE" || e->type() == "POLYLINE")
 		s = add_polyline(e, r, name);
+	else if (e->type() == "TEXT" || e->type() == "ATTRIB")
+		s = add_text(e, r);
+	else if (e->type() == "MTEXT")
+		s = add_mtext(e, r);
+	else if (e->type() == "SPLINE")
+		s = add_spline(e, r);
 	
 	if (s.size() == 1)
 		s[0]->name(name);
@@ -369,6 +392,265 @@ Shape* DxfLoader::add_arc(glm::vec2 p1, glm::vec2 p2, float bulge, DxfEntity* e,
 	a->set(p1, center, p2, bulge <= 0);
 
 	return a;
+}
+
+namespace
+{
+	// the number of a property, the default value if the entity has no such property
+	float number(DxfEntity* e, const std::string& key, float def)
+	{
+		auto properties = e->properties();
+		auto it = properties.find(key);
+		if (it == properties.end())
+			return def;
+		if (std::holds_alternative<float>(it->second))
+			return std::get<float>(it->second);
+		if (std::holds_alternative<int>(it->second))
+			return (float)std::get<int>(it->second);
+		return def;
+	}
+
+	std::string text_property(DxfEntity* e, const std::string& key)
+	{
+		auto properties = e->properties();
+		auto it = properties.find(key);
+		if (it == properties.end() || !std::holds_alternative<std::string>(it->second))
+			return "";
+		return std::get<std::string>(it->second);
+	}
+
+	std::vector<float> numbers(const std::string& list)
+	{
+		std::vector<float> values;
+		std::stringstream stream(list);
+		std::string item;
+		while (std::getline(stream, item, ','))
+			values.push_back(std::stof(item));
+		return values;
+	}
+
+	// the special codes of a DXF text: %%d degree, %%p plus or minus, %%c diameter, %%u and %%o underline and overline (dropped)
+}
+
+
+std::string DxfLoader::plain_text(std::string value)
+{
+	auto replace = [&](const std::string& from, const std::string& to)
+	{
+		for (size_t pos = value.find(from); pos != std::string::npos; pos = value.find(from, pos + to.size()))
+			value.replace(pos, from.size(), to);
+	};
+	replace("%%d", "\xC2\xB0");
+	replace("%%D", "\xC2\xB0");
+	replace("%%p", "\xC2\xB1");
+	replace("%%P", "\xC2\xB1");
+	replace("%%c", "\xC3\x98");
+	replace("%%C", "\xC3\x98");
+	replace("%%u", "");
+	replace("%%U", "");
+	replace("%%o", "");
+	replace("%%O", "");
+	replace("%%%", "%");
+	return value;
+}
+
+// the formatting codes of an MTEXT are removed: fonts, heights, colors, stacking, line breaks (a space)
+std::string DxfLoader::mtext_content(std::string value)
+{
+	value = std::regex_replace(value, std::regex("\\\\P"), " ");
+	value = std::regex_replace(value, std::regex("\\\\~"), " ");
+	value = std::regex_replace(value, std::regex("\\\\S([^;^/#]*)[\\^/#]([^;]*);"), "$1/$2");
+	value = std::regex_replace(value, std::regex("\\\\S([^;]*);"), "$1");
+	value = std::regex_replace(value, std::regex("\\\\[A-Za-z][^;\\\\]*;"), "");
+	value = std::regex_replace(value, std::regex("\\\\[LlOoKk]"), "");
+	value = std::regex_replace(value, std::regex("[{}]"), "");
+	value = std::regex_replace(value, std::regex("\\\\\\\\"), "\\");
+	return plain_text(value);
+}
+
+std::vector<Shape*> DxfLoader::add_text(DxfEntity* e, Renderer* r)
+{
+	auto value = DxfLoader::plain_text(text_property(e, "value"));
+	if (value.empty())
+		return std::vector<Shape*>();
+
+	auto p1 = glm::vec2(number(e, "p1.x", 0), number(e, "p1.y", 0));
+	// aligned texts (center, right, middle...) are placed by their second point
+	if (number(e, "horizontal.justify", 0) != 0 || number(e, "vertical.justify", 0) != 0)
+		if (e->properties().count("p2.x") > 0)
+			p1 = glm::vec2(number(e, "p2.x", p1.x), number(e, "p2.y", p1.y));
+
+	float height = number(e, "height", 2.5f);
+	if (height <= 0)
+		height = 2.5f;
+
+	Text* t = new Text(r);
+	t->set(value, "arial", false, false, height);
+	t->p1(p1);
+	return std::vector<Shape*>({ t });
+}
+
+std::vector<Shape*> DxfLoader::add_mtext(DxfEntity* e, Renderer* r)
+{
+	auto value = DxfLoader::mtext_content(text_property(e, "value"));
+	if (value.empty())
+		return std::vector<Shape*>();
+
+	float height = number(e, "height", 2.5f);
+	if (height <= 0)
+		height = 2.5f;
+	auto p1 = glm::vec2(number(e, "first.x", 0), number(e, "first.y", 0));
+
+	// the point is the corner of the text box: the first line is under it for a top attachment (1, 2, 3), centered for 4, 5, 6
+	int attachment = (int)number(e, "attachement", 1);
+	if (attachment >= 1 && attachment <= 3)
+		p1.y -= height;
+	else if (attachment >= 4 && attachment <= 6)
+		p1.y -= height / 2.0f;
+
+	Text* t = new Text(r);
+	t->set(value, "arial", false, false, height);
+	t->p1(p1);
+	return std::vector<Shape*>({ t });
+}
+
+std::vector<glm::vec2> DxfLoader::spline_points(int degree, const std::vector<glm::vec2>& control, std::vector<float> knots, const std::vector<float>& weights)
+{
+	int n = (int)control.size();
+	std::vector<glm::vec2> result;
+	if (n < 2)
+		return control;
+	degree = std::max(1, std::min(degree, n - 1));
+
+	// the knots of the file, or uniform knots which start and end on the first and last control points
+	if ((int)knots.size() != n + degree + 1)
+	{
+		knots.clear();
+		for (int i = 0; i < n + degree + 1; i++)
+			knots.push_back(i <= degree ? 0.0f : (i >= n ? (float)(n - degree) : (float)(i - degree)));
+	}
+
+	bool rational = (int)weights.size() == n && std::any_of(weights.begin(), weights.end(), [&](float w) { return std::fabs(w - weights[0]) > 1e-6f; });
+	float start = knots[degree], end = knots[n];
+	if (end <= start)
+		return control;
+
+	int samples = std::max(32, std::min(4000, n * 16));
+	for (int s = 0; s <= samples; s++)
+	{
+		float t = start + (end - start) * s / samples;
+		// the span of t
+		int k = degree;
+		while (k < n - 1 && t >= knots[k + 1])
+			k++;
+		// de Boor, in homogeneous coordinates
+		std::vector<glm::vec3> d(degree + 1);
+		for (int j = 0; j <= degree; j++)
+		{
+			float w = rational ? weights[j + k - degree] : 1.0f;
+			d[j] = glm::vec3(control[j + k - degree] * w, w);
+		}
+		for (int r = 1; r <= degree; r++)
+		{
+			for (int j = degree; j >= r; j--)
+			{
+				float denominator = knots[j + 1 + k - r] - knots[j + k - degree];
+				float alpha = denominator > 0 ? (t - knots[j + k - degree]) / denominator : 0.0f;
+				d[j] = (1.0f - alpha) * d[j - 1] + alpha * d[j];
+			}
+		}
+		auto p = d[degree];
+		result.push_back(glm::vec2(p.x, p.y) / (rational ? p.z : 1.0f));
+	}
+	return result;
+}
+
+std::vector<Shape*> DxfLoader::add_spline(DxfEntity* e, Renderer* r)
+{
+	std::vector<glm::vec2> control, fit;
+	for (int i = 0; ; i++)
+	{
+		auto properties = e->properties();
+		if (properties.count("p" + std::to_string(i) + ".x") == 0)
+			break;
+		control.push_back(glm::vec2(number(e, "p" + std::to_string(i) + ".x", 0), number(e, "p" + std::to_string(i) + ".y", 0)));
+	}
+	for (int i = 0; ; i++)
+	{
+		auto properties = e->properties();
+		if (properties.count("f" + std::to_string(i) + ".x") == 0)
+			break;
+		fit.push_back(glm::vec2(number(e, "f" + std::to_string(i) + ".x", 0), number(e, "f" + std::to_string(i) + ".y", 0)));
+	}
+
+	bool closed = ((int)number(e, "flag", 0) & 1) == 1;
+	Polyline* p = new Polyline(r);
+	std::vector<glm::vec2> points;
+
+	if (control.size() >= 2)
+	{
+		points = spline_points((int)number(e, "degree", 3), control, numbers(text_property(e, "knot.list")), numbers(text_property(e, "weight.list")));
+		p->mode(PolylineMode::Polyline);
+	}
+	else if (fit.size() >= 2)
+	{
+		// only fit points: a curve through them
+		points = fit;
+		p->mode(PolylineMode::Catmull);
+	}
+	else
+	{
+		delete p;
+		return std::vector<Shape*>();
+	}
+
+	if (closed && glm::distance(points.front(), points.back()) > 1e-6f)
+		points.push_back(points.front());
+	p->points(points);
+	return std::vector<Shape*>({ p });
+}
+
+void DxfLoader::add_insert(Dxf& dxf, DxfEntity* e, Renderer* r, glm::mat4 parent, std::string layer, int depth, std::vector<Placed>& result)
+{
+	// a block which contains itself (directly or not) would never end
+	if (depth > 8 || dxf.blocks() == nullptr)
+		return;
+	auto name = text_property(e, "block");
+	DxfBlock* block = dxf.blocks()->block(name);
+	if (block == nullptr)
+	{
+		Logger::log("DXF block " + name + " not found");
+		return;
+	}
+
+	auto position = glm::vec3(number(e, "p1.x", 0), number(e, "p1.y", 0), 0.0f);
+	float angle = glm::radians(number(e, "angle", 0.0f));
+	auto scale = glm::vec3(number(e, "xscale", 1.0f), number(e, "yscale", 1.0f), 1.0f);
+	glm::mat4 matrix = parent * glm::translate(glm::mat4(1.0f), position) * glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0, 0, 1)) *
+		glm::scale(glm::mat4(1.0f), scale) * glm::translate(glm::mat4(1.0f), glm::vec3(-block->x(), -block->y(), 0.0f));
+
+	for (DxfEntity* be : block->items())
+	{
+		auto entity_layer = text_property(be, "layer");
+		auto target = (entity_layer == "0" || entity_layer.empty()) ? layer : entity_layer;
+		if (be->type() == "INSERT")
+		{
+			add_insert(dxf, be, r, matrix, target, depth + 1, result);
+			continue;
+		}
+		for (Shape* s : add_entity(be, r))
+		{
+			s->transform(matrix);
+			if (s->type() == GraphicType::Text)
+			{
+				auto text = (Text*)s;
+				float factor = std::fabs(scale.y);
+				text->height(text->height() * factor);
+				text->inter(text->inter() * factor);
+			}
+			result.push_back({ s, target });
+		}
+	}
 }
 
 /*

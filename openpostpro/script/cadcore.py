@@ -36,6 +36,7 @@ CATEGORIES = {
     'geometry': {'en-us': 'Geometry', 'fr-fr': 'Géométrie', 'es-es': 'Geometría'},
     'modify': {'en-us': 'Modify', 'fr-fr': 'Modification', 'es-es': 'Modificación'},
     'import': {'en-us': 'Import', 'fr-fr': 'Import', 'es-es': 'Importar'},
+    'export': {'en-us': 'Export', 'fr-fr': 'Export', 'es-es': 'Exportar'},
     'examples': {'en-us': 'Examples', 'fr-fr': 'Exemples', 'es-es': 'Ejemplos'},
 }
 
@@ -46,6 +47,7 @@ class Cadcore:
         self.mouse_y = 0.0
         self.unit = 'mm'
         self.selection = []
+        self.drawing = []
         self.output = ''
 
     def set_script(self, script):
@@ -62,6 +64,10 @@ class Cadcore:
     # shapes selected when the script is called: a list of dictionaries, see the CAD scripts guide
     def set_selection(self, selection):
         self.selection = selection
+
+    # all the shapes of the document (every layer), in the same format as the selection: for the scripts which export the drawing
+    def set_drawing(self, drawing):
+        self.drawing = drawing
 
     def set_mouse(self, x, y):
         self.mouse_x = float(x)

@@ -9,6 +9,7 @@ __pycache__/
 # C++ test build output
 tests/cpp/obj/
 tests/cpp/*.exe
+tests/cpp/*.dll
 
 # Personal project tracking, not versioned
 state.md
