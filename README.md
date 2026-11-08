@@ -104,6 +104,8 @@ The repository includes generic post-processors for:
 - **Milling / router**
 - **Plasma cutting**
 
+and the variants of some controllers, each for milling and for plasma cutting: **Mach3** (`.tap` file, absolute arc centers with `G90.1`), **Num 1060** (spaces between the words, no `G64`, dwell with `F`) and **Burny 2.5** (every arc gives `X Y I J`, dwell with `F`). **HPGL** is a post-processor for plotters and vinyl cutters (arcs cut into short segments, the tool number is the pen). A variant is a short file which derives from the generic one and writes only what differs: a good model for your own controller.
+
 Post-processor settings include output file extension, decimal precision, line numbering, comments, header and footer, coordinate units, and relative or absolute arc-centre coordinates. The plasma post-processor also exposes settings for torch commands, start delay, reference setup, and Z-axis handling.
 
 These are generic starting points, not guaranteed profiles for every controller. Review and adapt the output to your machine and controller before use.

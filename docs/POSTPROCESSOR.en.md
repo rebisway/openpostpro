@@ -119,7 +119,7 @@ sequenceDiagram
 |---|---|---|---|
 | `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` or `'es-es'` | nothing | selects the dictionary of interface strings |
 | `get_description()` | none | string | name in the menu **Post-processor / Select / Category / Description** |
-| `get_category()` | none | string | menu category: `"MILL"`, `"PLASMA"`, ... |
+| `get_category()` | none | string | menu category: `"MILL"`, `"PLASMA"`, `"OTHER"`, ... (any other name creates a menu) |
 | `get_extention()` | none | string | extension of the output file, without the dot (`'nc'`) |
 | `set_core(value)` | the engine | nothing | store it in `self.core`; do not modify |
 
@@ -407,3 +407,24 @@ class Postpro:
 ```
 
 Restart the application: the post-processor appears in the post-processor menu under its category. The example is short on purpose: the compensation, canned cycle and coolant methods are required if your operations use them. Start from `generic_mill.py` for a complete version.
+
+## 13. Derive from a bundled post-processor
+
+Most controllers differ from the generic post-processor by a few details. Instead of copying `generic_mill.py` (or `generic_plasma.py`), write a class which derives from it and overrides only what changes. The file is short, and it follows the improvements made to the generic one:
+
+```python
+from generic_mill import Postpro as Generic
+
+class Postpro(Generic):
+	def __init__(self):
+		super().__init__()
+		self.en_us.update({'description': 'My controller'})		# the name in the menu
+		self.ext = 'tap'												# a default value
+		self.relative = False
+
+	# a method which differs
+	def pause(self, time):
+		return self.code('G4') + 'F' + self.n(time)
+```
+
+The application finds the class by its declaration `class Postpro(`. `mach3_mill.py`, `num1060_plasma.py` and `burny_plasma.py` are examples. A post-processor which does not produce G-code, like `hpgl.py`, implements every method itself.

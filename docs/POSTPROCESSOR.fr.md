@@ -119,7 +119,7 @@ sequenceDiagram
 |---|---|---|---|
 | `set_language(value)` | `'en-us'`, `'en-uk'`, `'fr-fr'` ou `'es-es'` | rien | choisit le dictionnaire des textes de l'interface |
 | `get_description()` | aucun | chaîne | nom dans le menu **Post-processeur / Sélection / Catégorie / Description** |
-| `get_category()` | aucun | chaîne | catégorie du menu : `"MILL"`, `"PLASMA"`, ... |
+| `get_category()` | aucun | chaîne | catégorie du menu : `"MILL"`, `"PLASMA"`, `"OTHER"`, ... (un autre nom crée un menu) |
 | `get_extention()` | aucun | chaîne | extension du fichier de sortie, sans le point (`'nc'`) |
 | `set_core(value)` | le moteur | rien | à mémoriser dans `self.core` ; ne pas modifier |
 
@@ -407,3 +407,24 @@ class Postpro:
 ```
 
 Redémarrez l'application : le post-processeur apparaît dans le menu des post-processeurs, dans sa catégorie. L'exemple est volontairement court : les méthodes de compensation, de cycles fixes et d'arrosage sont nécessaires si vos opérations les utilisent. Partez de `generic_mill.py` pour une version complète.
+
+## 13. Dériver d'un post-processeur fourni
+
+La plupart des commandes numériques ne diffèrent du post-processeur générique que par quelques détails. Au lieu de copier `generic_mill.py` (ou `generic_plasma.py`), écrivez une classe qui en dérive et ne redéfinit que ce qui change. Le fichier est court, et il profite des améliorations du générique :
+
+```python
+from generic_mill import Postpro as Generic
+
+class Postpro(Generic):
+	def __init__(self):
+		super().__init__()
+		self.en_us.update({'description': 'Ma commande'})		# le nom dans le menu
+		self.ext = 'tap'											# une valeur par défaut
+		self.relative = False
+
+	# une méthode qui diffère
+	def pause(self, time):
+		return self.code('G4') + 'F' + self.n(time)
+```
+
+L'application trouve la classe par sa déclaration `class Postpro(`. `mach3_mill.py`, `num1060_plasma.py` et `burny_plasma.py` sont des exemples. Un post-processeur qui ne produit pas de G-code, comme `hpgl.py`, implémente lui-même toutes les méthodes.
