@@ -19,9 +19,8 @@
 #include "sim_footprint.h"
 #include <algorithm>
 #include <cmath>
+#include <glm/gtc/constants.hpp>
 #include <limits>
-
-static const double PI = 3.14159265358979323846;
 
 void SimMaterial::setup(const glm::dvec2& low, const glm::dvec2& high, double top, double bottom, double step)
 {
@@ -103,7 +102,7 @@ double SimMaterial::profile(const SimTool& tool, double d)
 	case SimToolShape::Cone:
 	{
 		double tip = std::clamp(tool.small_radius, 0.0, r);
-		double half = std::clamp(tool.angle, 2.0, 178.0) * PI / 360.0;
+		double half = std::clamp(tool.angle, 2.0, 178.0) * glm::pi<double>() / 360.0;
 		if (d <= tip)
 			return 0.0;
 		return (d - tip) / std::tan(half);

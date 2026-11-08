@@ -179,6 +179,9 @@ void Application::initialize()
 	}
 
 	// the start screen, as soon as the language is known (the fonts of the application are added below)
+	// the start screen draws a frame before the settings of the windows are read: no ini file yet, or the settings would be
+	// considered as read (and saved over) without their file
+	ImGui::GetIO().IniFilename = nullptr;
 	splash(Lang::t("SPLASH_START"));
 
 	/*_textures.push_back(load_texture("image2.jpg"));
@@ -238,7 +241,7 @@ void Application::initialize()
 			// the post-processor of the menu, then the output is shown
 			if (_current_postpro == nullptr)
 				return false;
-			_current_postpro->run(_document, config.output_path, std::to_string(_version));
+			_current_postpro->run(_document, config.output_path, appinfo::version());
 			bridge::log("post-processor run, output " + _document->output());
 			return true;
 		}
@@ -314,8 +317,9 @@ void Application::initialize()
 		im.set("Window][###OBJECT", "Pos", "11,305");
 		im.set("Window][###OBJECT", "Size", "215,400");
 		im.write();
-		ImGui::LoadIniSettingsFromDisk(io.IniFilename);
 	}
+	// the positions and the sizes of the windows of the last session
+	ImGui::LoadIniSettingsFromDisk(io.IniFilename);
 
 	onSizeChanged(width(), height());
 
@@ -1087,7 +1091,7 @@ void Application::render_menu()
 						save_file(path);
 					}
 				}
-				_current_postpro->run(_document, config.output_path, std::to_string(_version));
+				_current_postpro->run(_document, config.output_path, appinfo::version());
 				auto m = module("MOD_OUTPUT");
 				m->show(true);
 				m->selected(true);
@@ -1095,7 +1099,7 @@ void Application::render_menu()
 			if (_current_postpro != nullptr && ImGui::MenuItem(Lang::l("POST_SIMULATE")))
 			{
 				// the same as the run of the post-processor, then the output is simulated
-				_current_postpro->run(_document, config.output_path, std::to_string(_version));
+				_current_postpro->run(_document, config.output_path, appinfo::version());
 				auto sim = (ModSim*)module("MOD_SIM");
 				sim->simulate_output();
 				sim->show(true);
