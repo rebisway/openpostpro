@@ -715,6 +715,10 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 	// the post-processor works in the unit of the document
 	set("set_unit", "s", doc->unit() == Unit::Inch ? "inch" : "mm");
 
+	// the profile lifts the tool to its own safe height (5) before the first group gives its one: with a reversed Z that height is below
+	if (_machine)
+		set_safe_position(5.0f);
+
 	// ensure existence of path
 	Directory::create(path);
 
