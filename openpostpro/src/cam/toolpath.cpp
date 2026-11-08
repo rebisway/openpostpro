@@ -680,6 +680,12 @@ void Toolpath::generate_deco(std::vector<Curve>& curves)
 				vertices.push_back(glm::vec3(shifted.x, shifted.y, 0));
 				vertices.push_back(glm::vec3(q2.x, q2.y, 0));
 				_deco_indices.push_back((int)vertices.size());
+
+				// the tail of the arrow, from its tip backwards
+				auto tail = geometry::position(angle, -2.5f * o, shifted);
+				vertices.push_back(glm::vec3(shifted.x, shifted.y, 0));
+				vertices.push_back(glm::vec3(tail.x, tail.y, 0));
+				_deco_indices.push_back((int)vertices.size());
 			}
 		}
 

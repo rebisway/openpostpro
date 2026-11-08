@@ -25,15 +25,15 @@
 
 #include <string>
 
-#define APP_VERSION_MAJOR 0
-#define APP_VERSION_MINOR 6
+#define APP_VERSION_MAJOR 1
+#define APP_VERSION_MINOR 0
 #define APP_VERSION_PATCH 0
 // increased at each version published
-#define APP_BUILD 2
+#define APP_BUILD 3
 
 namespace appinfo
 {
-	// "0.6.0"
+	// "1.0.0"
 	inline std::string version()
 	{
 		return std::to_string(APP_VERSION_MAJOR) + "." + std::to_string(APP_VERSION_MINOR) + "." + std::to_string(APP_VERSION_PATCH);

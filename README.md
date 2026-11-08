@@ -4,7 +4,9 @@
 
 OpenPostPro brings together a lightweight 2D drawing environment, CAM operations, and configurable Python post-processors. Import a DXF drawing or create geometry directly in the application, prepare machining or cutting operations, then generate output adapted to your machine through a post-processor.
 
-The current version is **0.6**. The project is still in an **early development stage**: it is usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
+The current version is **1.0**. The project is stable and usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
+
+User manual: [MANUAL.en.md](docs/MANUAL.en.md) · [Manuel d'utilisation](docs/MANUAL.fr.md)
 
 ![OpenPostPro](https://github.com/user-attachments/assets/fc224d77-bbef-4d37-98aa-c54a5e4b89e1)
 
@@ -136,7 +138,7 @@ OpenPostPro is designed with cross-platform compatibility in mind, with very few
 
 ## 🚧 Project status
 
-OpenPostPro is version 0.6, an independent open-source project. The main priority for future improvement remains the robustness and precision of geometry and outline calculations (offsets and pockets on difficult shapes); some algorithms still use floating-point precision and need further work. The format of the document files may still change before a 1.0 version.
+OpenPostPro is version 1.0, an independent open-source project. The main priority for future improvement remains the robustness and precision of geometry and outline calculations (offsets and pockets on difficult shapes); some algorithms still use floating-point precision and need further work.
 
 Please treat generated toolpaths and machine code as output that requires verification. Simulate or inspect the program and check machine settings, tool definitions, clearances, feeds, and speeds before running it on physical equipment.
 
