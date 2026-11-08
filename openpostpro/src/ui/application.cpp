@@ -16,6 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "application.h"
+#include <tool.h>
 #include <algorithm>
 #include <filesystem>
 #include <regex>
@@ -101,6 +102,7 @@ void Application::initialize()
 	try
 	{
 		config.read();
+		tool_table().load();
 	}
 	catch (const std::exception& e)
 	{

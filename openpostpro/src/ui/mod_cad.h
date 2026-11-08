@@ -23,6 +23,7 @@
 #include <message_box.h>
 #include <curve.h>
 #include <pocket.h>
+#include "tools_window.h"
 
 #define CAD_UNION 0
 #define CAD_SUBSTRACT 1
@@ -104,6 +105,7 @@ private:
 	bool _display_chamfer_box = false;
 	bool _display_offset_box = false;
 	bool _display_pocket_box = false;
+	ToolsWindow _tools_window;
 	bool _display_delete_layer = false;
 	bool _display_delete_group = false;
 	int _tab_flags = 0;
@@ -250,7 +252,7 @@ public:
 	std::vector<Shape*> get_selection();
 	std::vector<int> get_references(std::vector<Graphic*> shapes);
 	// an icon button, its tooltip is the text of the code. active: a toggle which is on, drawn with a highlighted background
-	bool set_shortcut(std::string code, ImVec2 size, bool active = false);
+	bool set_shortcut(std::string code, ImVec2 size, bool active = false, bool enabled = true);
 	void cam_moveto();
 	void cam_drill();
 	// the click would place the polyline point on the previous one

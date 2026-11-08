@@ -33,6 +33,7 @@
 #include <logger.h>
 #include <drill.h>
 #include "travel_sort.h"
+#include "cut_path.h"
 #include <moveTo.h>
 
 
@@ -740,7 +741,10 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 			// the depths of the passes: the tool goes down by one pass, all the toolpaths of the group are machined at this depth, then the
 			// tool goes down again... (without Z, a single pass)
 			std::vector<float> levels;
-			if (get_disable_z() == false)
+			if (g->is_torch() && get_disable_z() == false)
+				// a torch cuts through the material in one pass, at the cutting height
+				levels.push_back(g->depth());
+			else if (get_disable_z() == false)
 			{
 				float z = std::max(g->origin() - g->pass(), g->depth());
 				levels.push_back(z);
@@ -760,6 +764,7 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 			{
 				Toolpath* toolpath;
 				Curve curve;
+				bool lead_in = false;	// the first segment of the curve is the entry of the offset start
 			};
 			std::vector<std::vector<Item>> runs;
 			std::vector<bool> run_sorted;
@@ -780,7 +785,7 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 						run_sorted.push_back(true);
 						run_open.push_back(false);
 						for (size_t i = part == 0 ? 0 : split; i < (part == 0 ? split : curves.size()); i++)
-							runs.back().push_back({ t, curves[i] });
+							runs.back().push_back({ t, curves[i], false });
 					}
 					continue;
 				}
@@ -792,8 +797,10 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 					run_sorted.push_back(independent);
 					run_open.push_back(independent);
 				}
+				// an entry exists when the toolpath has a single curve (the offset start is computed for it only)
+				const bool lead_in = t->start_point_allowed() && t->start_point_type() != StartPointType::normal && curves.size() == 1;
 				for (Curve& c : curves)
-					runs.back().push_back({ t, c });
+					runs.back().push_back({ t, c, lead_in });
 			}
 			glm::vec2 cursor(0.0f);
 			for (size_t r = 0; r < runs.size(); r++)
@@ -893,34 +900,17 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 						{
 							if (get_disable_z() == false)
 							{
-								// go down to Z working position: the plunge is vertical, the tool comes from the safe height
-								output += feed(g->plung_feed());
-								output += linear(glm::vec3(c[0].point.x, c[0].point.y, z));
-								output += feed(g->feed());
-
-								output += start_single_path();
-
-								auto from = c.front();
-								auto next = c.begin() + 1;
-								float last_z = z;
+								// go down to Z working position: vertical, or along the entry of the curve (oblique), from the safe height
+								CutPathParams params;
+								params.z = z;
+								params.z_top = level == 0 ? g->origin() : levels[level - 1];
+								params.safe = g->safe();
+								params.plunge_feed = g->plung_feed();
+								params.feed = g->feed();
 								// tabs keep the tool at the tab height, with a vertical move at their boundaries
-								const float tab_z = g->depth() + t->tabs_height();
-
-								while (next != c.end())
-								{
-									float seg_z = from.tab ? std::max(z, tab_z) : z;
-									if (seg_z != last_z)
-									{
-										output += linear(glm::vec3(from.point, seg_z));
-										last_z = seg_z;
-									}
-									if (from.type == SegmentType::Line)
-										output += linear(glm::vec3((*next).point, seg_z));
-									else
-										output += circular(glm::vec3((*next).point, seg_z), from.center, from.cw);
-									from = (*next);
-									next = std::next(next);
-								}
+								params.tab_z = g->depth() + t->tabs_height();
+								params.oblique = g->oblique() && !g->is_torch() && item->lead_in;
+								output += cut_path(*this, c, params);
 							}
 							else
 							{

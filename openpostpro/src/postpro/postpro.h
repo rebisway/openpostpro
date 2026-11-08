@@ -79,8 +79,6 @@ private:
 	std::string stop_tool_length_compensation(int number);
 	std::string start_toolpath();
 	std::string stop_toolpath();
-	std::string start_single_path();
-	std::string stop_single_path();
 
 	// postpro calling
 	
@@ -129,6 +127,8 @@ public:
 	std::string boring(glm::vec3 value, float retract, int pause);
 	std::string pause(int value);
 	std::string line(std::string value);
+	std::string start_single_path();
+	std::string stop_single_path();
 
 	std::string run(Document* doc, std::string path, std::string version);
 };

@@ -213,6 +213,7 @@
     <ClCompile Include="src\cam\spiral.cpp" />
     <ClCompile Include="src\cam\toolpath.cpp" />
     <ClCompile Include="src\cam\group.cpp" />
+    <ClCompile Include="src\cam\tool.cpp" />
     <ClCompile Include="src\common\clipboard.cpp" />
     <ClCompile Include="src\common\curve.cpp" />
     <ClCompile Include="src\common\dialog.cpp" />
@@ -277,6 +278,7 @@
     <ClCompile Include="src\ui\message_box.cpp" />
     <ClCompile Include="src\ui\mod_cad.cpp" />
     <ClCompile Include="src\ui\mod_log.cpp" />
+    <ClCompile Include="src\ui\tools_window.cpp" />
     <ClCompile Include="src\ui\mod_output.cpp" />
     <ClCompile Include="src\ui\mod_script.cpp" />
     <ClCompile Include="src\ui\ortho_cam.cpp" />
@@ -329,6 +331,7 @@
     <ClInclude Include="src\cam\spiral.h" />
     <ClInclude Include="src\cam\toolpath.h" />
     <ClInclude Include="src\cam\group.h" />
+    <ClInclude Include="src\cam\tool.h" />
     <ClInclude Include="src\common\pch.h" />
     <ClInclude Include="src\common\clipboard.h" />
     <ClInclude Include="src\common\curve.h" />
@@ -349,6 +352,7 @@
     <ClInclude Include="src\import\dxfloader.h" />
     <ClInclude Include="src\postpro\postpro.h" />
     <ClInclude Include="src\postpro\travel_sort.h" />
+    <ClInclude Include="src\postpro\cut_path.h" />
     <ClInclude Include="src\python\script.h" />
     <ClInclude Include="src\script\cad_script.h" />
     <ClInclude Include="src\test\test_cad.h" />
@@ -370,6 +374,7 @@
     <ClInclude Include="src\ui\module.h" />
     <ClInclude Include="src\ui\mod_cad.h" />
     <ClInclude Include="src\ui\mod_log.h" />
+    <ClInclude Include="src\ui\tools_window.h" />
     <ClInclude Include="src\ui\mod_output.h" />
     <ClInclude Include="src\ui\mod_script.h" />
     <ClInclude Include="src\ui\ortho_cam.h" />

@@ -34,6 +34,21 @@ void Group::tool_radius(float value)
 	}
 }
 
+void Group::apply_tool(const Tool& tool)
+{
+	_tool_number = tool.number;
+	_tool_type = tool.type;
+	_feed = tool.feed;
+	_finition_feed = tool.feed;
+	_plung_feed = tool.plunge_feed;
+	_pass = tool.pass;
+	_spindle_speed = tool.spindle_speed;
+	_spindle_cw = tool.spindle_cw;
+	_cooling = tool.cooling;
+	if (tool.diameter > 0)
+		tool_radius(tool.diameter / 2);
+}
+
 void Group::cw(bool value)
 {
 	if (value != _cw)
@@ -310,7 +325,9 @@ void Group::ui()
 	ImGui::Spacing();
 	ImGui::Text(Lang::l("TOOL"));
 	ImGui::TableSetColumnIndex(1);
-	if (ImGui::InputText("##TOOL_NUMBER", input, ImGuiInputTextFlags_EnterReturnsTrue))
+	// editable combo: the number of the tool is typed, or a tool of the table is chosen in the list
+	ImGui::SetNextItemWidth(-(ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x));
+	if (ImGui::InputText("##TOOL_NUMBER", input, sizeof(input), ImGuiInputTextFlags_EnterReturnsTrue))
 	{
 		try
 		{
@@ -323,7 +340,11 @@ void Group::ui()
 				if (_tool_number != t)
 				{
 					_tool_length_compensation = -1;
-					tool_number(t);
+					// a tool of the table gives its values
+					if (Tool* known = tool_table().find(t))
+						apply_tool(*known);
+					else
+						tool_number(t);
 				}
 			}
 		}
@@ -331,6 +352,26 @@ void Group::ui()
 		{
 			Logger::log(e.what());
 		}
+	}
+	ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+	if (ImGui::ArrowButton("##TOOL_LIST", ImGuiDir_Down))
+		ImGui::OpenPopup("##TOOL_POPUP");
+	if (ImGui::BeginPopup("##TOOL_POPUP"))
+	{
+		if (tool_table().tools().empty())
+			ImGui::TextDisabled("%s", Lang::l("TOOLS_EMPTY"));
+		for (const Tool& tool : tool_table().tools())
+		{
+			char label[160];
+			sprintf_s(label, "T%d  %s  (%.3g)", tool.number, tool.name.c_str(), tool.diameter);
+			if (ImGui::Selectable(label, tool.number == _tool_number))
+			{
+				if (_tool_number != tool.number)
+					_tool_length_compensation = -1;
+				apply_tool(tool);
+			}
+		}
+		ImGui::EndPopup();
 	}
 
 	// TOOL RADIUS
@@ -352,36 +393,52 @@ void Group::ui()
 		}
 	}
 
-	// TOOL SPEED
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("TOOL_SPEED"));
-	ImGui::TableSetColumnIndex(1);
-	int ts = (int)_spindle_speed;
-	if (ImGui::InputInt("##TOOL_SPEED", &ts, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
+	if (!is_torch())
 	{
-		try
+		// TOOL SPEED
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("TOOL_SPEED"));
+		ImGui::TableSetColumnIndex(1);
+		int ts = (int)_spindle_speed;
+		if (ImGui::InputInt("##TOOL_SPEED", &ts, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
-			spindle_speed((float)ts);
+			try
+			{
+				spindle_speed((float)ts);
+			}
+			catch (const std::exception& e)
+			{
+				Logger::log(e.what());
+			}
 		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
-	}
 
-	// TOOL CW
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("TOOL_CW"));
-	ImGui::TableSetColumnIndex(1);
-	ImGui::PushItemWidth(-FLT_MIN);
-	cw = _spindle_cw;
-	if (ImGui::Checkbox("##TOOL_CW", &cw))
-	{
-		spindle_cw(cw);
+		// TOOL CW
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("TOOL_CW"));
+		ImGui::TableSetColumnIndex(1);
+		ImGui::PushItemWidth(-FLT_MIN);
+		cw = _spindle_cw;
+		if (ImGui::Checkbox("##TOOL_CW", &cw))
+		{
+			spindle_cw(cw);
+		}
+
+		// COOLING
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("TOOL_COOLING"));
+		ImGui::TableSetColumnIndex(1);
+		ImGui::PushItemWidth(-FLT_MIN);
+		const char* cooling_items[]{ Lang::l("COOLING_NONE"), Lang::l("COOLING_FLOOD"), Lang::l("COOLING_MIST") };
+		int cooling_item = (int)_cooling;
+		if (ImGui::Combo("##TOOL_COOLING", &cooling_item, cooling_items, IM_ARRAYSIZE(cooling_items)))
+			cooling((CoolingType)cooling_item);
+
 	}
 
 	// FEED
@@ -404,24 +461,28 @@ void Group::ui()
 		}
 	}	
 
-	// PLUNG
-	ImGui::TableNextRow();
-	sprintf_s(input, "%d", (int)_plung_feed);
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("TOOL_PLUNG"));
-	ImGui::TableSetColumnIndex(1);
-	int pl = (int)_plung_feed;
-	if (ImGui::InputInt("##TOOL_PLUNG", &pl, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
+	if (!is_torch())
 	{
-		try
+		// PLUNG
+		ImGui::TableNextRow();
+		sprintf_s(input, "%d", (int)_plung_feed);
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("TOOL_PLUNG"));
+		ImGui::TableSetColumnIndex(1);
+		int pl = (int)_plung_feed;
+		if (ImGui::InputInt("##TOOL_PLUNG", &pl, 0, 0, ImGuiInputTextFlags_EnterReturnsTrue))
 		{
-			plung_feed((float)pl);
+			try
+			{
+				plung_feed((float)pl);
+			}
+			catch (const std::exception& e)
+			{
+				Logger::log(e.what());
+			}
 		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
+
 	}
 
 	if (_tool_number >= 0)
@@ -473,7 +534,7 @@ void Group::ui()
 	{
 		try
 		{
-			origin((float)fd);
+			origin(o);
 		}
 		catch (const std::exception& e)
 		{
@@ -500,23 +561,27 @@ void Group::ui()
 		}
 	}
 
-	// DEPTH
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-	ImGui::Spacing();
-	ImGui::Text(Lang::l("GROUP_PASS"));
-	ImGui::TableSetColumnIndex(1);
-	float p = _pass;
-	if (ImGui::InputFloat("##GROUP_PASS", &p, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
+	if (!is_torch())
 	{
-		try
+		// DEPTH
+		ImGui::TableNextRow();
+		ImGui::TableSetColumnIndex(0);
+		ImGui::Spacing();
+		ImGui::Text(Lang::l("GROUP_PASS"));
+		ImGui::TableSetColumnIndex(1);
+		float p = _pass;
+		if (ImGui::InputFloat("##GROUP_PASS", &p, 0, 0, "%.3f", ImGuiInputTextFlags_EnterReturnsTrue))
 		{
-			pass(p);
+			try
+			{
+				pass(p);
+			}
+			catch (const std::exception& e)
+			{
+				Logger::log(e.what());
+			}
 		}
-		catch (const std::exception& e)
-		{
-			Logger::log(e.what());
-		}
+
 	}
 
 	// PRE COMMAND
@@ -602,6 +667,19 @@ void Group::ui()
 		bool leave = _lead_out;
 		if (ImGui::Checkbox("##GROUP_LEAD_OUT", &leave))
 			lead_out(leave);
+
+		// OBLIQUE: the tool goes down along the entry (a torch pierces, it does not plunge)
+		if (!is_torch())
+		{
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Spacing();
+			ImGui::Text(Lang::l("GROUP_OBLIQUE"));
+			ImGui::TableSetColumnIndex(1);
+			bool oblique_value = _oblique;
+			if (ImGui::Checkbox("##GROUP_OBLIQUE", &oblique_value))
+				oblique(oblique_value);
+		}
 	}
 
 	ImGui::EndTable();
@@ -630,7 +708,13 @@ std::string Group::write()
 		WS(_post_command) +
 		WN((int)_start_point_type) +
 		WF(_start_point_offset) +
-		WN((int)_lead_out);
+		WN((int)_lead_out) +
+		WN((int)_oblique) +
+		WN((int)_tool_type) +
+		WF(_pass) +
+		WF(_spindle_speed) +
+		WN((int)_spindle_cw) +
+		WN((int)_cooling);
 
 	return result;
 }
@@ -660,5 +744,12 @@ void Group::read(std::string value, float version)
 		RF(_start_point_offset, 17);
 		// older data have no exit
 		if (18 < data.size()) _lead_out = std::stoi(data[18]) != 0;
+		// older data have no oblique plunge, tool type, pass, spindle and cooling: they keep their default value
+		if (19 < data.size()) _oblique = std::stoi(data[19]) != 0;
+		if (20 < data.size()) _tool_type = (ToolType)std::stoi(data[20]);
+		RF(_pass, 21);
+		RF(_spindle_speed, 22);
+		if (23 < data.size()) _spindle_cw = std::stoi(data[23]) != 0;
+		if (24 < data.size()) _cooling = (CoolingType)std::stoi(data[24]);
 	}
 }

@@ -18,13 +18,7 @@
 #pragma once
 #include "graphic.h"
 #include <toolpath.h>
-
-enum class CoolingType
-{
-	None,
-	Flood,
-	Mist
-};
+#include "tool.h"
 
 class Group : public Graphic
 {
@@ -34,6 +28,7 @@ private:
 	bool _visible = true;
 	bool _generate = true;
 	int _tool_number = -1;
+	ToolType _tool_type = ToolType::Mill;	// a torch has no spindle, no pass depth and no plunge
 	float _tool_radius = 1;
 	int _tool_length_compensation = -1;
 	bool _cw = true;
@@ -54,6 +49,7 @@ private:
 	std::string _post_command = "";
 	StartPointType _start_point_type = StartPointType::normal;
 	float _start_point_offset = 0;
+	bool _oblique = false;		// the tool goes down along the entry of the offset start instead of vertically
 	bool _lead_out = false;		// the paths leave the contour (an exit) like they come to it (the entry)
 	int _repeat_x = 0;
 	float _repeat_x_offset = 10;
@@ -88,6 +84,16 @@ public:
 	int tool_number() { return _tool_number; }
 	void tool_number(int value) { _tool_number = value; }
 
+	ToolType tool_type() { return _tool_type; }
+	void tool_type(ToolType value) { _tool_type = value; }
+	bool is_torch() { return ::is_torch(_tool_type); }
+
+	CoolingType cooling() { return _cooling; }
+	void cooling(CoolingType value) { _cooling = value; }
+
+	// the group takes the values of the tool (number, type, diameter, feeds, pass, spindle, cooling); they can be changed afterwards
+	void apply_tool(const Tool& tool);
+
 	float safe() { return _safe; }
 	void safe(float value) { _safe = value; }
 
@@ -121,6 +127,9 @@ public:
 
 	float start_point_offset() { return _start_point_offset; }
 	void start_point_offset(float value);
+
+	bool oblique() { return _oblique; }
+	void oblique(bool value) { _oblique = value; }
 
 	bool lead_out() { return _lead_out; }
 	void lead_out(bool value);

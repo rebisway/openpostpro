@@ -177,6 +177,14 @@ void ModSim::load_text(const std::string& text, const std::string& name, bool fr
 	if (from_document && _tool_from_group && _document != nullptr && !_document->groups().empty() && _document->groups()[0]->tool_radius() > 0)
 	{
 		_tool_diameter = (float)(_document->groups()[0]->tool_radius() * 2.0);
+		// a torch (plasma, water jet, EDM) pierces the material: the model cuts through the block
+		if (_document->groups()[0]->is_torch())
+			_tool_shape = (int)SimToolShape::Plasma;
+		else if (_tool_shape == (int)SimToolShape::Plasma)
+			_tool_shape = (int)SimToolShape::Flat;
+		// a torch (plasma, water jet, EDM) pierces the material: the model cuts through the block
+		if (_document->groups()[0]->is_torch())
+			_tool_shape = (int)SimToolShape::Plasma;
 		apply_tool();
 	}
 
