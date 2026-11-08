@@ -518,6 +518,44 @@ int main()
 			CHECK(missing.extensions().empty(), "a module which is missing reads nothing");
 		}
 
+		// a translator which has the name of a module already loaded: hpgl.py is a post-processor and a translator, and python has only one
+		// table of modules. The translator is read from its folder under a name of its own.
+		{
+			std::filesystem::path collide = std::filesystem::temp_directory_path() / "opp_sim_collide";
+			std::filesystem::create_directories(collide / "a");
+			std::filesystem::create_directories(collide / "b");
+			{
+				std::ofstream f(collide / "a" / "collide_hpgl.py");
+				f << "NOT_A_TRANSLATOR = 1\n";
+			}
+			{
+				std::ofstream f(collide / "b" / "collide_hpgl.py");
+				f << "class Translator:\n"
+					 "    def start(self, options):\n"
+					 "        return {'unit': 'mm'}\n"
+					 "    def next(self, line):\n"
+					 "        return [{'cmd': 'rapid', 'x': 1.0, 'y': 2.0, 'z': 3.0}]\n"
+					 "    def close(self):\n"
+					 "        pass\n"
+					 "    def extensions(self):\n"
+					 "        return ['.ZZZ', 'zzy']\n";
+			}
+			Script::add_module_path((collide / "a").string());
+			Script::run_python("import collide_hpgl");		// the module of the post-processor is loaded first
+			PythonTranslator by_name("collide_hpgl");
+			CHECK(by_name.extensions().empty(), "by its name the translator is the module which was loaded first (the problem)");
+			PythonTranslator by_file("collide_hpgl", (collide / "b").string());
+			std::vector<std::string> extensions = by_file.extensions();
+			CHECK(extensions.size() == 2 && extensions[0] == "zzz" && extensions[1] == "zzy", "from its folder the translator is its own file, extensions in lower case without the dot");
+			std::string error;
+			CHECK(by_file.start({}, error), "the translator of the folder starts");
+			std::vector<SimCommand> out;
+			by_file.translate("x", 1, out);
+			CHECK(out.size() == 1 && out[0].type == SimCommandType::Rapid, "and it translates");
+			PythonTranslator no_file("module_which_does_not_exist", (collide / "b").string());
+			CHECK(!no_file.start({}, error) && !error.empty(), "a file which is missing is an error, not a crash");
+		}
+
 		// the module of a test: a translator which fails on the line 3, one which fails to start
 		std::filesystem::path temp = std::filesystem::temp_directory_path() / "opp_sim_test";
 		std::filesystem::create_directories(temp);

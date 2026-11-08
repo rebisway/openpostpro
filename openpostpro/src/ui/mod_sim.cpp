@@ -52,7 +52,7 @@ ModSim::ModSim(Window* window) : Module(window)
 	_translator_name = config.simulation_translator.empty() ? "gcode" : config.simulation_translator;
 	_chosen_translator = _translator_name;
 	_force = config.simulation_force;
-	_translator = new PythonTranslator(_translator_name);
+	_translator = new PythonTranslator(_translator_name, translators_folder());
 	_player.on_move = [this](const SimMove& m)
 	{
 		// a torch cuts through the block along its cutting moves, at any height (it stays over the sheet), while it is lit (M3 or the torch
@@ -101,7 +101,7 @@ void ModSim::use_translator(const std::string& name)
 	_loader.cancel();
 	delete _translator;
 	_translator_name = name;
-	_translator = new PythonTranslator(_translator_name);
+	_translator = new PythonTranslator(_translator_name, translators_folder());
 }
 
 // The choice of the person, in the list of the translators
@@ -155,7 +155,7 @@ void ModSim::translator_for(const std::string& path)
 		_translators = PythonTranslator::list(translators_folder());
 		for (const std::string& name : _translators)
 		{
-			PythonTranslator probe(name);
+			PythonTranslator probe(name, translators_folder());
 			std::vector<std::string> extensions = probe.extensions();
 			if (std::find(extensions.begin(), extensions.end(), extension) != extensions.end() && wanted.empty())
 				wanted = name;

@@ -55,12 +55,16 @@ class PythonTranslator : public SimTranslator, private Script
 {
 private:
 	std::string _name;
+	std::string _folder;
 	std::string _unit;
 	bool _opened = false;
 
 public:
-	// module: the name of the python module, for example "gcode"
-	PythonTranslator(const std::string& module);
+	// module: the name of the python module, for example "gcode". With a folder the module is read from the file folder/module.py under
+	// its own name (opp_translator_<module>): a translator never meets a post-processor or a script which has the same name (hpgl.py
+	// exists as a post-processor and as a translator, and python has only one table of modules). Without a folder the module is found
+	// in the paths of python.
+	PythonTranslator(const std::string& module, const std::string& folder = "");
 	~PythonTranslator() override;
 
 	bool start(const std::map<std::string, double>& options, std::string& error) override;
@@ -73,6 +77,10 @@ public:
 	// The extensions of the files which the module reads (lower case, without the dot): its method extensions(), optional.
 	// Empty if the module has not got it.
 	std::vector<std::string> extensions();
+
+private:
+	bool load_class();
+public:
 
 	// The translators of a folder: the modules (without .py) which define a class Translator with a method next. A module without
 	// them is a library which other files use. Sorted by name.

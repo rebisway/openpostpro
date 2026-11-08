@@ -172,9 +172,74 @@ std::string SimTranslator::to_utf8(const std::string& text)
 	return result;
 }
 
-PythonTranslator::PythonTranslator(const std::string& module)
+namespace
+{
+	// The module of a file, under a name of its own and read again each time (a new module replaces the old one). A new reference, NULL
+	// with the python error pending if it fails.
+	PyObject* module_from_file(const std::string& module_name, const std::string& path)
+	{
+		PyObject* util = PyImport_ImportModule("importlib.util");
+		if (util == NULL)
+			return NULL;
+		PyObject* spec = PyObject_CallMethod(util, "spec_from_file_location", "ss", module_name.c_str(), path.c_str());
+		if (spec == NULL || spec == Py_None)
+		{
+			Py_XDECREF(spec);
+			Py_DECREF(util);
+			if (!PyErr_Occurred())
+				PyErr_SetString(PyExc_ImportError, ("file not found: " + path).c_str());
+			return NULL;
+		}
+		PyObject* module = PyObject_CallMethod(util, "module_from_spec", "O", spec);
+		Py_DECREF(util);
+		if (module == NULL)
+		{
+			Py_DECREF(spec);
+			return NULL;
+		}
+		PyDict_SetItemString(PyImport_GetModuleDict(), module_name.c_str(), module);
+		PyObject* loader = PyObject_GetAttrString(spec, "loader");
+		PyObject* result = loader != NULL ? PyObject_CallMethod(loader, "exec_module", "O", module) : NULL;
+		Py_XDECREF(loader);
+		Py_DECREF(spec);
+		if (result == NULL)
+		{
+			Py_DECREF(module);
+			return NULL;
+		}
+		Py_DECREF(result);
+		return module;
+	}
+}
+
+PythonTranslator::PythonTranslator(const std::string& module, const std::string& folder)
 {
 	_name = module;
+	_folder = folder;
+}
+
+// The class Translator of the module and an object of it (the members of Script hold them). False if there is no such class.
+bool PythonTranslator::load_class()
+{
+	if (_folder.empty())
+	{
+		// the module is read again, so a translator edited since the last time is the one which is used
+		Script::reload_module(_name);
+		_module = _name;
+		_py_core_module = PyImport_ImportModule(_name.c_str());
+	}
+	else
+	{
+		_module = _name;
+		_py_core_module = module_from_file("opp_translator_" + _name, (std::filesystem::path(_folder) / (_name + ".py")).string());
+	}
+	if (_py_core_module != NULL)
+	{
+		_py_core_class = PyObject_GetAttrString(_py_core_module, "Translator");
+		if (_py_core_class != NULL && PyCallable_Check(_py_core_class))
+			_py_core_object = PyObject_CallObject(_py_core_class, NULL);
+	}
+	return _py_core_object != nullptr;
 }
 
 PythonTranslator::~PythonTranslator()
@@ -186,19 +251,8 @@ bool PythonTranslator::start(const std::map<std::string, double>& options, std::
 {
 	close();
 
-	// the module is read again, so a translator edited since the last time is the one which is used
-	Script::reload_module(_name);
-	_module = _name;
-
 	// the class Translator of the module
-	_py_core_module = PyImport_ImportModule(_name.c_str());
-	if (_py_core_module != NULL)
-	{
-		_py_core_class = PyObject_GetAttrString(_py_core_module, "Translator");
-		if (_py_core_class != NULL && PyCallable_Check(_py_core_class))
-			_py_core_object = PyObject_CallObject(_py_core_class, NULL);
-	}
-	if (_py_core_object == nullptr)
+	if (!load_class())
 	{
 		std::string reason = Script::python_error();
 		error = "translator " + _name + " not loaded" + (reason.empty() ? " (no class Translator)" : ": " + reason);
@@ -285,16 +339,7 @@ void PythonTranslator::close()
 std::vector<std::string> PythonTranslator::extensions()
 {
 	std::vector<std::string> result;
-	Script::reload_module(_name);
-	_module = _name;
-	_py_core_module = PyImport_ImportModule(_name.c_str());
-	if (_py_core_module != NULL)
-	{
-		_py_core_class = PyObject_GetAttrString(_py_core_module, "Translator");
-		if (_py_core_class != NULL && PyCallable_Check(_py_core_class))
-			_py_core_object = PyObject_CallObject(_py_core_class, NULL);
-	}
-	if (_py_core_object != nullptr && PyObject_HasAttrString(_py_core_object, "extensions"))
+	if (load_class() && PyObject_HasAttrString(_py_core_object, "extensions"))
 	{
 		PyObject* items = PyObject_CallMethod(_py_core_object, "extensions", NULL);
 		if (items != NULL && (PyList_Check(items) || PyTuple_Check(items)))
