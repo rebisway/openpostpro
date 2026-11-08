@@ -57,7 +57,7 @@ Un fichier sans `class Cadscript` n'est pas un script : il est ignoré et absent
 De la fonction Python au dessin : le script appelle le moteur, qui écrit des commandes courtes en texte, lues par l'application à la fin de `run()`.
 
 ```mermaid
-flowchart LR
+flowchart TB
   run["run(): self.core.line(...)"]:::user --> core["cadcore.py"]:::eng
   core -->|"self.output += 'M:7:L:0:0:10:5'"| txt["texte, une commande par ligne"]:::eng
   txt -->|"fin de run()"| app["Application : lit chaque ligne"]:::app

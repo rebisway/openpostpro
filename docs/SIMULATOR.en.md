@@ -117,7 +117,7 @@ flowchart TB
 One line of each format, translated to a command:
 
 ```mermaid
-flowchart LR
+flowchart TB
   h["HPGL<br/>PU100,200;"]:::app --> t1["hpgl.py: next(line)"]:::user --> c1["{'cmd': 'rapid', 'x': 2.5, 'y': 5.0, 'z': ...}"]:::app
   g["G-code<br/>G1 X10 Y5 F300"]:::app --> t2["gcode.py: next(line)"]:::user --> c2["{'cmd': 'linear', 'x': 10, 'y': 5, 'z': ..., 'f': 300}"]:::app
   classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
@@ -228,7 +228,7 @@ class Translator:
 The player (`SimPlayer`) plays the commands and cuts the material model (`SimModel`), which the view (`SimView`) draws. The player works within a time budget on each frame of the window.
 
 ```mermaid
-flowchart LR
+flowchart TB
   prog["Translated program<br/>(commands)"]:::app --> player["SimPlayer<br/>(player: time, speed, pause)"]:::app
   player -->|"cut from a to b"| model["SimModel"]:::app
   model --- grid["SimModelGrid<br/>grid of heights"]:::app
@@ -243,7 +243,7 @@ flowchart LR
 The flow of a cut: only the columns under the tool are looked at (`sim_footprint.h`).
 
 ```mermaid
-flowchart LR
+flowchart TB
   m["Move from a to b<br/>tool of radius r"]:::app --> cap["Capsule: segment + disc<br/>(sim_footprint.h)"]:::app
   cap --> rows["For each row y:<br/>one interval of x"]:::app
   rows --> col["Columns under the tool"]:::app

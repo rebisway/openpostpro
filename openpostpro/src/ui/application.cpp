@@ -1401,12 +1401,18 @@ void Application::render_menu()
 		ImGui::Text("%s", Lang::l("WELCOME_MESSAGE"));
 		ImGui::NewLine();
 
-		if (ImGui::BeginCombo(Lang::l("LANGUAGE"), _first_language.c_str()))
+		// the name of the language ("@lang" key of its file) then its code, as in the preferences: "Français (fr-fr)"
+		auto language_label = [](const std::string& code)
+		{
+			std::string name = Lang::language_name(code);
+			return name.empty() ? code : name + " (" + code + ")";
+		};
+		if (ImGui::BeginCombo(Lang::l("LANGUAGE"), language_label(_first_language).c_str()))
 		{
 			for (const std::string& code : Lang::get_langs())
 			{
 				const bool is_selected = (code == _first_language);
-				if (ImGui::Selectable(code.c_str(), is_selected) && code != _first_language)
+				if (ImGui::Selectable(language_label(code).c_str(), is_selected) && code != _first_language)
 				{
 					// the interface changes at once
 					_first_language = code;

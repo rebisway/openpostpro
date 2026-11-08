@@ -117,7 +117,7 @@ flowchart TB
 Une ligne de chaque format, traduite en commande :
 
 ```mermaid
-flowchart LR
+flowchart TB
   h["HPGL<br/>PU100,200;"]:::app --> t1["hpgl.py: next(line)"]:::user --> c1["{'cmd': 'rapid', 'x': 2.5, 'y': 5.0, 'z': ...}"]:::app
   g["G-code<br/>G1 X10 Y5 F300"]:::app --> t2["gcode.py: next(line)"]:::user --> c2["{'cmd': 'linear', 'x': 10, 'y': 5, 'z': ..., 'f': 300}"]:::app
   classDef user fill:#99d5cf,stroke:#0f766e,color:#052e2b
@@ -228,7 +228,7 @@ class Translator:
 Le lecteur (`SimPlayer`) joue les commandes et coupe le modèle de matière (`SimModel`), que la vue (`SimView`) dessine. Le lecteur travaille dans un budget de temps à chaque image de la fenêtre.
 
 ```mermaid
-flowchart LR
+flowchart TB
   prog["Programme traduit<br/>(commandes)"]:::app --> player["SimPlayer<br/>(lecteur : temps, vitesse, pause)"]:::app
   player -->|"coupe de a à b"| model["SimModel"]:::app
   model --- grid["SimModelGrid<br/>grille de hauteurs"]:::app
@@ -243,7 +243,7 @@ flowchart LR
 Le flux d'une coupe : seules les colonnes sous la fraise sont regardées (`sim_footprint.h`).
 
 ```mermaid
-flowchart LR
+flowchart TB
   m["Déplacement de a à b<br/>fraise de rayon r"]:::app --> cap["Capsule : segment + disque<br/>(sim_footprint.h)"]:::app
   cap --> rows["Pour chaque rangée y :<br/>un intervalle de x"]:::app
   rows --> col["Colonnes sous la fraise"]:::app

@@ -57,7 +57,7 @@ A file without a `class Cadscript` is not a script: it is skipped and not listed
 From the Python function to the drawing: the script calls the engine, which writes short text commands, read by the application when `run()` ends.
 
 ```mermaid
-flowchart LR
+flowchart TB
   run["run(): self.core.line(...)"]:::user --> core["cadcore.py"]:::eng
   core -->|"self.output += 'M:7:L:0:0:10:5'"| txt["text, one command per line"]:::eng
   txt -->|"end of run()"| app["Application: reads each line"]:::app
