@@ -346,29 +346,35 @@ void Text::compute()
 			_font = nullptr;
 		}
 
-		auto family = environment::fonts()[_family];
+		auto family = environment::font_family(_family);
+		// the file of the style which is asked, else the regular one, else any file of the family
+		struct Candidate { const std::string* path; int index; };
+		std::vector<Candidate> candidates;
 		if (_bold && _italic)
-		{
-			if (std::filesystem::exists(family.bold_italic_path))
-				_font = new Font(_family, family.bold_italic_path, _bold, _italic);
-		}
+			candidates.push_back({ &family.bold_italic_path, family.bold_italic_index });
 		else if (_bold)
-		{
-			if (std::filesystem::exists(family.bold_path))
-				_font = new Font(_family, family.bold_path, _bold, _italic);
-		}
+			candidates.push_back({ &family.bold_path, family.bold_index });
 		else if (_italic)
+			candidates.push_back({ &family.italic_path, family.italic_index });
+		candidates.push_back({ &family.regular_path, family.regular_index });
+		candidates.push_back({ &family.bold_path, family.bold_index });
+		candidates.push_back({ &family.italic_path, family.italic_index });
+		candidates.push_back({ &family.bold_italic_path, family.bold_italic_index });
+		for (const Candidate& c : candidates)
 		{
-			if (std::filesystem::exists(family.italic_path))
-				_font = new Font(_family, family.italic_path, _bold, _italic);
+			if (_font != nullptr || c.path->empty() || !std::filesystem::exists(*c.path))
+				continue;
+			try
+			{
+				_font = new Font(_family, *c.path, _bold, _italic, c.index);
+			}
+			catch (...)
+			{
+				_font = nullptr;
+			}
 		}
 		if (_font == nullptr)
-		{
-			if (std::filesystem::exists(family.regular_path))
-				_font = new Font(_family, family.regular_path, _bold, _italic);
-			else
-				Logger::log("ERROR: font " + family.name + "missing");
-		}
+			Logger::log("ERROR: font " + _family + " missing or not readable");
 
 	}
 
@@ -566,7 +572,7 @@ void Text::draw_anchors()
 void Text::properties()
 {
 	auto families = environment::fonts();
-	auto cur_fam = families[_family];
+	auto cur_fam = environment::font_family(_family);
 
 	if (_reference == -1)
 	{
@@ -589,7 +595,7 @@ void Text::properties()
 	int family = 0;
 	for (auto& f : families)
 	{
-		if (f.first == _family)
+		if (f.first == cur_fam.name)
 			family = (int)names.size();
 		names.push_back(f.first);
 	}

@@ -59,14 +59,23 @@ namespace environment
 
 	struct FontFamily
 	{
-		std::string name;
+		std::string name;				// the name of the family as the font file says it (Arial, Segoe UI)
 		std::string regular_path;
 		std::string italic_path;
 		std::string bold_path;
 		std::string bold_italic_path;
+		int regular_index = 0;			// the face of the file (a .ttc file holds several)
+		int italic_index = 0;
+		int bold_index = 0;
+		int bold_italic_index = 0;
 	};
 
+	// The families of the fonts of the system (TrueType, OpenType and collections), found with FreeType: the name and the styles come from
+	// the font files, not from their names. The list is made once, at the first call (the definition is in font.cpp).
 	std::map<std::string, FontFamily> fonts();
+	// A family by its name: exact, then without the case, then by the name which the first versions of the application gave (a name made of
+	// the file name: "arial", "segoeu"), so the documents which were saved before keep their font. An empty family if there is none.
+	FontFamily font_family(const std::string& name);
 
 	static unsigned int _next_id = 1;
 	unsigned int next_id();

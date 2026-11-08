@@ -23,7 +23,7 @@
 
 FT_Library* Font::_library = nullptr;
 
-Font::Font(std::string family, std::string path, bool bold, bool italic)
+Font::Font(std::string family, std::string path, bool bold, bool italic, int index)
 {
 	_family = family;
 	_path = path;
@@ -38,7 +38,7 @@ Font::Font(std::string family, std::string path, bool bold, bool italic)
 	}
 
 	_face = new FT_Face();
-	_error = FT_New_Face(*_library, _path.c_str(), 0, _face);
+	_error = FT_New_Face(*_library, _path.c_str(), index, _face);
 	if (_error)
 	{
 		throw error_text();
@@ -291,3 +291,208 @@ int Glyph::cubic_to(const FT_Vector* control1, const FT_Vector* control2, const 
 
 
 
+
+// ------------------------------------------------------------------------------------------------------ the fonts of the system
+#include <environment.h>
+#include <filesystem>
+#include <algorithm>
+#include <cstdlib>
+#include <mutex>
+
+namespace environment
+{
+	namespace
+	{
+		struct FontList
+		{
+			std::map<std::string, FontFamily> families;
+			std::map<std::string, std::string> aliases;		// the name of the first versions (made of the file name) and the family which has it
+		};
+
+		// The name which the first versions gave to the family of a file: made of the name of the file. Kept only to find again the font of
+		// a document which was saved with it.
+		std::string legacy_name(std::string name)
+		{
+			name = stringex::to_lower(name);
+			auto remove = [&](const std::string& part) {
+				size_t i = name.find(part);
+				if (i != std::string::npos)
+					name.erase(i, part.size());
+			};
+			auto ends = [&](const std::string& part) { return name.size() >= part.size() && name.compare(name.size() - part.size(), part.size(), part) == 0; };
+			remove(".ttf");
+			if (name.find("italic") != std::string::npos) remove("italic");
+			if (name.find("bold") != std::string::npos) remove("bold");
+			if (name.find("bd") != std::string::npos) remove("bd");
+			if (name.find("regular") != std::string::npos) remove("regular");
+			if (ends("i")) name.pop_back();
+			if (ends("b")) name.pop_back();
+			if (ends("r")) name.pop_back();
+			while (ends("_")) name.pop_back();
+			while (ends("-")) name.pop_back();
+			return name;
+		}
+
+		// the value of an environment variable, empty if there is none (the compiler of Windows refuses getenv)
+		std::string variable(const char* name)
+		{
+#ifdef _WIN32
+			char* value = nullptr;
+			size_t size = 0;
+			std::string result;
+			if (_dupenv_s(&value, &size, name) == 0 && value != nullptr)
+				result = value;
+			free(value);
+			return result;
+#else
+			const char* value = std::getenv(name);
+			return value != nullptr ? value : "";
+#endif
+		}
+
+		std::vector<std::string> font_folders()
+		{
+			std::vector<std::string> folders;
+#ifdef _WIN32
+			const std::string windir = variable("WINDIR");
+			folders.push_back((windir.empty() ? std::string("c:\\windows") : windir) + "\\Fonts");
+			const std::string local = variable("LOCALAPPDATA");		// the fonts which a person installed for herself
+			if (!local.empty())
+				folders.push_back(local + "\\Microsoft\\Windows\\Fonts");
+#elif defined(__APPLE__) || defined(__MACH__)
+			folders = { "/Library/Fonts", "/System/Library/Fonts", "/System/Library/Fonts/Supplemental" };
+			const std::string home = variable("HOME");
+			if (!home.empty())
+				folders.push_back(home + "/Library/Fonts");
+#else
+			folders = { "/usr/share/fonts", "/usr/local/share/fonts" };
+			const std::string home = variable("HOME");
+			if (!home.empty())
+			{
+				folders.push_back(home + "/.fonts");
+				folders.push_back(home + "/.local/share/fonts");
+			}
+#endif
+			return folders;
+		}
+
+		void scan(FT_Library library, const std::string& folder, FontList& list)
+		{
+			std::error_code error;
+			if (!std::filesystem::exists(folder, error))
+				return;
+			// the fonts of the system are in one folder on Windows; elsewhere they are in sub-folders
+			auto visit = [&](const std::filesystem::directory_entry& entry) {
+				if (!entry.is_regular_file(error))
+					return;
+				std::string extension = stringex::to_lower(entry.path().extension().string());
+				if (extension != ".ttf" && extension != ".otf" && extension != ".ttc" && extension != ".otc")
+					return;
+				const std::string path = entry.path().string();
+
+				FT_Face face = nullptr;
+				if (FT_New_Face(library, path.c_str(), -1, &face) != 0 || face == nullptr)
+					return;
+				const long count = face->num_faces;
+				FT_Done_Face(face);
+
+				for (long index = 0; index < count; index++)
+				{
+					face = nullptr;
+					if (FT_New_Face(library, path.c_str(), index, &face) != 0 || face == nullptr)
+						continue;
+					const bool usable = FT_IS_SCALABLE(face) && face->family_name != nullptr && face->family_name[0] != 0;
+					std::string name = usable ? face->family_name : "";
+					const std::string style = face->style_name != nullptr ? face->style_name : "";
+					const bool bold = (face->style_flags & FT_STYLE_FLAG_BOLD) != 0;
+					const bool italic = (face->style_flags & FT_STYLE_FLAG_ITALIC) != 0;
+					FT_Done_Face(face);
+					if (!usable)
+						continue;
+
+					// A weight between the regular and the bold (Light, Medium, Black, ...) has the name of the family in FreeType: it is a family
+					// of its own (Calibri Light), whatever the order of the files, else it would take the place of the regular one.
+					std::string core = style;
+					auto drop = [&](const char* word) {
+						size_t i = stringex::to_lower(core).find(stringex::to_lower(word));
+						if (i != std::string::npos)
+							core.erase(i, std::string(word).size());
+					};
+					if (bold) drop("Bold");
+					if (italic) { drop("Italic"); drop("Oblique"); drop("Slanted"); }
+					drop("Regular");
+					drop("Normal");
+					drop("Roman");
+					drop("Book");
+					while (!core.empty() && core.front() == ' ') core.erase(0, 1);
+					while (!core.empty() && core.back() == ' ') core.pop_back();
+					if (!core.empty() && stringex::to_lower(name).find(stringex::to_lower(core)) == std::string::npos)
+						name += " " + core;
+
+					FontFamily& family = list.families[name];
+					family.name = name;
+					std::string* file = &family.regular_path;
+					int* face_index = &family.regular_index;
+					if (bold && italic) { file = &family.bold_italic_path; face_index = &family.bold_italic_index; }
+					else if (bold) { file = &family.bold_path; face_index = &family.bold_index; }
+					else if (italic) { file = &family.italic_path; face_index = &family.italic_index; }
+					if (file->empty())
+					{
+						*file = path;
+						*face_index = (int)index;
+					}
+					list.aliases.emplace(legacy_name(entry.path().filename().string()), name);
+				}
+			};
+#ifdef _WIN32
+			for (const auto& entry : std::filesystem::directory_iterator(folder, error))
+				visit(entry);
+#else
+			for (const auto& entry : std::filesystem::recursive_directory_iterator(folder, std::filesystem::directory_options::skip_permission_denied | std::filesystem::directory_options::follow_directory_symlink, error))
+				visit(entry);
+#endif
+		}
+
+		const FontList& font_list()
+		{
+			static FontList list;
+			static std::once_flag once;
+			std::call_once(once, [] {
+				FT_Library library = nullptr;
+				if (FT_Init_FreeType(&library) != 0)
+					return;
+				for (const std::string& folder : font_folders())
+					scan(library, folder, list);
+				FT_Done_FreeType(library);
+			});
+			return list;
+		}
+	}
+
+	std::map<std::string, FontFamily> fonts()
+	{
+		return font_list().families;
+	}
+
+	FontFamily font_family(const std::string& name)
+	{
+		const FontList& list = font_list();
+		auto exact = list.families.find(name);
+		if (exact != list.families.end())
+			return exact->second;
+
+		const std::string lower = stringex::to_lower(name);
+		for (const auto& entry : list.families)
+			if (stringex::to_lower(entry.first) == lower)
+				return entry.second;
+
+		auto alias = list.aliases.find(lower);
+		if (alias != list.aliases.end())
+		{
+			auto found = list.families.find(alias->second);
+			if (found != list.families.end())
+				return found->second;
+		}
+		return FontFamily();
+	}
+}

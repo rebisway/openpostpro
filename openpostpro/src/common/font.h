@@ -95,7 +95,8 @@ public:
 	bool bold() { return _bold; }
 	bool italic() {	return _italic; }
 
-	Font(std::string family, std::string path, bool bold, bool italic);
+	// index: the face of the file, a .ttc file holds several
+	Font(std::string family, std::string path, bool bold, bool italic, int index = 0);
 	~Font();
 
 
