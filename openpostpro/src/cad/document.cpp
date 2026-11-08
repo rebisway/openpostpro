@@ -512,6 +512,9 @@ std::string Document::write(float version)
 
 	buffer += "0;output;" + _output + '\n';
 
+	if (_has_machine)
+		buffer += "0;machine;" + _machine.write() + '\n';
+
 	buffer += "0;unit;" + std::to_string((int)_unit) + '\n';
 
 	buffer += "0;camera;" + std::to_string(_render->camera()->scale()) + ";" + 
@@ -572,6 +575,7 @@ void Document::read(std::string value)
 	// documents saved before the unit existed are in millimeters
 	_unit = Unit::Millimeter;
 	_has_view = false;
+	_has_machine = false;
 
 	auto data = stringex::split(value, '\n');
 	float version = 0.0f;
@@ -613,6 +617,15 @@ void Document::read(std::string value)
 					version = std::stof(values[2]);
 				if (values[1] == "output")
 					_output = values[2];
+				if (values[1] == "machine" && values.size() > 2)
+				{
+					// the fields of the machine are the ones of its line of the table, after "0;machine;"
+					std::string line;
+					for (size_t i = 2; i < values.size(); i++)
+						line += (i > 2 ? ";" : "") + values[i];
+					_machine = Machine::read(line);
+					_has_machine = true;
+				}
 				if (values[1] == "unit")
 					_unit = (Unit)std::stoi(values[2]);
 				if (values[1] == "camera")

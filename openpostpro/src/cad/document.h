@@ -21,6 +21,7 @@
 #include <vector>
 #include <layer.h>
 #include <group.h>
+#include <machine.h>
 
 // unit of the document: the drawing has no unit by itself, the unit applies to the post-processor and the imports
 enum class Unit {
@@ -55,6 +56,8 @@ private:
 	bool _has_view = false;
 	int _view_zoom = 0;
 	glm::vec2 _view_middle = glm::vec2(0.0f);
+	Machine _machine;						// the machine of the document (a copy of the one of the table: the document can be opened elsewhere)
+	bool _has_machine = false;
 	Unit _unit = Unit::Millimeter;			// unit of the coordinates
 
 public:
@@ -76,6 +79,11 @@ public:
 	void path(std::string value) { _path = value; }
 
 	std::string output() { return _output; }
+
+	bool has_machine() { return _has_machine; }
+	Machine& machine() { return _machine; }
+	void machine(const Machine& value) { _machine = value; _has_machine = true; }
+	void clear_machine() { _has_machine = false; }
 
 	Unit unit() { return _unit; }
 	void unit(Unit value) { _unit = value; }

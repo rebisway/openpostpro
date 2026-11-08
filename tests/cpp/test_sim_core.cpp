@@ -12,10 +12,12 @@
 //     (the waits are skipped), going to a line, stepping, going back, going to the end, the pieces of path it reports;
 //   - the material: the shape of the tools (flat, ball, cone, torus), a plunge, the cut through of a torch, the removed volume, the
 //     zone which changed, the step of the grid;
+//   - a program on a machine with reversed axes (SimProgram::mirror): the coordinates, the direction of the arcs, the bounds;
 //   - the loader by slices of time, cancelling, a translator which does not start;
 //   - the translator in Python (simulator/gcode.py) from a program to the material, an exception in a translator, a missing module.
 //
 // Build: tests/cpp/build_sim_core.bat   Run: tests/cpp/test_sim_core.exe   (exit code 0 = all checks pass)
+#include <glm/gtc/constants.hpp>
 #include <sim_geometry.h>
 #include <sim_program.h>
 #include <sim_player.h>
@@ -33,7 +35,7 @@ static int g_fail = 0, g_run = 0;
 #define CHECK(cond, msg) do { g_run++; if (!(cond)) { g_fail++; std::printf("  FAIL line %d: %s\n", __LINE__, msg); } } while (0)
 #define CHECK_NEAR(a, b, tol, msg) do { g_run++; double _a = (a), _b = (b); if (std::fabs(_a - _b) > (tol)) { g_fail++; std::printf("  FAIL line %d: %s (got %g, expected %g)\n", __LINE__, msg, _a, _b); } } while (0)
 
-static const double PI = 3.14159265358979323846;
+static const double PI = glm::pi<double>();
 
 static SimCommand rapid(double x, double y, double z)
 {
@@ -465,6 +467,41 @@ int main()
 		CHECK_NEAR(step, 0.45, 1e-9, "the step is 15 percent of the radius");
 		double big = SimMaterial::choose_step(10000, 10000, 3.0, 15.0, 4000000);
 		CHECK(big > 4.0 && (10000 / big + 1) * (10000 / big + 1) <= 4000000 * 1.001, "a larger step when there would be too many columns");
+	}
+
+	std::puts("a machine with reversed axes");
+	{
+		// the program of a machine whose X counts from the right to the left: the line goes to X-10, the arc turns the other way
+		SimProgram program;
+		program.add(rapid(-10, 0, 5));
+		program.add(linear(-10, 5, -1, 300));
+		SimCommand quarter = arc(-5, 10, -1, -5, 5, -1, false, 300);
+		program.add(quarter);
+		program.mirror(true, false, false);
+		CHECK_NEAR(program.at(0).target.x, 10, 1e-9, "x is mirrored");
+		CHECK_NEAR(program.at(1).target.y, 5, 1e-9, "y is not mirrored");
+		CHECK_NEAR(program.at(2).center.x, 5, 1e-9, "the center of the arc is mirrored");
+		CHECK(program.at(2).cw, "one reversed axis: the arc turns the other way");
+		program.analyze(SimSettings());
+		CHECK(program.stats().low.x >= -1e-9 && program.stats().high.x >= 9.99, "the bounds follow the mirror");
+
+		SimProgram both;
+		both.add(arc(5, 10, 0, 5, 5, 0, true, 300));
+		both.mirror(true, true, false);
+		CHECK(both.at(0).cw, "both axes reversed: the arc keeps its direction (a half turn)");
+		CHECK_NEAR(both.at(0).target.y, -10, 1e-9, "y is mirrored too");
+
+		SimProgram vertical;
+		vertical.add(arc(5, 0, 10, 5, 0, 5, false, 300, SimPlane::XZ));
+		vertical.mirror(false, true, false);
+		CHECK(!vertical.at(0).cw, "Y is not an axis of the plane XZ: the direction is kept");
+		vertical.mirror(false, false, true);
+		CHECK(vertical.at(0).cw, "Z is: the direction changes");
+
+		SimProgram none;
+		none.add(arc(5, 10, 0, 5, 5, 0, false, 300));
+		none.mirror(false, false, false);
+		CHECK(!none.at(0).cw && none.at(0).target.x == 5, "no reversed axis: nothing changes");
 	}
 
 	std::puts("loader");

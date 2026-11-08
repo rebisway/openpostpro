@@ -353,6 +353,65 @@ void ModCad::view_changed()
 	updateCursor();
 }
 
+void ModCad::draw_machine()
+{
+	if (_document == nullptr || !_document->has_machine() || _camera->width() <= 0)
+		return;
+	const Machine& machine = _document->machine();
+	glm::vec2 low, high;
+	machine.area(low, high);
+
+	// the coordinates of the drawing in the window: the area of the drawing starts at (_left, _top)
+	const float scale = _camera->scale();
+	auto screen = [&](glm::vec2 p) { return ImVec2(_left + _camera->xcenter() + p.x * scale, _top + _camera->ycenter() - p.y * scale); };
+	ImDrawList* list = ImGui::GetBackgroundDrawList();
+
+	// a shape out of the area makes the outline red: the machine can not reach it
+	bool outside = false;
+	for (Layer* l : _document->layers())
+	{
+		if (!l->visible() || outside)
+			continue;
+		for (Shape* s : l->shapes())
+		{
+			auto& b = s->bounds();
+			if (!std::isfinite(b.top_left.x) || !std::isfinite(b.bottom_right.x))
+				continue;
+			const float tolerance = 0.01f;
+			if ((std::min)(b.top_left.x, b.bottom_right.x) < low.x - tolerance || (std::max)(b.top_left.x, b.bottom_right.x) > high.x + tolerance ||
+				(std::min)(b.top_left.y, b.bottom_right.y) < low.y - tolerance || (std::max)(b.top_left.y, b.bottom_right.y) > high.y + tolerance)
+			{
+				outside = true;
+				break;
+			}
+		}
+	}
+
+	ImVec2 a = screen(low), b = screen(high);
+	list->AddRectFilled(a, b, IM_COL32(255, 255, 255, 12));
+	list->AddRect(a, b, outside ? IM_COL32(255, 70, 60, 230) : IM_COL32(230, 200, 80, 170), 0.0f, 0, 2.0f);
+	if (outside)
+		list->AddText(ImVec2((std::min)(a.x, b.x) + 6, (std::min)(a.y, b.y) + 4), IM_COL32(255, 90, 80, 255), Lang::l("MACHINE_OUTSIDE"));
+
+	// the zero of the machine, and the directions of X and Y as the operator sees them (reversed axes point to the other side)
+	ImVec2 zero = screen(glm::vec2(0, 0));
+	const float length = 46.0f, head = 7.0f;
+	auto arrow = [&](glm::vec2 direction, ImU32 color, const char* name)
+	{
+		// screen directions: Y goes up on the screen
+		ImVec2 d(direction.x, -direction.y);
+		ImVec2 tip(zero.x + d.x * length, zero.y + d.y * length);
+		list->AddLine(zero, tip, color, 2.0f);
+		ImVec2 n(-d.y, d.x);
+		list->AddTriangleFilled(tip, ImVec2(tip.x - d.x * head + n.x * head * 0.5f, tip.y - d.y * head + n.y * head * 0.5f),
+			ImVec2(tip.x - d.x * head - n.x * head * 0.5f, tip.y - d.y * head - n.y * head * 0.5f), color);
+		list->AddText(ImVec2(tip.x + d.x * 8 - 4, tip.y + d.y * 8 - 7), color, name);
+	};
+	arrow(glm::vec2(machine.invert_x ? -1.0f : 1.0f, 0.0f), IM_COL32(255, 90, 80, 255), "X");
+	arrow(glm::vec2(0.0f, machine.invert_y ? -1.0f : 1.0f), IM_COL32(100, 220, 110, 255), "Y");
+	list->AddCircleFilled(zero, 4.0f, IM_COL32(255, 255, 255, 255));
+}
+
 void ModCad::fit_view()
 {
 	if (_camera->width() <= 0 || _camera->height() <= 0)
@@ -376,6 +435,13 @@ void ModCad::fit_view()
 				min_y = (std::min)(min_y, p.y); max_y = (std::max)(max_y, p.y);
 			}
 		}
+	}
+
+	if (min_x > max_x && _document->has_machine())
+	{
+		glm::vec2 low, high;
+		_document->machine().area(low, high);
+		min_x = low.x; min_y = low.y; max_x = high.x; max_y = high.y;
 	}
 
 	float scale = 1.0f;
@@ -437,6 +503,16 @@ void ModCad::left_button_down() {
 	_double_click = now - _last_click_time < 0.4 && glm::distance(screen, _last_click_screen) < 8.0f;
 	_last_click_time = now;
 	_last_click_screen = screen;
+
+	// the curve a text must follow is chosen by a click on it, a click elsewhere cancels
+	if (_link_text != nullptr)
+	{
+		Text* text = _link_text;
+		_link_text = nullptr;
+		if (_shape_hovered != nullptr && _shape_hovered != (Shape*)text && _shape_hovered->type() != GraphicType::Text)
+			link_text(text, _shape_hovered);
+		return;
+	}
 
 	if (_cad_creation == GraphicType::None && _shape_hovered != nullptr)
 	{
@@ -938,6 +1014,9 @@ void ModCad::scroll(double xdelta, double ydelta)
 
 void ModCad::key_pressed(int key, int scancode, int action, int mods)
 {
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		_link_text = nullptr;
+
 	auto k = glfwGetKeyName(key, scancode);
 
 	if (action == GLFW_PRESS)
@@ -1716,6 +1795,9 @@ void ModCad::render_GUI()
 	}
 
 	_tools_window.draw();
+	_machines_window.draw(_document);
+	draw_machine();
+	draw_link_hint();
 
 	if (_display_pocket_box)
 	{
@@ -1923,16 +2005,20 @@ void ModCad::render_menu()
 				{
 					if (((Text*)g)->reference() == -1)
 					{
-						if (_document->selected().size() > 1 && ImGui::MenuItem(Lang::l("DRAWING_SET_REFERENCE_TO_TEXT")))
+						if (_document->selected().size() > 1)
 						{
-							set_reference_to_text();
-							((Text*)g)->compute();
+							if (ImGui::MenuItem(Lang::l("DRAWING_SET_REFERENCE_TO_TEXT")))
+								set_reference_to_text();
 						}
+						else if (ImGui::MenuItem(Lang::l("TEXT_LINK_PICK")))
+							_link_text = (Text*)g;
 					}
 					else if (ImGui::MenuItem(Lang::l("DRAWING_REMOVE_REFERENCE_TO_TEXT")))
 					{
+						auto before = ((Text*)g)->write();
 						((Text*)g)->reference(-1);
 						((Text*)g)->compute();
+						History::undo(HistoryActionType::Modify, before);
 					}
 					if (ImGui::MenuItem(Lang::l("DRAWING_CONVERT_TO_SPLINE")))
 					{
@@ -2040,6 +2126,10 @@ void ModCad::render_menu()
 		if (ImGui::MenuItem(Lang::l("WORKSHOP_RENAME")))
 		{
 			key_pressed(GLFW_KEY_F2, 0, GLFW_PRESS, 0);
+		}
+		if (ImGui::MenuItem(Lang::l("WORKSHOP_MACHINES")))
+		{
+			_machines_window.show();
 		}
 		if (ImGui::MenuItem(Lang::l("WORKSHOP_TOOLS")))
 		{
@@ -3119,19 +3209,24 @@ void ModCad::set_reference_to_text()
 	Text* t = nullptr;
 	Shape* s = nullptr;
 
-	if (_document->selected()[0]->type() == GraphicType::Text)
-		t = (Text*)_document->selected()[0];
-	else if (_document->selected()[0]->shape())
-		s = (Shape*)_document->selected()[0];
+	for (int i = 0; i < 2 && i < (int)_document->selected().size(); i++)
+	{
+		if (_document->selected()[i]->type() == GraphicType::Text)
+			t = (Text*)_document->selected()[i];
+		else if (_document->selected()[i]->shape())
+			s = (Shape*)_document->selected()[i];
+	}
 
-	if (_document->selected()[1]->type() == GraphicType::Text)
-		t = (Text*)_document->selected()[1];
-	else if (_document->selected()[1]->shape())
-		s = (Shape*)_document->selected()[1];
+	if (s != nullptr && t != nullptr)
+		link_text(t, s);
+}
 
-	if (s == nullptr || t == nullptr)
+void ModCad::link_text(Text* t, Shape* s)
+{
+	if (s == nullptr || t == nullptr || s->type() == GraphicType::Text)
 		return;
 
+	auto before = t->write();
 	t->reference_path(std::vector<glm::vec2>(), false);
 
 	std::vector<Shape*> shapes = look_for_siblings(s);
@@ -3139,22 +3234,34 @@ void ModCad::set_reference_to_text()
 	std::vector<glm::vec2> coordinates = cad::get_raw_coordinates(shapes);
 
 	bool closed = false;
-
 	if (shapes.size() == 1)
 	{
-		if (shapes[0]->type() == GraphicType::Circle || (shapes.size() == 1 && shapes[0]->type() == GraphicType::Ellipse))
+		if (shapes[0]->type() == GraphicType::Circle || shapes[0]->type() == GraphicType::Ellipse)
 			closed = true;
-	}
-	else
-	{
-
 	}
 
 	t->reference(s->id());
 	t->reference_path(coordinates, closed);
 	t->reference_pos(0);
+	t->compute();
+	History::undo(HistoryActionType::Modify, before);
 
-	select(shapes);
+	// the text stays selected: its properties show the position and the side
+	unselect_all();
+	select(std::vector<Shape*>({ t }));
+}
+
+// the hint displayed while the click on the curve is expected
+void ModCad::draw_link_hint()
+{
+	if (_link_text == nullptr)
+		return;
+	const char* text = Lang::l("TEXT_LINK_HINT");
+	ImDrawList* list = ImGui::GetForegroundDrawList();
+	ImVec2 size = ImGui::CalcTextSize(text);
+	ImVec2 position(_left + (_width - size.x) / 2.0f, _top + 12.0f);
+	list->AddRectFilled(ImVec2(position.x - 10, position.y - 6), ImVec2(position.x + size.x + 10, position.y + size.y + 6), IM_COL32(20, 20, 20, 220), 4.0f);
+	list->AddText(position, IM_COL32(255, 220, 90, 255), text);
 }
 
 std::vector<Shape*> ModCad::look_for_siblings(Shape* s)

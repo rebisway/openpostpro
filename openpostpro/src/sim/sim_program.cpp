@@ -52,6 +52,27 @@ double SimProgram::move_time(const SimCommand& command, const glm::dvec3& from, 
 	}
 }
 
+void SimProgram::mirror(bool x, bool y, bool z)
+{
+	if (!x && !y && !z)
+		return;
+	const glm::dvec3 sign(x ? -1.0 : 1.0, y ? -1.0 : 1.0, z ? -1.0 : 1.0);
+	for (SimCommand& c : _commands)
+	{
+		if (!c.moves())
+			continue;
+		c.target *= sign;
+		c.center *= sign;
+		if (c.type == SimCommandType::Arc)
+		{
+			bool first = c.plane == SimPlane::YZ ? y : x;
+			bool second = c.plane == SimPlane::XY ? y : z;
+			if (first != second)
+				c.cw = !c.cw;
+		}
+	}
+}
+
 void SimProgram::analyze(const SimSettings& settings)
 {
 	_settings = settings;

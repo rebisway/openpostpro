@@ -20,6 +20,7 @@
 #include <group.h>
 #include <tool.h>
 #include <feeds.h>
+#include <machine.h>
 #include <cut_path.h>
 #include <strings.h>
 #include <environment.h>
@@ -225,6 +226,70 @@ int main()
 		CHECK(back.find(1) && back.find(1)->flutes == 3, "the number of teeth is saved");
 		back.read("5;old tool;0;6;1000;500;1;0;1;0\n");
 		CHECK(back.find(5) && back.find(5)->flutes == 2, "an old line has the default number of teeth");
+	}
+
+	std::puts("machine: area, axes, arcs, table");
+	{
+		Machine m;
+		m.name = "Plasma table";
+		m.width = 1200; m.depth = 800; m.height = 150;
+		glm::vec2 low, high;
+		m.area(low, high);
+		CHECK(near(low.x, 0) && near(low.y, 0) && near(high.x, 1200) && near(high.y, 800), "the area from the bottom left");
+		CHECK(m.contains(glm::vec2(10, 10)) && !m.contains(glm::vec2(-1, 10)) && !m.contains(glm::vec2(10, 801)), "contains");
+		m.origin = MachineOrigin::BottomRight;
+		m.area(low, high);
+		CHECK(near(low.x, -1200) && near(high.x, 0) && near(low.y, 0), "the area from the bottom right");
+		m.origin = MachineOrigin::TopLeft;
+		m.area(low, high);
+		CHECK(near(low.y, -800) && near(high.y, 0) && near(low.x, 0), "the area from the top left");
+		m.origin = MachineOrigin::TopRight;
+		m.area(low, high);
+		CHECK(near(low.x, -1200) && near(low.y, -800) && near(high.x, 0) && near(high.y, 0), "the area from the top right");
+		m.origin = MachineOrigin::Center;
+		m.area(low, high);
+		CHECK(near(low.x, -600) && near(high.y, 400), "the area around the center");
+
+		CHECK(!m.reversed(), "no reversed axis");
+		glm::vec3 p(10, 20, -3);
+		CHECK(m.to_machine(p) == p, "nothing changes without reversed axis");
+		m.invert_x = true;
+		CHECK(m.reversed() && m.flips_arcs(), "one reversed axis: reversed, and the arcs turn the other way");
+		glm::vec3 q = m.to_machine(p);
+		CHECK(near(q.x, -10) && near(q.y, 20) && near(q.z, -3), "x changes its sign");
+		CHECK(m.from_machine(q) == p, "back to the drawing");
+		float i = 5, j = 7;
+		bool cw = true;
+		m.arc_to_machine(i, j, cw);
+		CHECK(near(i, -5) && near(j, 7) && !cw, "the center and the direction of an arc");
+		m.invert_y = true;
+		CHECK(!m.flips_arcs(), "both axes reversed: the arcs keep their direction");
+		i = 5; j = 7; cw = true;
+		m.arc_to_machine(i, j, cw);
+		CHECK(near(i, -5) && near(j, -7) && cw, "the center changes, the direction does not");
+
+		// text and table
+		m.invert_z = true;
+		Machine back = Machine::read(m.write());
+		CHECK(back.name == m.name && near(back.width, 1200) && back.origin == MachineOrigin::Center && back.invert_x && back.invert_y && back.invert_z, "a machine written and read again");
+		Machine damaged = Machine::read("Only a name");
+		CHECK(damaged.name == "Only a name" && near(damaged.width, 600) && !damaged.reversed(), "a short line keeps the defaults");
+		Machine semicolon = Machine::read(Machine().write());
+		CHECK(semicolon.name.empty(), "an empty name");
+		m.name = "A; B";
+		CHECK(Machine::read(m.write()).name == "A; B", "a name with a separator");
+
+		MachineTable table;
+		Machine a; a.name = "Router";
+		table.add(a);
+		CHECK(table.add(a).name == "Router 2", "a name which is used gets a number");
+		CHECK(table.find("Router 2") != nullptr && table.find("none") == nullptr, "find");
+		CHECK(!table.rename("Router", "Router 2") && table.rename("Router", "Mill") && table.find("Mill"), "rename");
+		std::string path = (profile / "data" / "machines.txt").string();
+		CHECK(table.save(path), "save");
+		MachineTable loaded;
+		CHECK(loaded.load(path) && loaded.machines().size() == 2 && loaded.find("Mill"), "load");
+		CHECK(table.remove("Mill") && !table.remove("Mill"), "remove");
 	}
 
 	std::puts("plunge: vertical");

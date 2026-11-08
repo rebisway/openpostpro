@@ -52,6 +52,11 @@ public:
 	void add(const SimCommand& command) { _commands.push_back(command); }
 	void add(const std::vector<SimCommand>& commands) { _commands.insert(_commands.end(), commands.begin(), commands.end()); }
 
+	// Changes the sign of the coordinates of the axes which are true (a machine whose axes count the other way than the drawing: the
+	// program has the opposite values, the simulator shows the part as it is). An arc turns the other way when only one of the two axes
+	// of its plane is changed. To call before analyze().
+	void mirror(bool x, bool y, bool z);
+
 	// Computes the times and the bounds. To call again when the settings change
 	void analyze(const SimSettings& settings);
 

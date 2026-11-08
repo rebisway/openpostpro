@@ -65,7 +65,8 @@ glm::vec3 Postpro::get_current_position()
 		auto message = error("get_current_position");
 		throw std::runtime_error(message);
 	}
-	return answer;
+	// the core knows the values of the program: the drawing has the opposite ones when the axes are reversed
+	return _machine ? _machine->from_machine(answer) : answer;
 }
 
 void Postpro::set_postpro()
@@ -87,7 +88,7 @@ void Postpro::set_postpro()
 
 void Postpro::set_safe_position(float value)
 {
-	set("set_safe_position", "f", value);
+	set("set_safe_position", "f", to_machine(glm::vec3(0, 0, value)).z);
 }
 
 bool Postpro::get_disable_z()
@@ -336,17 +337,17 @@ std::string Postpro::linear(glm::vec3 value, bool rapid)
 	if (value.x != _pos.x)
 	{
 		a_axes.push_back("X");
-		a_values.push_back(value.x);
+		a_values.push_back(to_machine(value).x);
 	}
 	if (value.y != _pos.y)
 	{
 		a_axes.push_back("Y");
-		a_values.push_back(value.y);
+		a_values.push_back(to_machine(value).y);
 	}
 	if (value.z != _pos.z && get_disable_z() == false)
 	{
 		a_axes.push_back("Z");
-		a_values.push_back(value.z);
+		a_values.push_back(to_machine(value).z);
 	}
 	
 	std::string answer;
@@ -391,17 +392,17 @@ std::string Postpro::circular(glm::vec3 value, glm::vec2 center, bool cw)
 	if (value.x != _pos.x)
 	{
 		a_axes.push_back("X");
-		a_values.push_back(value.x);
+		a_values.push_back(to_machine(value).x);
 	}
 	if (value.y != _pos.y)
 	{
 		a_axes.push_back("Y");
-		a_values.push_back(value.y);
+		a_values.push_back(to_machine(value).y);
 	}
 	if (value.z != _pos.z)
 	{
 		a_axes.push_back("Z");
-		a_values.push_back(value.z);
+		a_values.push_back(to_machine(value).z);
 	}
 	
 	float i = center.x, j = center.y;
@@ -410,6 +411,10 @@ std::string Postpro::circular(glm::vec3 value, glm::vec2 center, bool cw)
 		i = center.x - _pos.x;
 		j = center.y - _pos.y;
 	}
+
+	// reversed axes: the center and the direction of the arc in the program
+	if (_machine)
+		_machine->arc_to_machine(i, j, cw);
 	if (!_ijk_relative || _ijk_relative && i != 0)
 	{
 		a_axes.push_back("I");
@@ -468,17 +473,17 @@ std::string Postpro::drilling(glm::vec3 value, float retract, int pause)
 	if (value.x != _pos.x)
 	{
 		a_axes.push_back("X");
-		a_values.push_back(value.x);
+		a_values.push_back(to_machine(value).x);
 	}
 	if (value.y != _pos.y)
 	{
 		a_axes.push_back("Y");
-		a_values.push_back(value.y);
+		a_values.push_back(to_machine(value).y);
 	}
 	if (value.z != _pos.z)
 	{
 		a_axes.push_back("Z");
-		a_values.push_back(value.z);
+		a_values.push_back(to_machine(value).z);
 	}
 
 	std::string answer;
@@ -492,7 +497,7 @@ std::string Postpro::drilling(glm::vec3 value, float retract, int pause)
 			PyTuple_SetItem(axes, i, PyUnicode_FromString(a_axes[i].c_str()));
 			PyTuple_SetItem(values, i, PyFloat_FromDouble(a_values[i]));
 		}
-		PyObject* result = PyObject_CallMethod(_py_core_object, "drilling", "OOfi", axes, values, retract, pause);
+		PyObject* result = PyObject_CallMethod(_py_core_object, "drilling", "OOfi", axes, values, to_machine(glm::vec3(0, 0, retract)).z, pause);
 
 		Py_DECREF(axes);
 		Py_DECREF(values);
@@ -523,17 +528,17 @@ std::string Postpro::pecking(glm::vec3 value, float retract, float delta)
 	if (value.x != _pos.x)
 	{
 		a_axes.push_back("X");
-		a_values.push_back(value.x);
+		a_values.push_back(to_machine(value).x);
 	}
 	if (value.y != _pos.y)
 	{
 		a_axes.push_back("Y");
-		a_values.push_back(value.y);
+		a_values.push_back(to_machine(value).y);
 	}
 	if (value.z != _pos.z)
 	{
 		a_axes.push_back("Z");
-		a_values.push_back(value.z);
+		a_values.push_back(to_machine(value).z);
 	}
 
 	std::string answer;
@@ -547,7 +552,7 @@ std::string Postpro::pecking(glm::vec3 value, float retract, float delta)
 			PyTuple_SetItem(axes, i, PyUnicode_FromString(a_axes[i].c_str()));
 			PyTuple_SetItem(values, i, PyFloat_FromDouble(a_values[i]));
 		}
-		PyObject* result = PyObject_CallMethod(_py_core_object, "pecking", "OOff", axes, values, retract, delta);
+		PyObject* result = PyObject_CallMethod(_py_core_object, "pecking", "OOff", axes, values, to_machine(glm::vec3(0, 0, retract)).z, delta);
 
 		Py_DECREF(axes);
 		Py_DECREF(values);
@@ -578,17 +583,17 @@ std::string Postpro::tapping(glm::vec3 value, float retract)
 	if (value.x != _pos.x)
 	{
 		a_axes.push_back("X");
-		a_values.push_back(value.x);
+		a_values.push_back(to_machine(value).x);
 	}
 	if (value.y != _pos.y)
 	{
 		a_axes.push_back("Y");
-		a_values.push_back(value.y);
+		a_values.push_back(to_machine(value).y);
 	}
 	if (value.z != _pos.z)
 	{
 		a_axes.push_back("Z");
-		a_values.push_back(value.z);
+		a_values.push_back(to_machine(value).z);
 	}
 
 	std::string answer;
@@ -602,7 +607,7 @@ std::string Postpro::tapping(glm::vec3 value, float retract)
 			PyTuple_SetItem(axes, i, PyUnicode_FromString(a_axes[i].c_str()));
 			PyTuple_SetItem(values, i, PyFloat_FromDouble(a_values[i]));
 		}
-		PyObject* result = PyObject_CallMethod(_py_core_object, "tapping", "OOf", axes, values, retract);
+		PyObject* result = PyObject_CallMethod(_py_core_object, "tapping", "OOf", axes, values, to_machine(glm::vec3(0, 0, retract)).z);
 
 		Py_DECREF(axes);
 		Py_DECREF(values);
@@ -633,17 +638,17 @@ std::string Postpro::boring(glm::vec3 value, float retract, int pause)
 	if (value.x != _pos.x)
 	{
 		a_axes.push_back("X");
-		a_values.push_back(value.x);
+		a_values.push_back(to_machine(value).x);
 	}
 	if (value.y != _pos.y)
 	{
 		a_axes.push_back("Y");
-		a_values.push_back(value.y);
+		a_values.push_back(to_machine(value).y);
 	}
 	if (value.z != _pos.z)
 	{
 		a_axes.push_back("Z");
-		a_values.push_back(value.z);
+		a_values.push_back(to_machine(value).z);
 	}
 
 	std::string answer;
@@ -657,7 +662,7 @@ std::string Postpro::boring(glm::vec3 value, float retract, int pause)
 			PyTuple_SetItem(axes, i, PyUnicode_FromString(a_axes[i].c_str()));
 			PyTuple_SetItem(values, i, PyFloat_FromDouble(a_values[i]));
 		}
-		PyObject* result = PyObject_CallMethod(_py_core_object, "boring", "OOfi", axes, values, retract, pause);
+		PyObject* result = PyObject_CallMethod(_py_core_object, "boring", "OOfi", axes, values, to_machine(glm::vec3(0, 0, retract)).z, pause);
 
 		Py_DECREF(axes);
 		Py_DECREF(values);
@@ -701,6 +706,9 @@ std::string Postpro::line(std::string value)
 std::string Postpro::run(Document* doc, std::string path, std::string version)
 {
 	auto t = std::chrono::high_resolution_clock::now();
+
+	// a machine with reversed axes: the values of the program are the opposite ones of the drawing
+	_machine = doc->has_machine() && doc->machine().reversed() ? &doc->machine() : nullptr;
 
 	initialize(_module, _lang);
 
@@ -801,6 +809,21 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 				const bool lead_in = t->start_point_allowed() && t->start_point_type() != StartPointType::normal && curves.size() == 1;
 				for (Curve& c : curves)
 					runs.back().push_back({ t, c, lead_in });
+			}
+			// a toolpath out of the area of the machine can not be machined: the file is written anyway, with a warning
+			if (doc->has_machine())
+			{
+				bool outside = false;
+				for (auto& items : runs)
+					for (Item& item : items)
+						for (const Segment& segment : item.curve)
+							if (!doc->machine().contains(segment.point))
+								outside = true;
+				if (outside)
+				{
+					Logger::log("Warning: the group [" + g->name() + "] goes out of the area of the machine [" + doc->machine().name + "]");
+					output += comment("WARNING: out of the area of the machine " + doc->machine().name);
+				}
 			}
 			glm::vec2 cursor(0.0f);
 			for (size_t r = 0; r < runs.size(); r++)
@@ -966,6 +989,7 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 	finalize();
 
 	doc->output(output_path);
+	_machine = nullptr;
 
 	Logger::log("Output time (ms): " + std::to_string(std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - t).count()));
 	Logger::log("Output path : " + output_path);

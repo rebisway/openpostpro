@@ -24,11 +24,14 @@
 #include <curve.h>
 #include <pocket.h>
 #include "tools_window.h"
+#include "machines_window.h"
 
 #define CAD_UNION 0
 #define CAD_SUBSTRACT 1
 #define CAD_INTERSECT 2
 #define CAD_NOT_INTERSECT 3
+
+class Text;
 
 class ModCad : public Module
 {
@@ -68,6 +71,8 @@ private:
 	void view_changed();
 	// zoom and move the view so that all the shapes of the visible layers are in the drawing area
 	void fit_view();
+	// the area of the machine of the document under the drawing: the table, the zero of the machine and the direction of its axes
+	void draw_machine();
 	std::map<std::string, Texture*> _textures;
 
 	MessageBox _message_box;
@@ -110,6 +115,7 @@ private:
 	bool _display_offset_box = false;
 	bool _display_pocket_box = false;
 	ToolsWindow _tools_window;
+	MachinesWindow _machines_window;
 	bool _display_delete_layer = false;
 	bool _display_delete_group = false;
 	int _tab_flags = 0;
@@ -223,6 +229,11 @@ public:
 	void convert_unit();
 	void cut_at_intersections();
 	void set_reference_to_text();
+	// links a text to the shape (and the shapes connected to it) it follows, the change is undone in one step
+	void link_text(Text* text, Shape* shape);
+	// text waiting for the click on the curve to follow, nullptr if there is none
+	Text* _link_text = nullptr;
+	void draw_link_hint();
 	std::vector<Shape*> look_for_siblings(Shape* s);
 	void connect_shapes();
 #ifdef _DEBUG

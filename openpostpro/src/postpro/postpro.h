@@ -44,6 +44,10 @@ private:
 
 	glm::vec3 _pos = glm::vec3(0,0,0);
 
+	// the machine of the document when its axes are reversed (the values of the program are the opposite of the ones of the drawing)
+	const Machine* _machine = nullptr;
+	glm::vec3 to_machine(glm::vec3 value) { return _machine ? _machine->to_machine(value) : value; }
+
 	bool _first_call = true;
 
 	// postpro python class

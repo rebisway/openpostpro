@@ -241,9 +241,6 @@ void ModSim::load_text(const std::string& text, const std::string& name, bool fr
 			_tool_shape = (int)SimToolShape::Plasma;
 		else if (_tool_shape == (int)SimToolShape::Plasma)
 			_tool_shape = (int)SimToolShape::Flat;
-		// a torch (plasma, water jet, EDM) pierces the material: the model cuts through the block
-		if (_document->groups()[0]->is_torch())
-			_tool_shape = (int)SimToolShape::Plasma;
 		apply_tool();
 	}
 
@@ -261,6 +258,13 @@ void ModSim::load_text(const std::string& text, const std::string& name, bool fr
 void ModSim::finish_loading()
 {
 	_settings.optional_stop = _optional_stop;
+
+	// the machine of the document: its program has the opposite values on the reversed axes, the simulator shows the part as it is
+	if (_text_from_document && _document != nullptr && _document->has_machine())
+	{
+		const Machine& machine = _document->machine();
+		_program.mirror(machine.invert_x, machine.invert_y, machine.invert_z);
+	}
 	_program.analyze(_settings);
 
 	_program_lights = false;
@@ -301,6 +305,14 @@ void ModSim::build_block()
 	glm::dvec3 high = s.has_cut ? s.cut_high : s.high;
 	double margin = _tool.radius * 2.0 + 2.0;
 	glm::dvec2 corner_low(low.x - margin, low.y - margin), corner_high(high.x + margin, high.y + margin);
+	// the machine of the document: the block is at least its table
+	if (_text_from_document && _document != nullptr && _document->has_machine())
+	{
+		glm::vec2 area_low, area_high;
+		_document->machine().area(area_low, area_high);
+		corner_low = glm::min(corner_low, glm::dvec2(area_low));
+		corner_high = glm::max(corner_high, glm::dvec2(area_high));
+	}
 
 	double top = _stock_top;
 	double deepest = std::max(0.0, top - low.z);

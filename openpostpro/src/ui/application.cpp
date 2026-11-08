@@ -165,6 +165,7 @@ void Application::initialize()
 	{
 		config.read();
 		tool_table().load();
+		machine_table().load();
 	}
 	catch (const std::exception& e)
 	{
