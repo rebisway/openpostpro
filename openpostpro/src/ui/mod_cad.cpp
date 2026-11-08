@@ -96,6 +96,7 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["CAM_SHOW_DIRECTION"] = _render->load_texture("direction.png");
 	_textures["CAM_SHOW_START"] = _render->load_texture("start.png");
 	_textures["CAM_REFRESH"] = _render->load_texture("refresh.png");
+	_textures["CAD_FIT"] = _render->load_texture("fit.png");
 	_textures["BTN_ADD"] = _render->load_texture("plus.png");
 	_textures["BTN_REMOVE"] = _render->load_texture("minus.png");
 	_textures["BTN_UP"] = _render->load_texture("up.png");
@@ -338,7 +339,11 @@ void ModCad::apply_view()
 {
 	_view_pending = false;
 	_camera->view(_document->view_scale(), _document->view_zoom(), _document->view_middle());
+	view_changed();
+}
 
+void ModCad::view_changed()
+{
 	// everything which depends on the camera follows: the precision of the mouse detection, the axes, the grid, the cursor and
 	// the position of the mouse
 	Shape::precision = PRECISION / _camera->scale();
@@ -346,6 +351,50 @@ void ModCad::apply_view()
 	updateAxe();
 	updateGrid();
 	updateCursor();
+}
+
+void ModCad::fit_view()
+{
+	if (_camera->width() <= 0 || _camera->height() <= 0)
+		return;
+
+	// the box of the shapes of the visible layers
+	const float inf = std::numeric_limits<float>::max();
+	float min_x = inf, min_y = inf, max_x = -inf, max_y = -inf;
+	for (Layer* l : _document->layers())
+	{
+		if (!l->visible())
+			continue;
+		for (Shape* s : l->shapes())
+		{
+			auto& b = s->bounds();
+			for (glm::vec2 p : { b.top_left, b.bottom_right })
+			{
+				if (!std::isfinite(p.x) || !std::isfinite(p.y))
+					continue;
+				min_x = (std::min)(min_x, p.x); max_x = (std::max)(max_x, p.x);
+				min_y = (std::min)(min_y, p.y); max_y = (std::max)(max_y, p.y);
+			}
+		}
+	}
+
+	float scale = 1.0f;
+	glm::vec2 middle(0.0f);
+	if (min_x <= max_x && min_y <= max_y)
+	{
+		middle = glm::vec2((min_x + max_x) / 2, (min_y + max_y) / 2);
+		// a margin around the drawing; a drawing without width or height (a point, a horizontal line) is fitted by the other side
+		const float margin = 1.12f;
+		float sx = (max_x - min_x) > 1e-6f ? _camera->width() / ((max_x - min_x) * margin) : inf;
+		float sy = (max_y - min_y) > 1e-6f ? _camera->height() / ((max_y - min_y) * margin) : inf;
+		scale = (std::min)(sx, sy);
+		if (scale == inf || scale <= 0.0f)
+			scale = 1.0f;
+	}
+	// the zoom steps of the wheel are a factor of 1.1: the nearest step is kept for the wheel and for the file
+	int steps = (int)std::lround(std::log(scale) / std::log(1.1f));
+	_camera->view(scale, steps, middle);
+	view_changed();
 }
 
 void ModCad::display(float left, float top, float width, float height)
@@ -898,6 +947,10 @@ void ModCad::key_pressed(int key, int scancode, int action, int mods)
 		{
 			remove();
 		}
+		else if (key == GLFW_KEY_HOME)
+		{
+			fit_view();
+		}
 		else if (key == GLFW_KEY_SPACE ) // Space bar pressed, used for ending polyline construction
 		{
 			// only a polyline is validated by the space bar: a segment which has only its start would be a segment of length zero
@@ -1311,11 +1364,15 @@ void ModCad::render_GUI()
 		// a button is the icon and its frame (1 pixel on each side); the window adds its padding
 		const float size = 20.0f, space = ImGui::GetStyle().ItemSpacing.x;
 		const ImVec2 pad = ImGui::GetStyle().WindowPadding;
-		const float box_w = 4 * (size + 2) + 3 * space + 2 * pad.x, box_h = size + 2 + 2 * pad.y;
+		const float box_w = 5 * (size + 2) + 4 * space + 2 * pad.x, box_h = size + 2 + 2 * pad.y;
 		ImGui::SetNextWindowPos(ImVec2((_width - box_w) / 2, 60.0f));
 		ImGui::SetNextWindowSize(ImVec2(box_w, box_h));
 		ImGui::Begin("###CAM_DISPLAY", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize);
 		_shortcut_column = 0;
+		// the view: the whole drawing in the drawing area (also the key Home)
+		if (set_shortcut("CAD_FIT", ImVec2(size, size)))
+			fit_view();
+		ImGui::SameLine();
 		if (set_shortcut(_document->show_toolpaths() ? "CAM_TOOLPATHS_VISIBLE" : "CAM_TOOLPATHS_HIDDEN", ImVec2(size, size)))
 			_document->show_toolpaths(!_document->show_toolpaths());
 		ImGui::SameLine();

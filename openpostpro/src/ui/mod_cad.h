@@ -64,6 +64,10 @@ private:
 	// the view of the document which has just been read, applied when the size of the drawing area is known
 	bool _view_pending = false;
 	void apply_view();
+	// the view after a change of the camera: precision of the mouse, axes, grid, cursor
+	void view_changed();
+	// zoom and move the view so that all the shapes of the visible layers are in the drawing area
+	void fit_view();
 	std::map<std::string, Texture*> _textures;
 
 	MessageBox _message_box;

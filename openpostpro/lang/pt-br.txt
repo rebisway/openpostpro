@@ -351,3 +351,4 @@ MATERIAL_SOFTWOOD=Madeira macia
 MATERIAL_MDF=MDF, compensado
 MATERIAL_PLASTIC=Plástico
 SIM_AUTO=Auto
+CAD_FIT=Ajustar o desenho à janela (Home)

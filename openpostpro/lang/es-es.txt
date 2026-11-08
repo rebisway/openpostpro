@@ -351,3 +351,4 @@ MATERIAL_SOFTWOOD=Madera blanda
 MATERIAL_MDF=MDF, contrachapado
 MATERIAL_PLASTIC=Plástico
 SIM_AUTO=Auto
+CAD_FIT=Ajustar el dibujo a la ventana (Inicio)

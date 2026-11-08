@@ -351,3 +351,4 @@ MATERIAL_SOFTWOOD=Legno tenero
 MATERIAL_MDF=MDF, compensato
 MATERIAL_PLASTIC=Plastica
 SIM_AUTO=Auto
+CAD_FIT=Adatta il disegno alla finestra (Home)

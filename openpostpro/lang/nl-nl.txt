@@ -351,3 +351,4 @@ MATERIAL_SOFTWOOD=Zachthout
 MATERIAL_MDF=MDF, multiplex
 MATERIAL_PLASTIC=Kunststof
 SIM_AUTO=Auto
+CAD_FIT=Tekening passend maken (Home)

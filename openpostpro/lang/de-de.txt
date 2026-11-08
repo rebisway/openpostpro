@@ -351,3 +351,4 @@ MATERIAL_SOFTWOOD=Weichholz
 MATERIAL_MDF=MDF, Sperrholz
 MATERIAL_PLASTIC=Kunststoff
 SIM_AUTO=Auto
+CAD_FIT=Zeichnung einpassen (Pos1)

@@ -355,3 +355,4 @@ MATERIAL_SOFTWOOD=Bois tendre
 MATERIAL_MDF=MDF, contreplaqué
 MATERIAL_PLASTIC=Plastique
 SIM_AUTO=Auto
+CAD_FIT=Cadrer le dessin dans la fenêtre (Début)

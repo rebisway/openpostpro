@@ -351,3 +351,4 @@ MATERIAL_SOFTWOOD=Softwood
 MATERIAL_MDF=MDF, plywood
 MATERIAL_PLASTIC=Plastic
 SIM_AUTO=Auto
+CAD_FIT=Fit the drawing in the window (Home)
