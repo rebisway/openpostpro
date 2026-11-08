@@ -41,6 +41,7 @@ flowchart LR
 OpenPostPro includes tools to create and edit 2D geometry directly:
 
 - Points, lines, circles, arcs, ellipses, polylines, splines, and text
+- **Text along a curve**: a text can follow a line, an arc, a circle or any chain of connected shapes (select the text, then **Drawing → Link the text to a curve** or the button of its properties, and click the curve). The letters keep their size, the start of the text is set with a slider, the text can go round a closed curve, and it goes on in a straight line past the end of an open one. The text follows its curve when the curve is moved with the mouse or when the origin or the unit is changed; the button of its properties and the refresh button of the toolpaths read the curve again in the other cases
 - Geometric transformations such as offset, mirror, scale, rotation, and moving the origin
 - **Extend**: prolongs a line or an arc, from the end nearest to the mouse, up to the nearest other entity, with a preview of the result under the mouse
 - **Cut**: splits lines, arcs, circles, polylines, and ellipses at the clicked point (the magnet stays active) or at the crossing of the shapes under the click
@@ -80,6 +81,10 @@ Create toolpath operations from your drawing, grouped by tool, with the depth, t
 - **Tabs** (holding bridges) on closed follow and offset paths, with independent positions that can be moved with a slider, and a choice of the start point of the path
 
 A button of the Groups tab computes the toolpaths again from their shapes (the selected ones, or all of them) after the drawing has been modified.
+
+**Tools and machines.** A **table of tools** (cutters and torches: plasma, water jet, wire EDM) gives a group its diameter, feeds, pass depth, spindle and cooling, and a **table of cutting data** by material computes them from the diameter and the number of teeth. A group which uses a torch hides the settings it does not have, and the pocket and drilling buttons are disabled. The tool can **go down obliquely** along the entry of a path instead of plunging. A **machine** gives the area of the table, the zero and the direction of the axes (X counting from the right to the left, for instance): the area is drawn under the drawing, and the post-processor and the simulator follow the axes.
+
+Guide: [Tools, torches and machines](docs/TOOLS-MACHINES.en.md) · [Outils, torches et machines](docs/TOOLS-MACHINES.fr.md)
 
 CAM operations have configurable parameters. Because the project is still young, the results, especially outline, offset, and pocket calculations, may not be reliable for every shape or machining situation.
 
