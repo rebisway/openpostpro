@@ -82,7 +82,9 @@ void ToolsWindow::draw()
 	{
 		const char* label = Lang::l("TOOLS_COMPUTE");
 		float width = ImGui::CalcTextSize(label).x + ImGui::GetStyle().FramePadding.x * 2;
-		ImGui::SameLine((std::max)(0.0f, ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - width));
+		// (SameLine(offset) would add the offset of the group again: the position is set after the line is continued)
+		ImGui::SameLine();
+		ImGui::SetCursorPosX((std::max)(ImGui::GetCursorPosX(), ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - width));
 		ImGui::BeginDisabled(tool == nullptr || tool->torch());
 		if (ImGui::Button(label) && tool != nullptr)
 		{
