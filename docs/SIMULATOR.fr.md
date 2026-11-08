@@ -16,7 +16,7 @@ Contenu : installation d'un traducteur, l'onglet Simulation, le déroulement d'u
 | Chargement | au démarrage, chaque fichier `.py` est copié dans `~/.openpostpro/simulator` et utilisé à partir de là |
 | Nom | le vôtre (`mon_controleur.py`), placé dans `~/.openpostpro/simulator`. La copie du démarrage **écrase les fichiers de même nom** : ne modifiez jamais un fichier livré, copiez-le sous un autre nom |
 | Classe | le fichier définit une classe nommée `Translator` avec une méthode `next`. Un fichier `.py` qui n'en a pas est une bibliothèque utilisée par d'autres fichiers : il n'est pas listé |
-| Choix | la liste de l'onglet Simulation montre les traducteurs du dossier ; le choix est conservé avec les réglages. En changer traduit de nouveau le programme |
+| Choix | la liste de l'onglet Simulation montre *Auto* puis les traducteurs du dossier. *Auto* (par défaut) choisit pour chaque fichier le traducteur qui en lit l'extension (méthode `extensions()`, plus bas), et `gcode` si aucun ne la déclare. Choisir un traducteur dans la liste le **force** pour tous les fichiers. Le choix est conservé avec les réglages ; en changer traduit de nouveau le programme |
 | Dossier | le menu **Simulation / Ouvrir le dossier des traducteurs** ouvre `~/.openpostpro/simulator` |
 | Rechargement | le module est relu à chaque chargement d'un programme : modifiez le fichier, enregistrez-le, chargez de nouveau le programme, sans redémarrer |
 | Erreurs | une exception du traducteur est écrite dans le journal avec sa trace Python et la ligne du programme ; la traduction continue à la ligne suivante |
@@ -91,6 +91,7 @@ La traduction se fait par tranches de 10 ms à chaque image de la fenêtre, avec
 | `start(options)` | dictionnaire de nombres (aucun n'est donné aujourd'hui) | dictionnaire d'informations, ou `None` | oublier tout : position, modes, avance, unités. La seule information lue est `'unit'` (`'mm'` ou `'inch'`, l'unité du programme) |
 | `next(line)` | une ligne du programme, sans fin de ligne | **liste** de commandes, `[]` si la ligne n'en donne pas | traduire une ligne. Votre état change ici |
 | `close()` | aucun | rien | libérer ce que vous utilisez. Appelée même après une erreur |
+| `extensions()` (facultative) | aucun | liste de chaînes | les extensions des fichiers que le traducteur lit, sans le point (`['plt', 'hpgl']`), pour que *Auto* le choisisse. Sans cette méthode, le traducteur n'est jamais choisi tout seul |
 
 Une exception levée par `next()` n'est pas fatale : elle devient un message d'erreur sur cette ligne, et la ligne suivante est traduite. Une exception dans `start()` arrête le chargement et est écrite dans le journal.
 

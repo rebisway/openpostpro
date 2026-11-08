@@ -56,6 +56,10 @@ class Translator:
     def close(self):
         pass
 
+    # the extensions (without the dot) of the files which this translator reads, so the simulator can choose it by itself
+    def extensions(self):
+        return ['nc', 'gcode', 'tap', 'ngc', 'cnc', 'txt']
+
     def next(self, line):
         out = []
         try:

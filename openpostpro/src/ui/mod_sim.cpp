@@ -50,6 +50,8 @@ ModSim::ModSim(Window* window) : Module(window)
 
 	// the translator which was chosen the last time
 	_translator_name = config.simulation_translator.empty() ? "gcode" : config.simulation_translator;
+	_chosen_translator = _translator_name;
+	_force = config.simulation_force;
 	_translator = new PythonTranslator(_translator_name);
 	_player.on_move = [this](const SimMove& m)
 	{
@@ -91,7 +93,8 @@ std::string ModSim::translators_folder()
 	return environment::combine_path(environment::application_data_path(), "simulator");
 }
 
-void ModSim::select_translator(const std::string& name)
+// The translator which is used, without changing the choice of the person
+void ModSim::use_translator(const std::string& name)
 {
 	if (name == _translator_name)
 		return;
@@ -99,13 +102,66 @@ void ModSim::select_translator(const std::string& name)
 	delete _translator;
 	_translator_name = name;
 	_translator = new PythonTranslator(_translator_name);
+}
 
+// The choice of the person, in the list of the translators
+void ModSim::select_translator(const std::string& name)
+{
+	_chosen_translator = name;
+	_force = true;
 	// saved with the settings of the application when it is closed
-	config.simulation_translator = _translator_name;
+	config.simulation_translator = name;
+	config.simulation_force = true;
+	if (name == _translator_name)
+		return;
+	use_translator(name);
 
 	// the program which is shown is translated again
 	if (!_text.empty())
 		load_text(_text, _name, _text_from_document);
+}
+
+// The person chose Auto: the translator is the one which reads the extension of the file
+void ModSim::select_auto()
+{
+	_force = false;
+	config.simulation_force = false;
+	if (_source_path.empty())
+		return;
+	std::string before = _translator_name;
+	translator_for(_source_path);
+	if (before != _translator_name && !_text.empty())
+		load_text(_text, _name, _text_from_document);
+}
+
+// The translator of a file: the one of the list if the person forced it, otherwise the one which says it reads the extension of the file
+// (the method extensions() of the translator, the first one by name if there are several), otherwise gcode
+void ModSim::translator_for(const std::string& path)
+{
+	_source_path = path;
+	if (_force)
+	{
+		use_translator(_chosen_translator);
+		return;
+	}
+	std::string extension = std::filesystem::path(path).extension().string();
+	while (!extension.empty() && extension[0] == '.')
+		extension.erase(0, 1);
+	std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+
+	std::string wanted;
+	if (!extension.empty())
+	{
+		_translators = PythonTranslator::list(translators_folder());
+		for (const std::string& name : _translators)
+		{
+			PythonTranslator probe(name);
+			std::vector<std::string> extensions = probe.extensions();
+			if (std::find(extensions.begin(), extensions.end(), extension) != extensions.end() && wanted.empty())
+				wanted = name;
+		}
+	}
+	use_translator(wanted.empty() ? "gcode" : wanted);
 }
 
 void ModSim::apply_tool()
@@ -138,6 +194,7 @@ void ModSim::load_file(const std::string& path)
 		Logger::error("Simulation: file [" + path + "] not found");
 		return;
 	}
+	translator_for(path);
 	double start = glfwGetTime();
 	std::string text = file::read_all_text(path);
 	Logger::log("Simulation: file read in " + std::to_string((int)((glfwGetTime() - start) * 1000)) + " ms");
@@ -156,6 +213,7 @@ void ModSim::load_output()
 		Logger::error(Lang::t("SIM_ERR_NO_OUTPUT"));
 		return;
 	}
+	translator_for(_document->output());
 	load_text(file::read_all_text(_document->output()), std::filesystem::path(_document->output()).filename().string(), true);
 }
 
@@ -526,12 +584,16 @@ void ModSim::draw_controls()
 			load_file(path);
 	}
 	ImGui::SameLine();
-	ImGui::SetNextItemWidth(130);
-	if (ImGui::BeginCombo("##SIM_TRANSLATOR", _translator_name.c_str()))
+	ImGui::SetNextItemWidth(150);
+	const std::string preview = _force ? _translator_name : std::string(Lang::l("SIM_AUTO")) + " (" + _translator_name + ")";
+	if (ImGui::BeginCombo("##SIM_TRANSLATOR", preview.c_str()))
 	{
+		// Auto: the translator which reads the extension of the file. The others are forced for every file
+		if (ImGui::Selectable(Lang::l("SIM_AUTO"), !_force))
+			select_auto();
 		_translators = PythonTranslator::list(translators_folder());
 		for (const std::string& name : _translators)
-			if (ImGui::Selectable(name.c_str(), name == _translator_name))
+			if (ImGui::Selectable(name.c_str(), _force && name == _translator_name))
 				select_translator(name);
 		ImGui::EndCombo();
 	}

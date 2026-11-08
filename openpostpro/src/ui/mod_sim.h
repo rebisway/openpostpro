@@ -46,7 +46,10 @@ private:
 	std::vector<std::string> _lines;			// the text of the program
 	std::vector<int> _line_level;				// for each line: -1 nothing, 0 information, 1 warning, 2 error
 	std::string _name;							// the name of what is simulated
-	std::string _translator_name = "gcode";
+	std::string _translator_name = "gcode";		// the translator which is used
+	bool _force = false;						// the translator of the list is used for every file, whatever its extension
+	std::string _source_path;					// the file which is shown (its extension chooses the translator)
+	std::string _chosen_translator = "gcode";		// the one which the person chose in the list: a file of a known format uses the translator of its format for once
 	std::vector<std::string> _translators;		// the translators of the folder, refreshed when the list is opened
 	std::string _text;							// the text which is simulated: translated again when the translator changes
 	bool _text_from_document = false;
@@ -98,6 +101,9 @@ private:
 	void apply_tool();
 	std::string translators_folder();
 	void select_translator(const std::string& name);
+	void use_translator(const std::string& name);
+	void select_auto();
+	void translator_for(const std::string& path);
 	void update(double seconds);
 	void sync_view();
 	std::string state_text();

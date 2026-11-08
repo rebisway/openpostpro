@@ -16,7 +16,7 @@ Covered here: installation of a translator, the Simulation tab, the life cycle o
 | Loading | at startup, each `.py` file is copied to `~/.openpostpro/simulator` and used from there |
 | Name | your own (`my_controller.py`), put in `~/.openpostpro/simulator`. The copy at startup **overwrites files of the same name**, so never edit a bundled file in place: copy it under another name |
 | Class | the file defines a class named `Translator` with a method `next`. A `.py` file without them is a library shared by other files: it is not listed |
-| Choice | the list in the Simulation tab shows the translators of the folder; the choice is kept with the settings. Changing it translates the program again |
+| Choice | the list in the Simulation tab shows *Auto* then the translators of the folder. *Auto* (the default) chooses for each file the translator which reads its extension (the `extensions()` method, below), and `gcode` if none of them says it does. Choosing a translator in the list **forces** it for every file. The choice is kept with the settings; changing it translates the program again |
 | Folder | the menu **Simulation / Open the folder of the translators** opens `~/.openpostpro/simulator` |
 | Reloading | the module is read again at each load of a program: edit the file, save it, load the program again, no restart |
 | Errors | an exception of the translator is written in the log with its Python traceback and the line of the program; the translation goes on with the next line |
@@ -91,6 +91,7 @@ The translation is done by slices of 10 ms for each frame of the window, with a 
 | `start(options)` | dictionary of numbers (none are given today) | dictionary of information, or `None` | forget everything: position, modes, feed, units. The only information read is `'unit'` (`'mm'` or `'inch'`, the unit of the program) |
 | `next(line)` | one line of the program, without end of line | **list** of commands, `[]` if the line gives none | translate one line. Your state changes here |
 | `close()` | none | nothing | release what you use. Called even after an error |
+| `extensions()` (optional) | none | list of strings | the extensions of the files the translator reads, without the dot (`['plt', 'hpgl']`), so *Auto* can choose it. Without this method the translator is never chosen by itself |
 
 An exception raised by `next()` is not fatal: it becomes an error message on that line, and the next line is translated. An exception in `start()` stops the loading and is written in the log.
 

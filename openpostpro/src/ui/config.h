@@ -69,6 +69,7 @@ public:
 
 	// translator of the simulator (name of a module of the simulator folder)
 	std::string simulation_translator = "gcode";
+	bool simulation_force = false;				// the translator is the one of the list for every file (otherwise the one which reads the extension of the file)
 
 	// unit given to the new documents: 0 millimeter, 1 inch
 	int default_unit = 0;

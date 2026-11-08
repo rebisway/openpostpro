@@ -507,6 +507,17 @@ int main()
 		Script::initialize_python();
 		Script::add_module_path(simulator.string());
 
+		// the extensions which a translator reads (its method extensions(), optional): lower case, without the dot
+		{
+			PythonTranslator gcode_translator("gcode"), hpgl_translator("hpgl");
+			std::vector<std::string> gcode_extensions = gcode_translator.extensions(), hpgl_extensions = hpgl_translator.extensions();
+			CHECK(std::find(gcode_extensions.begin(), gcode_extensions.end(), "nc") != gcode_extensions.end(), "gcode reads .nc");
+			CHECK(std::find(hpgl_extensions.begin(), hpgl_extensions.end(), "plt") != hpgl_extensions.end(), "hpgl reads .plt");
+			CHECK(std::find(gcode_extensions.begin(), gcode_extensions.end(), "plt") == gcode_extensions.end(), "gcode does not read .plt");
+			PythonTranslator missing("module_which_does_not_exist");
+			CHECK(missing.extensions().empty(), "a module which is missing reads nothing");
+		}
+
 		// the module of a test: a translator which fails on the line 3, one which fails to start
 		std::filesystem::path temp = std::filesystem::temp_directory_path() / "opp_sim_test";
 		std::filesystem::create_directories(temp);

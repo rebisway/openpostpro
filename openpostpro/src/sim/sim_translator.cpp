@@ -282,6 +282,48 @@ void PythonTranslator::close()
 	Script::finalize();
 }
 
+std::vector<std::string> PythonTranslator::extensions()
+{
+	std::vector<std::string> result;
+	Script::reload_module(_name);
+	_module = _name;
+	_py_core_module = PyImport_ImportModule(_name.c_str());
+	if (_py_core_module != NULL)
+	{
+		_py_core_class = PyObject_GetAttrString(_py_core_module, "Translator");
+		if (_py_core_class != NULL && PyCallable_Check(_py_core_class))
+			_py_core_object = PyObject_CallObject(_py_core_class, NULL);
+	}
+	if (_py_core_object != nullptr && PyObject_HasAttrString(_py_core_object, "extensions"))
+	{
+		PyObject* items = PyObject_CallMethod(_py_core_object, "extensions", NULL);
+		if (items != NULL && (PyList_Check(items) || PyTuple_Check(items)))
+		{
+			Py_ssize_t count = PySequence_Size(items);
+			for (Py_ssize_t i = 0; i < count; i++)
+			{
+				PyObject* item = PySequence_GetItem(items, i);		// new reference
+				if (item != NULL && PyUnicode_Check(item))
+				{
+					const char* s = py_utf8(item);
+					std::string extension = s ? s : "";
+					while (!extension.empty() && extension[0] == '.')
+						extension.erase(0, 1);
+					std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+					if (!extension.empty())
+						result.push_back(extension);
+				}
+				Py_XDECREF(item);
+			}
+		}
+		if (items != NULL)
+			Py_DECREF(items);
+	}
+	PyErr_Clear();
+	Script::finalize();
+	return result;
+}
+
 std::vector<std::string> PythonTranslator::list(const std::string& folder)
 {
 	std::vector<std::string> result;

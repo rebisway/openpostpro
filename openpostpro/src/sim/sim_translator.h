@@ -70,6 +70,10 @@ public:
 
 	std::string name() const { return _name; }
 
+	// The extensions of the files which the module reads (lower case, without the dot): its method extensions(), optional.
+	// Empty if the module has not got it.
+	std::vector<std::string> extensions();
+
 	// The translators of a folder: the modules (without .py) which define a class Translator with a method next. A module without
 	// them is a library which other files use. Sorted by name.
 	static std::vector<std::string> list(const std::string& folder);
