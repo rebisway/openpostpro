@@ -53,8 +53,9 @@ ModSim::ModSim(Window* window) : Module(window)
 	_translator = new PythonTranslator(_translator_name);
 	_player.on_move = [this](const SimMove& m)
 	{
-		// a torch only cuts while it is lit (M3 or the torch command); a cutter takes the material away whatever the spindle does
-		if ((_tool.shape != SimToolShape::Plasma || m.spindle != 0 || m.torch) && _model)
+		// a torch cuts through the block along its cutting moves, at any height (it stays over the sheet), while it is lit (M3 or the torch
+		// command) when the program lights it; a cutter takes the material away whatever the spindle does
+		if (_model && (_tool.shape != SimToolShape::Plasma || (!m.rapid && (!_program_lights || m.spindle != 0 || m.torch))))
 		{
 			double start = glfwGetTime();
 			_model->cut(m.from, m.to, _tool);
@@ -203,6 +204,11 @@ void ModSim::finish_loading()
 {
 	_settings.optional_stop = _optional_stop;
 	_program.analyze(_settings);
+
+	_program_lights = false;
+	for (const SimCommand& c : _program.commands())
+		if ((c.type == SimCommandType::Spindle || c.type == SimCommandType::Torch) && c.state != 0)
+			_program_lights = true;
 
 	// the messages of the translator, with their line
 	int errors = 0, warnings = 0;

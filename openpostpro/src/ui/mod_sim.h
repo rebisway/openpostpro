@@ -64,6 +64,7 @@ private:
 	double _real_time = 0;						// seconds of the computer spent to play the program (what is written in the log at its end)
 	double _machined = 0;						// the length (mm) of the moves at a feed rate which were played
 	double _cut_time = 0;						// ... of which in the model of the material
+	bool _program_lights = false;				// the program lights the torch or the spindle (M3, torch command): a torch only cuts then
 	size_t _cut_count = 0;						// the cuts made in the model
 	int _pauses = 0;							// pauses of the player (button), and stops asked by the program (M0, M1), since the start
 	int _program_stops = 0;
