@@ -87,7 +87,7 @@ Materials: aluminium, brass and copper, mild steel, stainless steel, hardwood, s
 | Origin | the zero of the machine on the table: bottom left, bottom right, top left, top right, center. The **origin of the drawing is the zero of the machine**: the area is around it |
 | X, Y, Z reversed | the axis counts the other way than the operator sees it (X which grows from the right to the left, for instance) |
 
-The buttons **Use for this document** and **No machine** set the machine of the document. The document keeps a **copy** (a line `0;machine;...`), so that it is complete on another computer; a document without machine opens as before.
+The buttons **Apply** and **No machine** set the machine of the document. The document keeps a **copy** (a line `0;machine;...`), so that it is complete on another computer; a document without machine opens as before.
 
 **In the drawing**, the area of the table is drawn under the shapes, with the zero of the machine and two arrows X and Y which point in the direction in which the machine counts (a reversed axis points the other way). When a shape of a visible layer goes out of the area, the outline of the table becomes red with a message. **Fit the drawing** (the button at the top center of the drawing, or the key Home) shows the table when the drawing is empty.
 

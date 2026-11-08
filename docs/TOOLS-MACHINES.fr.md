@@ -87,7 +87,7 @@ Matériaux : aluminium, laiton et cuivre, acier doux, inox, bois dur, bois tendr
 | Origine | le zéro de la machine sur la table : bas gauche, bas droite, haut gauche, haut droite, centre. **L'origine du dessin est le zéro de la machine** : la zone est autour |
 | X, Y, Z inversé | l'axe compte dans l'autre sens que l'opérateur le voit (X qui croît de droite à gauche, par exemple) |
 
-Les boutons **Utiliser pour ce document** et **Aucune machine** règlent la machine du document. Le document garde une **copie** (une ligne `0;machine;...`), pour être complet sur un autre ordinateur ; un document sans machine s'ouvre comme avant.
+Les boutons **Appliquer** et **Aucune machine** règlent la machine du document. Le document garde une **copie** (une ligne `0;machine;...`), pour être complet sur un autre ordinateur ; un document sans machine s'ouvre comme avant.
 
 **Dans le dessin**, la zone de la table est dessinée sous les formes, avec le zéro de la machine et deux flèches X et Y qui montrent le sens dans lequel la machine compte (un axe inversé pointe de l'autre côté). Quand une forme d'un calque visible sort de la zone, le contour de la table devient rouge avec un message. **Cadrer le dessin** (le bouton en haut au centre du dessin, ou la touche Début) montre la table quand le dessin est vide.
 
