@@ -121,6 +121,22 @@ namespace stringex
 
 	std::string to_lower(std::string s);
 
+	/// <summary>
+	/// Decode an UTF-8 string into code points (not UTF-16: a character outside of the first plane is one code point). A byte which is
+	/// not valid UTF-8 gives U+FFFD. The same on every platform.
+	/// </summary>
+	std::u32string to_utf32(const std::string& input);
+
+	/// <summary>
+	/// Encode code points in UTF-8
+	/// </summary>
+	std::string from_utf32(const std::u32string& input);
+
+	/// <summary>
+	/// The characters of an UTF-8 string in the reverse order (not its bytes)
+	/// </summary>
+	std::string reverse_utf8(const std::string& input);
+
 	std::string to_upper(std::string s);
 
 	std::string from_escape(std::string s);

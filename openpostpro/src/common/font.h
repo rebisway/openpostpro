@@ -104,6 +104,13 @@ public:
 
 	Glyph* get_glyph(unsigned int character);
 
+	// The code points which a font file can draw, in ascending order (a symbol font such as Webdings has them in U+F000..U+F0FF)
+	static std::vector<unsigned int> list_codes(const std::string& path, int index = 0);
+
+	// The glyphs of a page of the table of characters: 16 x 16 cells of `cell` pixels in an image of 4 bytes by pixel (white, the alpha is
+	// the glyph). cells[i] is the code of the cell i, or 0xFFFFFFFF if the cell is empty.
+	static bool render_cells(const std::string& path, int index, const std::vector<unsigned int>& cells, int cell, std::vector<unsigned char>& rgba, int& width, int& height);
+
 	int error() { return _error; }
 	std::string error_text() { return FT_Error_String(_error); }
 

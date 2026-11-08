@@ -170,7 +170,7 @@ bool Graphic::property_bool(const char* label, const char* id, bool& value)
 
 bool Graphic::property_string(const char* label, const char* id, std::string& value)
 {
-	char input[100];
+	char input[400];		// 100 characters of 3 bytes, such as Chinese ones
 	bool changed = false;
 
 	snprintf(input, sizeof(input), "%s", value.c_str());

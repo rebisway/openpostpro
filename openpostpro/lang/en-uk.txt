@@ -377,3 +377,6 @@ MACHINE_NONE=No machine
 MACHINE_IN_USE=in use
 MACHINE_OUTSIDE=Out of the area of the machine
 MACHINE_USE_HINT=Use for this document
+FONT_CHARMAP=Characters...
+FONT_CHARMAP_TITLE=Character map
+FONT_CHARMAP_GOTO=Go to code U+

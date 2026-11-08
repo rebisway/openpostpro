@@ -91,6 +91,9 @@ public:
 	virtual Buffer* create_buffer(std::vector<glm::vec3> vertices, std::vector<glm::vec3> normales = std::vector<glm::vec3>(), int usage = NULL) { return NULL;  }
 	virtual void delete_buffer(Buffer* buffer) {}
 	virtual Texture* load_texture(std::string path) { return NULL; }
+	// An image in memory: 4 bytes (red, green, blue, alpha) for each pixel, filtered. For the images which the application draws itself
+	// (the glyphs of the table of characters)
+	virtual Texture* create_rgba_texture(int width, int height, const unsigned char* data) { return NULL; }
 	virtual void delete_texture(Texture* texture) {}
 
 	// A texture of one floating point number for each pixel (a map of heights, read by a shader with texelFetch). It is not filtered.

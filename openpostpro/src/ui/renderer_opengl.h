@@ -86,6 +86,7 @@ public:
 	void delete_texture(Texture* texture) override;
 
 	Texture* create_float_texture(int width, int height, const float* data) override;
+	Texture* create_rgba_texture(int width, int height, const unsigned char* data) override;
 	void update_float_texture(Texture* texture, int x, int y, int width, int height, const float* data, int row_length) override;
 	void bind_texture(Texture* texture, int unit) override;
 	void draw_arrays(int primitive, int count) override;

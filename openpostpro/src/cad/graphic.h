@@ -165,7 +165,10 @@ public:
 	// serialize
 	virtual void read(std::string value, float version=0) {}
 
-private:
+protected:
+	// the label of a line of the properties: the control of the line is drawn after it
 	void property_label(const char* label);
+
+private:
 	std::string _slider_snapshot;		// state saved when a slider drag starts
 };

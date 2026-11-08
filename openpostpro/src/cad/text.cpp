@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include "charmap.h"
 #include "text.h"
 #include "geometry.h"
 #include "imgui.h"
@@ -386,7 +387,7 @@ void Text::compute()
 	{
 		auto t = _text;
 		if (_mirror)
-			std::reverse(t.begin(), t.end());
+			t = stringex::reverse_utf8(t);
 
 		// bounds is an array of characheters bounding box
 		// we use the vertical middle axis as reference for matrix operation to orientate the letter with the shape reference position
@@ -631,6 +632,17 @@ void Text::properties()
 	auto content = _text;
 	if (property_string(Lang::l("FONT_TEXT"), "##FT_TEXT", content))
 		modify([&] { text(content); });
+
+	// the table of characters: the symbols and the languages which can not be typed
+	property_label(Lang::l("FONT_CHARMAP_TITLE"));
+	if (ImGui::Button(Lang::l("FONT_CHARMAP"), ImVec2(-FLT_MIN, 0)))
+		CharMap::instance().open();
+	unsigned int picked = 0;
+	if (CharMap::instance().draw(render(), cur_fam, picked))
+	{
+		auto inserted = _text + stringex::from_utf32(std::u32string(1, (char32_t)picked));
+		modify([&] { text(inserted); });
+	}
 
 	std::vector<std::string> names;
 	int family = 0;

@@ -23,6 +23,18 @@
 
 FT_Library* Font::_library = nullptr;
 
+// The encoding of a face for the codes of the characters: Unicode, else the encoding of the symbol fonts (Symbol, Webdings, Wingdings:
+// their characters are at U+F020..U+F0FF), else the first one. FreeType does not select the symbol encoding by itself.
+static void select_charmap(FT_Face face)
+{
+	if (FT_Select_Charmap(face, FT_ENCODING_UNICODE) == 0)
+		return;
+	if (FT_Select_Charmap(face, FT_ENCODING_MS_SYMBOL) == 0)
+		return;
+	if (face->num_charmaps > 0)
+		FT_Set_Charmap(face, face->charmaps[0]);
+}
+
 Font::Font(std::string family, std::string path, bool bold, bool italic, int index)
 {
 	_family = family;
@@ -43,6 +55,7 @@ Font::Font(std::string family, std::string path, bool bold, bool italic, int ind
 	{
 		throw error_text();
 	}
+	select_charmap(*_face);
 
 	_height = 0;
 }
@@ -59,6 +72,80 @@ Font::~Font()
 	for (it = _glyphs.begin(); it != _glyphs.end(); it++)
 		delete it->second;
 	_glyphs.clear();
+}
+
+std::vector<unsigned int> Font::list_codes(const std::string& path, int index)
+{
+	std::vector<unsigned int> result;
+	if (_library == nullptr)
+	{
+		_library = new FT_Library();
+		if (FT_Init_FreeType(_library) != 0)
+			return result;
+	}
+	FT_Face face = nullptr;
+	if (FT_New_Face(*_library, path.c_str(), index, &face) != 0 || face == nullptr)
+		return result;
+	select_charmap(face);
+	FT_UInt glyph = 0;
+	FT_ULong code = FT_Get_First_Char(face, &glyph);
+	while (glyph != 0)
+	{
+		result.push_back((unsigned int)code);
+		code = FT_Get_Next_Char(face, code, &glyph);
+	}
+	FT_Done_Face(face);
+	return result;
+}
+
+bool Font::render_cells(const std::string& path, int index, const std::vector<unsigned int>& cells, int cell, std::vector<unsigned char>& rgba, int& width, int& height)
+{
+	width = height = 16 * cell;
+	rgba.assign((size_t)width * height * 4, 0);
+	if (_library == nullptr)
+	{
+		_library = new FT_Library();
+		if (FT_Init_FreeType(_library) != 0)
+			return false;
+	}
+	FT_Face face = nullptr;
+	if (FT_New_Face(*_library, path.c_str(), index, &face) != 0 || face == nullptr)
+		return false;
+	select_charmap(face);
+	FT_Set_Pixel_Sizes(face, 0, (FT_UInt)(cell * 0.6));
+
+	for (int i = 0; i < 256 && i < (int)cells.size(); i++)
+	{
+		if (cells[i] == 0xFFFFFFFFu)
+			continue;
+		const FT_UInt glyph = FT_Get_Char_Index(face, cells[i]);
+		if (glyph == 0 || FT_Load_Glyph(face, glyph, FT_LOAD_RENDER | FT_LOAD_NO_BITMAP) != 0)
+			continue;
+		const FT_Bitmap& bitmap = face->glyph->bitmap;
+		const int cell_x = (i % 16) * cell, cell_y = (i / 16) * cell;
+		// the glyph is centered in its cell, on a baseline at three quarters of the height
+		const int origin_x = cell_x + (cell - (int)(face->glyph->advance.x >> 6)) / 2 + face->glyph->bitmap_left;
+		const int origin_y = cell_y + (int)(cell * 0.75) - face->glyph->bitmap_top;
+		for (unsigned int row = 0; row < bitmap.rows; row++)
+		{
+			for (unsigned int column = 0; column < bitmap.width; column++)
+			{
+				const int x = origin_x + (int)column, y = origin_y + (int)row;
+				if (x < cell_x || x >= cell_x + cell || y < cell_y || y >= cell_y + cell)
+					continue;
+				unsigned char gray = 0;
+				if (bitmap.pixel_mode == FT_PIXEL_MODE_GRAY)
+					gray = bitmap.buffer[row * bitmap.pitch + column];
+				else if (bitmap.pixel_mode == FT_PIXEL_MODE_MONO)
+					gray = (bitmap.buffer[row * bitmap.pitch + column / 8] & (0x80 >> (column % 8))) ? 255 : 0;
+				unsigned char* pixel = &rgba[((size_t)y * width + x) * 4];
+				pixel[0] = pixel[1] = pixel[2] = 255;
+				pixel[3] = gray;
+			}
+		}
+	}
+	FT_Done_Face(face);
+	return true;
 }
 
 Glyph* Font::get_glyph(unsigned int character)
@@ -84,7 +171,9 @@ std::vector<std::vector<glm::vec2>> Font::get_glyph_coordinates(unsigned int cha
 
 std::vector<std::vector<glm::vec2>> Font::get_text_coordinates(std::string text, std::vector<int>& indices, float height, float inter_char)
 {
-	auto wc = stringex::to_wide_char(text);
+	std::u32string wc = stringex::to_utf32(text);
+	if (wc.empty())
+		wc.push_back(0);
 
 	indices.clear();
 	auto previous = get_glyph(wc[0]);
@@ -147,10 +236,15 @@ std::vector<geometry::rectangle> Font::get_text_bounds(std::string text, float h
 {
 	std::vector<geometry::rectangle> result;
 
-	auto previous = get_glyph(text[0]);
+	// one rectangle for each character (a code point), not for each byte of its UTF-8 form
+	std::u32string wc = stringex::to_utf32(text);
+	if (wc.empty())
+		wc.push_back(0);
+
+	auto previous = get_glyph(wc[0]);
 	_height = 0; // glm::max(_height, (float)(*_face)->bbox.yMax); /*(float)previous->vertiAdvance()*/
 	auto scale = height / (float)((*_face)->bbox.yMax - (*_face)->bbox.yMin);
-	get_glyph_coordinates(text[0], scale);
+	get_glyph_coordinates(wc[0], scale);
 
 	result.push_back(geometry::rectangle(0, height, 0, 0));
 
@@ -158,12 +252,12 @@ std::vector<geometry::rectangle> Font::get_text_bounds(std::string text, float h
 	float advance = (float)previous->horiAdvance() + inter_char;
 	float line = 0;
 
-	for (int i = 1; i < text.size(); i++)
+	for (size_t i = 1; i < wc.size(); i++)
 	{
 		result.back().bottom_right = glm::vec2(advance, height);
 		result.push_back(geometry::rectangle(advance, height, 0, 0));
 
-		char c = text[i];
+		char32_t c = wc[i];
 		if (c > 31)
 		{
 
@@ -178,7 +272,7 @@ std::vector<geometry::rectangle> Font::get_text_bounds(std::string text, float h
 			previous = next;
 		}
 
-		if (text[i] == '\n')
+		if (wc[i] == '\n')
 		{
 			advance = 0;
 			line -= (*_face)->height;
@@ -205,6 +299,10 @@ void Glyph::extract(FT_Face& face, unsigned int character, float scale)
 		return;
 
 	_index = FT_Get_Char_Index(face, character);
+	// a symbol font (Symbol, Webdings, Wingdings) has its characters at U+F000 + the code: a letter which is typed finds its sign there,
+	// as it does in the programs of the system
+	if (_index == 0 && character < 0x100 && face->charmap != nullptr && face->charmap->encoding == FT_ENCODING_MS_SYMBOL)
+		_index = FT_Get_Char_Index(face, 0xF000 + character);
 	auto error = FT_Load_Glyph(face, _index, FT_LOAD_DEFAULT);
 
 	_scale = scale;

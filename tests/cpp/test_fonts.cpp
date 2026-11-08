@@ -11,6 +11,7 @@
 #include <font.h>
 #include <strings.h>
 #include <filesystem>
+#include <algorithm>
 #include <cstdio>
 #include <set>
 #include <string>
@@ -86,6 +87,110 @@ int main(int argc, char** argv)
 	check(environment::font_family("a font which does not exist").regular_path.empty(), "an unknown family is empty");
 	for (auto& entry : families)
 		check(entry.first == entry.second.name && !entry.first.empty(), "the key of the list is the name of the family");
+
+	// the decoding of UTF-8: code points, the same on every platform
+	{
+		auto codes = stringex::to_utf32("a\xC3\xA9\xE4\xB8\xAD\xF0\xA0\x80\x80");
+		check(codes.size() == 4 && codes[0] == 'a' && codes[1] == 0xE9 && codes[2] == 0x4E2D && codes[3] == 0x20000, "UTF-8 is decoded in code points (an astral character is one)");
+		check(stringex::to_utf32("a\xFF" "b").size() == 3 && stringex::to_utf32("a\xFF" "b")[1] == 0xFFFD, "a byte which is not UTF-8 is U+FFFD");
+		check(stringex::to_utf32("\xE4\xB8").size() == 2, "a character cut at the end gives replacement characters, no overrun");
+		check(stringex::to_utf32("\xC0\x80")[0] == 0xFFFD, "a long form of a short code is refused");
+		check(stringex::to_utf32("").empty(), "empty text");
+		check(stringex::from_utf32(stringex::to_utf32("a\xC3\xA9\xE4\xB8\xAD\xF0\xA0\x80\x80")) == "a\xC3\xA9\xE4\xB8\xAD\xF0\xA0\x80\x80", "encoding gives back the same bytes");
+		check(stringex::reverse_utf8("a\xC3\xA9\xE4\xB8\xAD") == "\xE4\xB8\xAD\xC3\xA9" "a", "reversing keeps the characters whole");
+
+		// the bounds and the indices have one entry for each character, with accents and Chinese
+		environment::FontFamily arial = environment::font_family("Arial");
+		if (!arial.regular_path.empty())
+		{
+			Font font("Arial", arial.regular_path, false, false, arial.regular_index);
+			std::vector<int> indices;
+			auto contours = font.get_text_coordinates("\xC3\xA9t\xC3\xA9", indices, 10.0f, 0.0f);
+			auto bounds = font.get_text_bounds("\xC3\xA9t\xC3\xA9", 10.0f, 0.0f);
+			check(bounds.size() == 3 && indices.size() == 3, "three characters, three bounds and three indices (not one for each byte)");
+			check(contours.size() >= 3, "accented letters have outlines");
+		}
+	}
+
+	// the table of characters: the codes of a font and the glyphs of a page, for the symbol fonts and for Chinese
+	{
+		struct Case { const char* family; unsigned int code; const char* what; };
+		for (const Case& c : { Case{ "Arial", 'A', "a Latin font has its letters" }, Case{ "Symbol", 0xF061, "Symbol has its alpha in the private zone U+F0xx" },
+			Case{ "Webdings", 0xF021, "Webdings has its signs in the private zone U+F0xx" }, Case{ "Wingdings", 0xF021, "Wingdings has its signs in the private zone U+F0xx" },
+			Case{ "Microsoft YaHei", 0x4E2D, "YaHei has the Chinese character U+4E2D" } })
+		{
+			environment::FontFamily f = environment::font_family(c.family);
+			if (f.regular_path.empty())
+			{
+				std::printf("  %s: not on this system\n", c.family);
+				continue;
+			}
+			std::vector<unsigned int> codes = Font::list_codes(f.regular_path, f.regular_index);
+			check(std::find(codes.begin(), codes.end(), c.code) != codes.end(), c.what);
+			check(std::is_sorted(codes.begin(), codes.end()), "the codes are in ascending order");
+
+			std::vector<unsigned int> cells(256, 0xFFFFFFFFu);
+			int on_page = 0;
+			for (unsigned int code : codes)
+				if ((code >> 8) == (c.code >> 8))
+				{
+					cells[code & 0xFF] = code;
+					on_page++;
+				}
+			std::vector<unsigned char> rgba;
+			int width = 0, height = 0;
+			check(Font::render_cells(f.regular_path, f.regular_index, cells, 48, rgba, width, height) && width == 768 && height == 768, "the page is rendered");
+			size_t inked = 0;
+			for (size_t i = 3; i < rgba.size(); i += 4)
+				if (rgba[i] > 128)
+					inked++;
+			std::printf("  %-16s %6zu codes, %3d on the page U+%04X, %zu inked pixels\n", c.family, codes.size(), on_page, c.code & 0xFF00, inked);
+			check(on_page > 0 && inked > 2000, "the glyphs of the page have ink");
+		}
+	}
+
+	// the text itself with a symbol font: the code given by the table (U+F061) and the letter typed (a) give the glyph, not the missing one
+	{
+		environment::FontFamily symbol = environment::font_family("Symbol");
+		if (!symbol.regular_path.empty())
+		{
+			Font font("Symbol", symbol.regular_path, false, false, symbol.regular_index);
+			font.get_glyph_coordinates(0xF061, 10.0f);
+			font.get_glyph_coordinates('a', 10.0f);
+			check(font.get_glyph(0xF061)->index() != 0, "Symbol: U+F061 is a glyph");
+			check(font.get_glyph('a')->index() == font.get_glyph(0xF061)->index(), "Symbol: the letter a typed gives the glyph of U+F061");
+			std::printf("  Symbol: glyph of U+F061 = %d, glyph of the letter a = %d\n", font.get_glyph(0xF061)->index(), font.get_glyph('a')->index());
+		}
+	}
+
+	// Chinese, Japanese and an astral character (U+20000), with the CJK fonts of the system
+	{
+		const char* texts[] = { "\xE4\xB8\xAD\xE6\x96\x87", "\xE6\x97\xA5\xE6\x9C\xAC", "\xF0\xA0\x80\x80" };
+		const char* names[] = { "Chinese (U+4E2D U+6587)", "Japanese (U+65E5 U+672C)", "astral (U+20000)" };
+		for (const char* family : { "Microsoft YaHei", "SimSun", "MS Gothic", "Yu Gothic" })
+		{
+			environment::FontFamily f = environment::font_family(family);
+			if (f.regular_path.empty())
+			{
+				std::printf("  %s: not on this system\n", family);
+				continue;
+			}
+			for (int t = 0; t < 3; t++)
+			{
+				try
+				{
+					Font font(family, f.regular_path, false, false, f.regular_index);
+					std::vector<int> indices;
+					auto contours = font.get_text_coordinates(texts[t], indices, 10.0f, 0.0f);
+					std::printf("  %-16s %-26s %zu contours\n", family, names[t], contours.size());
+				}
+				catch (const char* text)
+				{
+					std::printf("  %-16s %-26s FreeType error: %s\n", family, names[t], text);
+				}
+			}
+		}
+	}
 
 	// the files of the folder which no family uses
 #ifdef _WIN32

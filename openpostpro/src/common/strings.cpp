@@ -282,6 +282,82 @@ namespace stringex
 	}
 
 
+	std::u32string to_utf32(const std::string& input)
+	{
+		std::u32string result;
+		result.reserve(input.size());
+		size_t i = 0;
+		while (i < input.size())
+		{
+			const unsigned char c = (unsigned char)input[i];
+			int extra = 0;
+			char32_t code = 0;
+			if (c < 0x80) { code = c; }
+			else if ((c & 0xE0) == 0xC0) { code = c & 0x1F; extra = 1; }
+			else if ((c & 0xF0) == 0xE0) { code = c & 0x0F; extra = 2; }
+			else if ((c & 0xF8) == 0xF0) { code = c & 0x07; extra = 3; }
+			else { result.push_back(0xFFFD); i++; continue; }
+
+			bool valid = i + extra < input.size();
+			for (int k = 1; valid && k <= extra; k++)
+			{
+				const unsigned char next = (unsigned char)input[i + k];
+				if ((next & 0xC0) != 0x80)
+					valid = false;
+				else
+					code = (code << 6) | (next & 0x3F);
+			}
+			// the shortest form only, and no surrogate or code point past U+10FFFF
+			if (valid && ((extra == 1 && code < 0x80) || (extra == 2 && code < 0x800) || (extra == 3 && code < 0x10000) || code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF)))
+				valid = false;
+			if (!valid)
+			{
+				result.push_back(0xFFFD);
+				i++;
+				continue;
+			}
+			result.push_back(code);
+			i += extra + 1;
+		}
+		return result;
+	}
+
+	std::string from_utf32(const std::u32string& input)
+	{
+		std::string result;
+		for (char32_t code : input)
+		{
+			if (code < 0x80)
+				result.push_back((char)code);
+			else if (code < 0x800)
+			{
+				result.push_back((char)(0xC0 | (code >> 6)));
+				result.push_back((char)(0x80 | (code & 0x3F)));
+			}
+			else if (code < 0x10000)
+			{
+				result.push_back((char)(0xE0 | (code >> 12)));
+				result.push_back((char)(0x80 | ((code >> 6) & 0x3F)));
+				result.push_back((char)(0x80 | (code & 0x3F)));
+			}
+			else
+			{
+				result.push_back((char)(0xF0 | (code >> 18)));
+				result.push_back((char)(0x80 | ((code >> 12) & 0x3F)));
+				result.push_back((char)(0x80 | ((code >> 6) & 0x3F)));
+				result.push_back((char)(0x80 | (code & 0x3F)));
+			}
+		}
+		return result;
+	}
+
+	std::string reverse_utf8(const std::string& input)
+	{
+		std::u32string codes = to_utf32(input);
+		std::reverse(codes.begin(), codes.end());
+		return from_utf32(codes);
+	}
+
 #ifdef _WIN32
 
 	std::string to_string(wchar_t* input)
