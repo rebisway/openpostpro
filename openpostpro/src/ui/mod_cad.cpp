@@ -48,6 +48,11 @@
 
 ModCad::ModCad(Window* window) : Module(window)
 {
+	Text::on_link_request = [this](Text* text) { _link_text = text; };
+	// the icons of the properties of a text, 15 pixels like the ones of the Project window; each one is alone on its line of the counter of the toolbars
+	Text::on_button = [this](const std::string& code) { _shortcut_column = 0; return set_shortcut(code, ImVec2(15, 15)); };
+	Text::on_refresh_request = [this](Text* text) { refresh_texts(std::vector<Text*>({ text })); };
+
 	_code = "MOD_CAD";
 	_index = 0;
 	_title = Lang::l("WINDOW_CAD");
@@ -101,6 +106,9 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["BTN_REMOVE"] = _render->load_texture("minus.png");
 	_textures["BTN_UP"] = _render->load_texture("up.png");
 	_textures["BTN_DOWN"] = _render->load_texture("down.png");
+	_textures["TEXT_LINK_PICK"] = _render->load_texture("link.png");
+	_textures["TEXT_REFRESH"] = _render->load_texture("refresh.png");
+	_textures["DRAWING_REMOVE_REFERENCE_TO_TEXT"] = _render->load_texture("unlink.png");
 }
 
 ModCad::~ModCad()
@@ -510,7 +518,10 @@ void ModCad::left_button_down() {
 		Text* text = _link_text;
 		_link_text = nullptr;
 		if (_shape_hovered != nullptr && _shape_hovered != (Shape*)text && _shape_hovered->type() != GraphicType::Text)
+		{
 			link_text(text, _shape_hovered);
+			_link_done = true;
+		}
 		return;
 	}
 
@@ -615,9 +626,17 @@ void ModCad::left_button_up() {
 	_camera->mouseLeftUp();
 	_mode_selection = false;
 	_magnet_shapes.clear();
+	bool moved = _modification_started;
 	_modification_started = false;
+	// the click which chose the curve of a text: the text, selected by the link, stays selected
+	bool link_done = _link_done;
+	_link_done = false;
 
-	if (_cad_creation == GraphicType::None || _cad_creation == GraphicType::CadSymmetry)
+	// the shapes have been moved or modified: the texts follow their curves
+	if (moved)
+		refresh_texts();
+
+	if (!link_done && (_cad_creation == GraphicType::None || _cad_creation == GraphicType::CadSymmetry))
 	{
 		std::vector<Shape*> selection;
 		// cursor is not over a shape, so we are looking for every shapes inside the region
@@ -2810,9 +2829,13 @@ void ModCad::convert_unit()
 				auto text = (Text*)shape;
 				text->height(text->height() * factor);
 				text->inter(text->inter() * factor);
+				// the position along the curve is a length
+				if (text->reference() != -1)
+					text->reference_pos(text->reference_pos() * factor);
 			}
 		}
 	}
+	refresh_texts();
 
 	_document->unit(target);
 	_document->modified(true);
@@ -3229,16 +3252,8 @@ void ModCad::link_text(Text* t, Shape* s)
 	auto before = t->write();
 	t->reference_path(std::vector<glm::vec2>(), false);
 
-	std::vector<Shape*> shapes = look_for_siblings(s);
-
-	std::vector<glm::vec2> coordinates = cad::get_raw_coordinates(shapes);
-
 	bool closed = false;
-	if (shapes.size() == 1)
-	{
-		if (shapes[0]->type() == GraphicType::Circle || shapes[0]->type() == GraphicType::Ellipse)
-			closed = true;
-	}
+	std::vector<glm::vec2> coordinates = chain_coordinates(s, closed);
 
 	t->reference(s->id());
 	t->reference_path(coordinates, closed);
@@ -3249,6 +3264,65 @@ void ModCad::link_text(Text* t, Shape* s)
 	// the text stays selected: its properties show the position and the side
 	unselect_all();
 	select(std::vector<Shape*>({ t }));
+}
+
+std::vector<glm::vec2> ModCad::chain_coordinates(Shape* s, bool& closed)
+{
+	std::vector<Shape*> shapes = look_for_siblings(s);
+	std::vector<glm::vec2> coordinates = cad::get_raw_coordinates(shapes);
+
+	closed = false;
+	if (shapes.size() == 1)
+	{
+		if (shapes[0]->type() == GraphicType::Circle || shapes[0]->type() == GraphicType::Ellipse)
+			closed = true;
+	}
+	return coordinates;
+}
+
+Shape* ModCad::find_shape(int id)
+{
+	for (Layer* l : _document->layers())
+	{
+		Shape* s = l->shape((unsigned int)id);
+		if (s != nullptr)
+			return s;
+	}
+	return nullptr;
+}
+
+int ModCad::refresh_texts(const std::vector<Text*>& only)
+{
+	std::vector<Text*> texts = only;
+	if (texts.empty())
+	{
+		for (Layer* l : _document->layers())
+			for (Shape* s : l->shapes())
+				if (s->type() == GraphicType::Text && ((Text*)s)->reference() != -1)
+					texts.push_back((Text*)s);
+	}
+
+	int updated = 0;
+	for (Text* t : texts)
+	{
+		if (t->reference() == -1)
+			continue;
+		// the curve the text is linked to: a text whose curve has been deleted keeps its last path
+		Shape* s = find_shape(t->reference());
+		if (s == nullptr)
+			continue;
+
+		bool closed = false;
+		auto coordinates = chain_coordinates(s, closed);
+		if (coordinates.size() < 2)
+			continue;
+		float position = t->reference_pos();
+		t->reference_path(coordinates, closed);
+		t->reference_pos(position);
+		t->compute();
+		updated++;
+	}
+	return updated;
 }
 
 // the hint displayed while the click on the curve is expected
@@ -3893,6 +3967,9 @@ void ModCad::cad_origin()
 	}
 	History::undo(HistoryActionType::Modify, modify);
 
+	// the texts follow their curves
+	refresh_texts();
+
 	//_render->camera()->mouseRightDown();
 	//_render->camera()->mouseMove(_magnet_point.x - _left, _magnet_point.y - _top);
 	//_render->camera()->mouseRightUp();
@@ -4470,6 +4547,9 @@ void ModCad::check_drawing()
 
 void ModCad::cam_refresh()
 {
+	// the texts linked to a curve first: a toolpath can be made from their letters
+	refresh_texts();
+
 	// the toolpaths to update: the selected ones, the ones of the selected groups, or all of them
 	std::vector<Graphic*> saved = _document->selected();
 	std::vector<Toolpath*> targets;

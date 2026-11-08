@@ -158,6 +158,7 @@ DRAWING_SET_REFERENCE_TO_TEXT=Text mit dem Objekt verknüpfen
 DRAWING_REMOVE_REFERENCE_TO_TEXT=Verknüpfung des Textes mit dem Objekt entfernen
 TEXT_LINK_PICK=Text mit einer Kurve verbinden (anklicken)
 TEXT_LINK_HINT=Klicken Sie auf die Kurve, der der Text folgen soll. Esc zum Abbrechen.
+TEXT_REFRESH=Nach der Kurve aktualisieren
 DRAWING_LOOK_FOR_SIBLINGS=Verknüpfte Elemente suchen
 DRAWING_CONNECT_SHAPES=Elemente verbinden
 DRAWING_MOVE_TO=Verschieben nach...

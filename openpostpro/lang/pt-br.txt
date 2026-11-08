@@ -158,6 +158,7 @@ DRAWING_SET_REFERENCE_TO_TEXT=Vincular o texto ao objeto
 DRAWING_REMOVE_REFERENCE_TO_TEXT=Remover o vínculo do texto com o objeto
 TEXT_LINK_PICK=Vincular o texto a uma curva (clicar)
 TEXT_LINK_HINT=Clique na curva que o texto deve seguir. Esc para cancelar.
+TEXT_REFRESH=Atualizar pela curva
 DRAWING_LOOK_FOR_SIBLINGS=Procurar os elementos vinculados
 DRAWING_CONNECT_SHAPES=Conectar os elementos
 DRAWING_MOVE_TO=Mover para...

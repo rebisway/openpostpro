@@ -158,6 +158,7 @@ DRAWING_SET_REFERENCE_TO_TEXT=Tekst aan het object koppelen
 DRAWING_REMOVE_REFERENCE_TO_TEXT=Koppeling van de tekst aan het object verwijderen
 TEXT_LINK_PICK=Tekst aan een kromme koppelen (klik erop)
 TEXT_LINK_HINT=Klik op de kromme die de tekst moet volgen. Esc om te annuleren.
+TEXT_REFRESH=Bijwerken naar de kromme
 DRAWING_LOOK_FOR_SIBLINGS=Gekoppelde elementen zoeken
 DRAWING_CONNECT_SHAPES=Elementen verbinden
 DRAWING_MOVE_TO=Verplaatsen naar...

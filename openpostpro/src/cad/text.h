@@ -20,6 +20,7 @@
 #define _TEXT_H
 
 #include "shape.h"
+#include <functional>
 #include <anchor.h>
 #include <font.h>
 
@@ -60,8 +61,16 @@ private:
 	TextPos _position = TextPos::Middle;			// when sticked to another shape, position of text along the reference shape
 	bool _mirror;									// reverse the text
 	bool _update_origin = false;					// true if it needs to compute outline coordinates
+	bool _reference_legacy = false;					// the position was read from a file where it was the end of the text: converted when the text is computed
 
 public:
+	// called by the properties of a text which is not linked: the application asks the user to click the curve to follow
+	static std::function<void(Text*)> on_link_request;
+	// called by the properties of a linked text: the application reads the curve again (the curve was moved or modified)
+	static std::function<void(Text*)> on_refresh_request;
+	// draws an icon button of the application (the code is also the key of its tooltip), true if it is clicked
+	static std::function<bool(const std::string&)> on_button;
+
 	//properties
 	glm::vec2 p1() { return _p1; }
 	void p1(glm::vec2 value);
@@ -125,6 +134,7 @@ public:
 	void draw() override;
 	void draw_anchors() override;
 	void properties() override;
+	void properties_toolbar() override;
 
 	// IO
 	std::string write() override;

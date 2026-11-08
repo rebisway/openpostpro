@@ -26,6 +26,10 @@
 #include <filesystem>
 #include <history.h>
 
+std::function<void(Text*)> Text::on_link_request;
+std::function<void(Text*)> Text::on_refresh_request;
+std::function<bool(const std::string&)> Text::on_button;
+
 Text::Text(Renderer* r) : Shape(r)
 {
 	std::vector<glm::vec3> vertices{ glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f) };
@@ -396,11 +400,17 @@ void Text::compute()
 
 		_update_origin = false;
 
-		// this is the computation for a text sticked to a shape
-		// it needs to be upgraded for allowing closed shapes and full rotation
+		// the text follows the path: each letter is moved to its place on the path and turned along it
 		if (_reference != -1 && _reference_path.size() > 1)
 		{
 			_transf.clear();
+
+			// a position read from an old file was the end of the text: it is now the start
+			if (_reference_legacy)
+			{
+				_reference_pos = glm::max(0.0f, glm::min(_reference_pos, _reference_length) - length);
+				_reference_legacy = false;
+			}
 
 			float y = 0;
 			float h = (float)_font->get_glyph('o')->height();
@@ -424,43 +434,54 @@ void Text::compute()
 					axis.push_back(geometry::vec2_empty);
 			}
 
+			// position and direction of the path at a distance from its start. On a closed path the distance goes round; on an open
+			// path the first and the last segment go on in a straight line, so a letter is never out of place when the text is longer than the path
+			bool closed = _reference_closed || geometry::distance(_reference_path.front(), _reference_path.back()) < 0.001f;
+			auto at = [&](float s, glm::vec2& position, float& angle)
+			{
+				if (closed && _reference_length > 0)
+				{
+					s = std::fmod(s, _reference_length);
+					if (s < 0)
+						s += _reference_length;
+				}
+				int segment = 0;
+				float done = 0;
+				int last = (int)_reference_path.size() - 2;
+				for (int i = 0; i <= last; i++)
+				{
+					auto l = geometry::distance(_reference_path[i], _reference_path[i + 1]);
+					if (l < 0.00001f && i != last)
+						continue;		// a segment of length zero has no direction
+					segment = i;
+					if (i == last || done + l >= s)
+						break;
+					done += l;
+				}
+				position = geometry::position(_reference_path[segment + 1], s - done, _reference_path[segment]);
+				angle = geometry::oriented_angle(_reference_path[segment + 1], _reference_path[segment]);
+			};
+
 			// we will follow reference_path and apply appropriate translation/rotation/translation
 			std::vector<glm::mat4> matrices;
 			for (int a = 0; a < axis.size(); a++)
 			{
-				float pos = glm::max<float>(0, glm::min(_reference_pos, _reference_length) - length);
-				float dst_len = 0, cur_len = 0;
-				for (int i = 0; i + 1 < _reference_path.size(); i++)
-				{
-					auto l = geometry::distance(_reference_path[i], _reference_path[i + 1]);
-					if (dst_len + l < axis[a].x + pos) // if we are still less than the length where the letter should be positionned, we carry on
-					{
-						dst_len += l;
-					}
-					else
-					{
-						// so we compute final coordinates where letter axis will be moved, 
-						// and the rotation angle which is pi/2 + angle(i, i+1)
-						auto p = axis[a].x + pos - dst_len;
-						auto position = geometry::position(_reference_path[i + 1], p, _reference_path[i]);
-						auto angle = geometry::oriented_angle(_reference_path[i+1], _reference_path[i]);
+				glm::vec2 position;
+				float angle = 0;
+				at(_reference_pos + axis[a].x, position, angle);
 
-						if (_mirror)
-							angle = geometry::oriented_angle(angle + glm::pi<float>());
+				if (_mirror)
+					angle = geometry::oriented_angle(angle + glm::pi<float>());
 
-						// now we can compute the matrix
-						auto m = glm::translate(glm::vec3(-axis[a].x, -axis[a].y, 1));
-						m = glm::rotate(angle, glm::vec3(0.0f, 0.0f, 1.0f)) * m;
-						m = glm::translate(glm::vec3(position.x, position.y, 1)) * m;
+				// now we can compute the matrix
+				auto m = glm::translate(glm::vec3(-axis[a].x, -axis[a].y, 1));
+				m = glm::rotate(angle, glm::vec3(0.0f, 0.0f, 1.0f)) * m;
+				m = glm::translate(glm::vec3(position.x, position.y, 1)) * m;
 
-						matrices.push_back(m);
+				matrices.push_back(m);
 
-						if (a == 0)
-							_reference_point = m * glm::vec4(0, 0, 1, 1);
-
-						break;
-					}
-				}
+				if (a == 0)
+					_reference_point = m * glm::vec4(0, 0, 1, 1);
 			}
 
 			int index = 0;
@@ -569,6 +590,26 @@ void Text::draw_anchors()
 		_a1->draw();
 }
 
+// the actions on the link with a curve: icons above the table of the properties (a tooltip tells what each one does)
+void Text::properties_toolbar()
+{
+	if (!on_button)
+		return;
+	if (_reference == -1)
+	{
+		if (on_button("TEXT_LINK_PICK") && on_link_request)
+			on_link_request(this);
+	}
+	else
+	{
+		if (on_button("TEXT_REFRESH") && on_refresh_request)
+			on_refresh_request(this);
+		ImGui::SameLine();
+		if (on_button("DRAWING_REMOVE_REFERENCE_TO_TEXT"))
+			modify([&] { _reference = -1; compute(); });
+	}
+}
+
 void Text::properties()
 {
 	auto families = environment::fonts();
@@ -637,9 +678,10 @@ void Text::properties()
 		if (property_combo(Lang::l("FONT_POSITION"), "##FT_POSITION", position, positions))
 			modify([&] { _position = (TextPos)position; compute(); });
 
+		// the start of the text along the path; the undo step of a slider is pushed by the helper
 		auto reference = _reference_pos;
-		if (property_float(Lang::l("FONT_LENGTH"), "##REF_LENGTH", reference))
-			modify([&] { reference_pos(reference); });
+		if (property_slider(Lang::l("FONT_LENGTH"), "##REF_LENGTH", reference, 0.0f, _reference_length))
+			reference_pos(reference);
 	}
 }
 
@@ -667,6 +709,9 @@ std::string Text::write()
 
 	for (int i = 0; i < _reference_path.size(); i++)
 		result += std::to_string(_reference_path[i].x) + ';' + std::to_string(_reference_path[i].y) + ';';
+
+	// 1: the position is the start of the text (older files have no marker: the position was its end)
+	result += "1;";
 
 	return result;
 }
@@ -703,6 +748,10 @@ void Text::read(std::string value, float version)
 		_reference_path.push_back(glm::vec2(x, y));
 	}
 	_update_origin = true;
+
+	// an older file has no marker after the path: the position was the end of the text
+	size_t marker = 18 + (size_t)count;
+	_reference_legacy = _reference != -1 && !(marker < data.size() && data[marker] == "1");
 
 	_reference_length = 0;
 	if (count)

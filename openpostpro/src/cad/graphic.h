@@ -100,6 +100,8 @@ protected:
 
 	// override to add the rows of the properties window, using the property_* helpers
 	virtual void properties() {}
+	// icon buttons displayed above the table of the properties, in the same way as the buttons of the Project window
+	virtual void properties_toolbar() {}
 
 	// draw the properties window: common frame, then the rows given by properties()
 	void display_properties();

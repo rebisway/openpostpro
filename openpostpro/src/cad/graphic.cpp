@@ -71,6 +71,8 @@ void Graphic::display_properties()
 {
 	ImGui::Begin((_name + "###OBJECT").c_str());
 
+	properties_toolbar();
+
 	ImGui::BeginTable("##TABLE_OBJECT", 2, ImGuiTableFlags_SizingFixedFit);
 	ImGui::TableSetupColumn("##COL0", ImGuiTableColumnFlags_WidthFixed);
 	ImGui::TableSetupColumn("##COL1", ImGuiTableColumnFlags_WidthStretch);
