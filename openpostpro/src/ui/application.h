@@ -55,6 +55,7 @@ private:
 
 	Texture* _splash = nullptr;				// the image of the start, drawn while the application loads
 	bool _splash_on = true;
+	Texture* _about_icon = nullptr;			// the icon shown in the About window, loaded when the window is first displayed
 	bool _display_preferences = false;
 	bool _display_first_run = false;		// language and unit are asked at the very first start
 	std::string _first_language = "";

@@ -1375,6 +1375,18 @@ void Application::render_menu()
 				ImGui::TextUnformatted(text.c_str());
 			};
 
+			if (_about_icon == nullptr)
+			{
+				GlTexture* texture = new GlTexture();
+				texture->load("icon_128.png");
+				_about_icon = texture;
+			}
+			if (_about_icon->id() != nullptr)
+			{
+				ImGui::SetCursorPosX((ImGui::GetWindowSize().x - 96.0f) * 0.5f);
+				ImGui::Image((ImTextureID)_about_icon->id(), ImVec2(96.0f, 96.0f));
+			}
+
 			centered("OpenPostPro");
 			ImGui::NewLine();
 			centered(Lang::t("VERSION") + " " + appinfo::version() + " - " + Lang::t("BUILD") + " " + std::to_string(appinfo::build()));
@@ -1391,6 +1403,11 @@ void Application::render_menu()
 				_show_about = false;
 		}
 		ImGui::End();
+	}
+	else if (_about_icon != nullptr)
+	{
+		delete (GlTexture*)_about_icon;
+		_about_icon = nullptr;
 	}
 
 	if (_display_first_run)
