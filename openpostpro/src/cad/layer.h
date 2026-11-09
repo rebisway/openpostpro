@@ -44,6 +44,8 @@ public:
 	void visible(bool value) { _visible = value; }
 	bool locked() { return _locked; }
 	void locked(bool value) { _locked = value; }
+	// the shapes of the layer can be picked, framed and selected with the others: the layer is visible and not locked
+	bool selectable() { return _visible && !_locked; }
 	GraphicType type() override { return GraphicType::Layer; }
 
 	void add(Shape* value);

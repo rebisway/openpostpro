@@ -367,6 +367,8 @@ void Document::select_all()
 	_selected.clear();
 	for (Layer* l : _layers)
 	{
+		if (!l->selectable())
+			continue;
 		for (Shape* s : l->shapes())
 		{
 			s->selected(true);

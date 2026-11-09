@@ -689,6 +689,9 @@ void ModCad::left_button_up() {
 			
 			for (Layer* layer : _document->layers())
 			{
+				// the shapes of a hidden or locked layer are not framed
+				if (!layer->selectable())
+					continue;
 				for (Shape* shape : layer->shapes())
 				{
 					if (geometry::rectangle_contains(left_down, left_up, shape->topLeft(), shape->bottomRight()))
@@ -900,8 +903,10 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 		auto itl = _document->layers().rbegin();
 		while (_shape_hovered == nullptr && itl != _document->layers().rend())
 		{
+			// the shapes of a hidden or locked layer are not hovered
 			auto its = (*itl)->shapes().rbegin();
-			while (_shape_hovered == nullptr && its != (*itl)->shapes().rend())
+			auto its_end = (*itl)->selectable() ? (*itl)->shapes().rend() : its;
+			while (_shape_hovered == nullptr && its != its_end)
 			{
 				if ((*its)->bounds().contains(_last_mouse_pos))
 				{
@@ -2486,6 +2491,8 @@ void ModCad::select_all()
 	_document->selected().clear();
 	for (Layer* l : _document->layers())
 	{
+		if (!l->selectable())
+			continue;
 		for (Shape* s : l->shapes())
 		{
 			s->selected(true);
@@ -2512,6 +2519,8 @@ void ModCad::reverse_selection()
 	_document->selected().clear();
 	for (Layer* l : _document->layers())
 	{
+		if (!l->selectable())
+			continue;
 		for (Shape* s : l->shapes())
 		{
 			if (!s->selected())
