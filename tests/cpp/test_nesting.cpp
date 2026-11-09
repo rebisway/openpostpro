@@ -38,7 +38,7 @@ static Part frame(float w, float h, float r, float wx, float wy, float ww, float
 {
 	Part p;
 	p.outer = round_rect(0, 0, w, h, r);
-	p.holes.push_back(round_rect(wx, wy, ww, wh, 6));
+	p.inner.push_back(round_rect(wx, wy, ww, wh, 6));
 	return p;
 }
 
@@ -46,7 +46,17 @@ static Part ring_part(float ro, float ri, float rc, float rci)
 {
 	Part p;
 	p.outer = circle_ring(0, 0, ro);
-	p.holes.push_back(circle_ring(0, 0, ri));
+	p.inner.push_back(circle_ring(0, 0, ri));
+	return p;
+}
+
+static Part rings_part(float r1, float r2, float r3, float r4)
+{
+	Part p;
+	p.outer = circle_ring(0, 0, r1);
+	p.inner.push_back(circle_ring(0, 0, r2));
+	p.inner.push_back(circle_ring(0, 0, r3));
+	p.inner.push_back(circle_ring(0, 0, r4));
 	return p;
 }
 
@@ -55,7 +65,7 @@ static Part slotted(float w, float h, float r, int slots)
 	Part p;
 	p.outer = round_rect(0, 0, w, h, r);
 	for (int i = 0; i < slots; i++)
-		p.holes.push_back(round_rect(w * (i + 0.5f) / slots - 15, h / 2 - 7, 30, 14, 7));
+		p.inner.push_back(round_rect(w * (i + 0.5f) / slots - 15, h / 2 - 7, 30, 14, 7));
 	return p;
 }
 
@@ -81,6 +91,7 @@ int main()
 	add(frame(260, 400, 12, 30, 60, 200, 300), 2);
 	add(ring_part(70, 52, 0, 0), 2);
 	add(ring_part(38, 26, 0, 0), 4);
+	add(rings_part(70, 52, 38, 26), 2);
 	add(slotted(220, 70, 20, 3), 1);
 	add(slotted(160, 120, 14, 1), 1);
 	add(polygon({ {0, 0}, {60, 0}, {60, 18}, {18, 18}, {18, 90}, {0, 90} }), 3);
@@ -106,7 +117,6 @@ int main()
 
 	// independent check: no cell of a 1 mm grid is inside the material of two parts
 	std::vector<Ring> rings;
-	std::vector<std::vector<Ring>> holes;
 	std::vector<int> owner(1100 * 600, -1);
 	bool clash = false;
 	auto inside = [](const Ring& r, glm::vec2 p)
@@ -124,7 +134,7 @@ int main()
 		const Part& part = parts[result[k].part];
 		Ring outer = transform(part.outer, result[k].angle, result[k].offset);
 		std::vector<Ring> hs;
-		for (const Ring& h : part.holes)
+		for (const Ring& h : part.inner)
 			hs.push_back(transform(h, result[k].angle, result[k].offset));
 		glm::vec2 mn(1e9f), mx(-1e9f);
 		for (glm::vec2 p : outer) { mn = glm::min(mn, p); mx = glm::max(mx, p); }
@@ -134,10 +144,10 @@ int main()
 				glm::vec2 c(x + 0.5f, y + 0.5f);
 				if (!inside(outer, c))
 					continue;
-				bool in_hole = false;
+				int around = 0;
 				for (const Ring& h : hs)
-					if (inside(h, c)) in_hole = true;
-				if (in_hole)
+					if (inside(h, c)) around++;
+				if (around % 2 == 1)
 					continue;
 				if (owner[y * 1100 + x] != -1 && owner[y * 1100 + x] != (int)k)
 					clash = true;
@@ -164,7 +174,7 @@ int main()
 			svg << " Z ";
 		};
 		path(part.outer);
-		for (const Ring& h : part.holes) path(h);
+		for (const Ring& h : part.inner) path(h);
 		svg << "'/>\n";
 	}
 	svg << "</svg>\n";

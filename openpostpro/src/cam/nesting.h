@@ -16,9 +16,9 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 // Automatic nesting: places parts on a rectangular sheet without overlap.
-// The engine only knows polygons (arcs are sampled by the caller). A part is an outer ring and its holes: a small part can
-// be placed inside the hole of a big one. The spacing between parts is obtained by the caller, who gives the rings already
-// inflated by half of it (Curve::offset).
+// The engine only knows polygons (arcs are sampled by the caller). A part is an outer ring and the rings inside it: holes, then
+// islands inside the holes and so on. A small part can be placed inside the hole of a big one. The spacing between parts is
+// obtained by the caller, who gives the rings already inflated by half of it (Curve::offset).
 
 #pragma once
 #ifndef _NESTING_H
@@ -35,7 +35,9 @@ namespace nesting
 	struct Part
 	{
 		Ring outer;
-		std::vector<Ring> holes;
+		// the rings inside the outer one, at any depth: the material is where a point is inside an odd number of rings (the outer
+		// one counts as the first)
+		std::vector<Ring> inner;
 		int quantity = 1;
 	};
 
@@ -67,7 +69,7 @@ namespace nesting
 	// true if the two parts, each placed with its own transformation, share some material
 	bool overlap(const Part& a, const Placement& pa, const Part& b, const Placement& pb);
 
-	// area of the material of a part (the outer ring without its holes)
+	// area of the material of a part (the outer ring without its holes, plus its islands...)
 	float area(const Part& part);
 
 	// places each part (as many times as its quantity). One Placement per instance, in the order of placement.

@@ -4724,7 +4724,7 @@ static nesting::Ring nest_grown(Curve& curve, float distance, bool grow)
 }
 
 // the parts are the groups of the selection: the largest closed contour of a group is its outline, the closed contours inside it
-// are its holes
+// are its holes, the ones inside the holes its islands, and so on
 void ModCad::cad_nesting()
 {
 	_nest_parts.clear();
@@ -4761,9 +4761,19 @@ void ModCad::cad_nesting()
 			info.name = name;
 			info.shapes = shapes;
 			info.curves.push_back(*outline->curve);
-			for (TreeCurve* hole : outline->children)
-				if (hole->curve != nullptr && hole->curve->closed() && hole->curve->size() >= 2)
-					info.curves.push_back(*hole->curve);
+			std::function<void(TreeCurve*, int)> inside = [&](TreeCurve* node, int depth)
+			{
+				for (TreeCurve* child : node->children)
+				{
+					if (child->curve != nullptr && child->curve->closed() && child->curve->size() >= 2)
+					{
+						info.curves.push_back(*child->curve);
+						info.depths.push_back(depth);
+					}
+					inside(child, depth + 1);
+				}
+			};
+			inside(outline, 1);
 
 			glm::vec2 mn(1e30f), mx(-1e30f);
 			for (glm::vec2 p : nest_ring(info.curves[0]))
@@ -4851,12 +4861,13 @@ void ModCad::cad_nesting_run()
 		nesting::Part part;
 		part.quantity = info.quantity;
 		part.outer = nest_grown(info.curves[0], _nest_spacing / 2, true);
+		// a hole (odd depth) shrinks, an island (even depth) grows: the material grows by half of the spacing
 		if (_nest_fill_holes)
 			for (size_t i = 1; i < info.curves.size(); i++)
 			{
-				nesting::Ring h = nest_grown(info.curves[i], _nest_spacing / 2, false);
-				if (h.size() >= 3)
-					part.holes.push_back(h);
+				nesting::Ring ring = nest_grown(info.curves[i], _nest_spacing / 2, info.depths[i - 1] % 2 == 0);
+				if (ring.size() >= 3)
+					part.inner.push_back(ring);
 			}
 		parts.push_back(part);
 	}

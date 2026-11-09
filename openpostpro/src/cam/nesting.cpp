@@ -39,9 +39,9 @@ namespace nesting
 			float angle = 0;
 			glm::vec2 offset = glm::vec2();	// to apply after the rotation to bring the bounds corner to the origin
 			Ring outer;
-			std::vector<Ring> holes;
+			std::vector<Ring> inner;
 			Box box;
-			std::vector<Box> boxes;	// bounds of each ring: the outer one, then the holes
+			std::vector<Box> boxes;	// bounds of each ring: the outer one, then the inner ones
 			glm::vec2 size = glm::vec2();
 		};
 
@@ -76,21 +76,21 @@ namespace nesting
 			Variant v;
 			v.angle = angle;
 			v.outer = turned(part.outer, angle);
-			for (const Ring& h : part.holes)
-				v.holes.push_back(turned(h, angle));
+			for (const Ring& h : part.inner)
+				v.inner.push_back(turned(h, angle));
 			for (glm::vec2 p : v.outer)
 				v.box.add(p);
 			v.offset = -v.box.min;
 			for (glm::vec2& p : v.outer)
 				p += v.offset;
-			for (Ring& h : v.holes)
+			for (Ring& h : v.inner)
 				for (glm::vec2& p : h)
 					p += v.offset;
-			v.boxes.resize(1 + v.holes.size());
+			v.boxes.resize(1 + v.inner.size());
 			for (glm::vec2 p : v.outer)
 				v.boxes[0].add(p);
-			for (size_t i = 0; i < v.holes.size(); i++)
-				for (glm::vec2 p : v.holes[i])
+			for (size_t i = 0; i < v.inner.size(); i++)
+				for (glm::vec2 p : v.inner[i])
 					v.boxes[i + 1].add(p);
 			v.size = v.box.max - v.box.min;
 			v.box.min = glm::vec2();
@@ -135,18 +135,21 @@ namespace nesting
 			return in ? 1 : 0;
 		}
 
-		// the point is strictly inside the material of the variant placed at shift
+		// the point is strictly inside the material of the variant placed at shift: it is inside the outer ring and an even number of
+		// inner rings (none, or the hole and its island...), and on no ring
 		bool in_material(glm::vec2 p, const Variant& v, glm::vec2 shift)
 		{
 			if (point_in_ring(p, v.outer, shift) != 1)
 				return false;
-			for (const Ring& h : v.holes)
+			int depth = 0;
+			for (const Ring& r : v.inner)
 			{
-				int r = point_in_ring(p, h, shift);
-				if (r != 0)
+				int where = point_in_ring(p, r, shift);
+				if (where == -1)
 					return false;
+				depth += where;
 			}
-			return true;
+			return depth % 2 == 0;
 		}
 
 		bool rings_cross(const Ring& ra, glm::vec2 sa, const Ring& rb, glm::vec2 sb, const Box& ba, const Box& bb)
@@ -184,15 +187,15 @@ namespace nesting
 				return true;
 
 			// edges which cross each other (the rings whose bounds are apart are not compared)
-			for (size_t i = 0; i <= a.holes.size(); i++)
+			for (size_t i = 0; i <= a.inner.size(); i++)
 			{
-				const Ring& x = i == 0 ? a.outer : a.holes[i - 1];
+				const Ring& x = i == 0 ? a.outer : a.inner[i - 1];
 				Box xb{ a.boxes[i].min + pa, a.boxes[i].max + pa };
 				if (xb.separate(bb))
 					continue;
-				for (size_t j = 0; j <= b.holes.size(); j++)
+				for (size_t j = 0; j <= b.inner.size(); j++)
 				{
-					const Ring& y = j == 0 ? b.outer : b.holes[j - 1];
+					const Ring& y = j == 0 ? b.outer : b.inner[j - 1];
 					Box yb{ b.boxes[j].min + pb, b.boxes[j].max + pb };
 					if (xb.separate(yb))
 						continue;
@@ -281,8 +284,15 @@ namespace nesting
 	float area(const Part& part)
 	{
 		float a = ring_area(part.outer);
-		for (const Ring& h : part.holes)
-			a -= ring_area(h);
+		for (size_t i = 0; i < part.inner.size(); i++)
+		{
+			// a ring inside an even number of other inner rings is a hole, inside an odd number an island
+			int around = 0;
+			for (size_t j = 0; j < part.inner.size(); j++)
+				if (j != i && point_in_ring(part.inner[i][0], part.inner[j], glm::vec2()) == 1)
+					around++;
+			a += around % 2 == 0 ? -ring_area(part.inner[i]) : ring_area(part.inner[i]);
+		}
 		return a;
 	}
 

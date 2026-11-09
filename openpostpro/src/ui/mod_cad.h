@@ -122,7 +122,8 @@ private:
 	struct NestPartInfo
 	{
 		std::string name;
-		std::vector<Curve> curves;	// the outer contour, then its holes
+		std::vector<Curve> curves;	// the outer contour, then the contours inside it, at any depth
+		std::vector<int> depths;	// the depth of each contour inside the outer one: 1 for a hole, 2 for an island in a hole...
 		std::vector<Shape*> shapes;
 		float width = 0, height = 0;
 		int quantity = 1;
