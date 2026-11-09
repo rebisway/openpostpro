@@ -2,16 +2,24 @@
 #   python tools/make_nest_parts.py tests/cpp/data/nest_parts.opp
 # The parts imitate a real cutting sheet: big plates with holes, rounded rectangles with slots, rings, triangles,
 # brackets and washers, so that small parts can be nested inside the holes of the big ones.
-# Only lines, arcs and circles are used. Units: millimetre. One layer per part family.
+# Only lines, arcs and circles are used. Units: millimetre. One layer per part family, one group (block) per part.
 import math, sys
 
 shapes = []
 next_id = [10]
 layers = {}
+block = ['']
+counters = {}
+
+
+# a new part: its shapes form a group (a block), named after the family of the part and a number
+def new_part(family):
+    counters[family] = counters.get(family, 0) + 1
+    block[0] = '%s_%d' % (family, counters[family])
 
 
 def add(kind, layer, name, *values):
-    shapes.append('%d;%d;%s;%s_%d;%s' % (kind, next_id[0], layer, name, next_id[0], ';'.join(('%g' % v) for v in values)))
+    shapes.append('%d;%d;%s;%s_%d;%s;%s;' % (kind, next_id[0], layer, name, next_id[0], ';'.join(('%g' % v) for v in values), block[0]))
     next_id[0] += 1
 
 
@@ -51,6 +59,7 @@ def slot(layer, cx, cy, l, w):
 
 
 def polygon(layer, points):
+    new_part(layer)
     for i in range(len(points)):
         x1, y1 = points[i]
         x2, y2 = points[(i + 1) % len(points)]
@@ -58,6 +67,7 @@ def polygon(layer, points):
 
 
 def plate_with_slots(layer, x, y, w, h, r, slots, holes):
+    new_part(layer)
     round_rect(layer, x, y, w, h, r)
     for (sx, sy, sl, sw) in slots:
         slot(layer, x + sx, y + sy, sl, sw)
@@ -66,6 +76,7 @@ def plate_with_slots(layer, x, y, w, h, r, slots, holes):
 
 
 def ring(layer, cx, cy, ro, ri):
+    new_part(layer)
     circle(layer, cx, cy, ro)
     circle(layer, cx, cy, ri)
 
@@ -81,6 +92,7 @@ def washer_family(layer, x, y, count, ro, ri, step):
 
 # big frame: a plate with a large rectangular window, where other parts can go
 def frame(layer, x, y, w, h, r, window):
+    new_part(layer)
     round_rect(layer, x, y, w, h, r)
     wx, wy, ww, wh = window
     round_rect(layer, x + wx, y + wy, ww, wh, 6)
@@ -105,6 +117,7 @@ def build():
     plate_with_slots('Oblongs', 0, 420, 140, 40, 10, [(30, 20, 40, 14), (110, 20, 40, 14)], [])
     plate_with_slots('Oblongs', 160, 420, 140, 40, 10, [(30, 20, 40, 14), (110, 20, 40, 14)], [])
     for i in range(6):
+        new_part('Disques')
         circle('Disques', 40 + i * 70, 520, 25)
 
 
