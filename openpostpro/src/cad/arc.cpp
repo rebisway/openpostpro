@@ -541,13 +541,14 @@ std::string Arc::write()
 		stringex::to_string(_center.y) + ';' +
 		stringex::to_string(_stop.x) + ';' +
 		stringex::to_string(_stop.y) + ';' +
-		std::to_string(_cw);
+		std::to_string(_cw) + ';' +
+		WS(block());
 }
 
 void Arc::read(std::string value, float version)
 {
 	auto data = stringex::split(value, ';');
-	if (data.size() == 11)
+	if (data.size() == 11 || data.size() == 12)
 	{
 		// data[0] = type
 		_id = (unsigned int)std::stoi(data[1]);
@@ -560,6 +561,7 @@ void Arc::read(std::string value, float version)
 		_stop.x = std::stof(data[8]);
 		_stop.y = std::stof(data[9]);
 		_cw = std::stoi(data[10]);
+		RS(_block, 11);
 
 		done(true);
 		compute();

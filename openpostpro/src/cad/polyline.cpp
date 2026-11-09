@@ -516,6 +516,8 @@ std::string Polyline::write()
 	for (glm::vec2 p : _points)
 		result += stringex::to_string(p.x) + ';' + stringex::to_string(p.y) + ';';
 
+	result += WS(block());
+
 	return result.substr(0, result.size() - 1);
 }
 
@@ -540,6 +542,7 @@ void Polyline::read(std::string value, float version)
 			));
 			j += 2;
 		}
+		RS(_block, j);
 		done(true);
 		compute();
 	}

@@ -211,13 +211,14 @@ std::string Point::write()
 		parent() + ';' +
 		_name + ';' +
 		stringex::to_string(_p1.x) + ';' +
-		stringex::to_string(_p1.y);
+		stringex::to_string(_p1.y) + ';' +
+		WS(block());
 }
 
 void Point::read(std::string value, float version)
 {
 	auto data = stringex::split(value, ';');
-	if (data.size() == 6)
+	if (data.size() == 6 || data.size() == 7)
 	{
 		// data[0] = type
 		_id = (unsigned int)std::stoi(data[1]);
@@ -225,6 +226,7 @@ void Point::read(std::string value, float version)
 		_name = data[3];
 		_p1.x = std::stof(data[4]);
 		_p1.y = std::stof(data[5]);
+		RS(_block, 6);
 
 		done(true);
 		compute();

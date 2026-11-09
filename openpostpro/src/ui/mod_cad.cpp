@@ -101,6 +101,8 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["CAM_SHOW_DIRECTION"] = _render->load_texture("direction.png");
 	_textures["CAM_SHOW_START"] = _render->load_texture("start.png");
 	_textures["CAM_REFRESH"] = _render->load_texture("refresh.png");
+	_textures["DRAWING_BLOCK_CREATE"] = _render->load_texture("block.png");
+	_textures["DRAWING_BLOCK_EXPLODE"] = _render->load_texture("block.png");
 	_textures["CAD_FIT"] = _render->load_texture("fit.png");
 	_textures["BTN_ADD"] = _render->load_texture("plus.png");
 	_textures["BTN_REMOVE"] = _render->load_texture("minus.png");
@@ -910,6 +912,7 @@ void ModCad::mouseMouve(double x_pos, double y_pos)
 
 		if (_shape_hovered != nullptr)
 			_shape_hovered->over(true);
+		hover_block();
 	}
 	// left button is down, we are in the following mode : selection, multiple selection, modification, move, construction
 	else
@@ -1056,6 +1059,16 @@ void ModCad::scroll(double xdelta, double ydelta)
 
 	for (auto g : _document->groups())
 		g->scaled();
+}
+
+// all the shapes of the hovered block are drawn as hovered
+void ModCad::hover_block()
+{
+	std::string hovered = _shape_hovered != nullptr ? _shape_hovered->block() : "";
+	// the table of the blocks gives the shapes without a search in the layers
+	for (const std::string& name : _document->blocks())
+		for (Shape* s : _document->block_shapes(name))
+			s->over(name == hovered);
 }
 
 //***************************************************************************************************
@@ -1346,8 +1359,60 @@ void ModCad::render_GUI()
 					}
 					ImGui::TreePop(); // we close tree to keep shapes on the same left position, not really a tree but more a list showned
 					
+					// the shapes of a block are not listed: the block is, once, after the free shapes of the layer of its first shape
+					std::vector<std::string> listed;
 					for (Shape* s : l->shapes())
 					{
+						if (!s->block().empty())
+						{
+							// the block is listed once, under the layer of its first shape (the table gives the shapes in the order of the layers)
+							if (_document->block_shapes(s->block()).front()->parent() != l->name())
+								continue;
+							if (std::find(listed.begin(), listed.end(), s->block()) != listed.end())
+								continue;
+							listed.push_back(s->block());
+							ImGuiTreeNodeFlags bflags = node_flags;
+							std::string block = s->block();
+							std::string shown = "[" + block + "] (" + std::to_string(_document->block_shapes(block).size()) + ")###BLOCK_" + block;
+							if (s->selected())
+							{
+								if (_f2)
+									shown = "##BLOCK_NAME_" + block;
+								else
+									bflags |= ImGuiTreeNodeFlags_Selected;
+							}
+							if (ImGui::TreeNodeEx(shown.c_str(), bflags))
+							{
+								if (ImGui::IsItemClicked())
+									select(s);
+								if (_f2 && s->selected())
+								{
+									ImGui::SameLine();
+									char input[20];
+									sprintf_s(input, "%s", block.c_str());
+									ImGui::SetKeyboardFocusHere();
+									if (ImGui::InputText("##_F2_INPUT", input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll))
+									{
+										std::string renamed = input;
+										if (!renamed.empty() && renamed != block)
+										{
+											renamed = _document->unique_block(renamed);
+											// a copy: block_set changes the table of the blocks while the shapes are visited
+											std::vector<Shape*> members = _document->block_shapes(block);
+											History::begin_undo_record();
+											for (Shape* m : members)
+											{
+												History::undo(HistoryActionType::Modify, m->write());
+												_document->block_set(m, renamed);
+											}
+											History::end_undo_record();
+										}
+										_f2 = false;
+									}
+								}
+							}
+							continue;
+						}
 						ImGuiTreeNodeFlags nflags = node_flags;
 						std::string name = s->name();
 						if (s->selected())
@@ -1496,7 +1561,7 @@ void ModCad::render_GUI()
 		// a button is the icon and its frame (1 pixel on each side); the window adds its padding
 		const float size = 20.0f, space = ImGui::GetStyle().ItemSpacing.x;
 		const ImVec2 pad = ImGui::GetStyle().WindowPadding;
-		const float box_w = 5 * (size + 2) + 4 * space + 2 * pad.x, box_h = size + 2 + 2 * pad.y;
+		const float box_w = 6 * (size + 2) + 5 * space + 2 * pad.x, box_h = size + 2 + 2 * pad.y;
 		ImGui::SetNextWindowPos(ImVec2((_width - box_w) / 2, 60.0f));
 		ImGui::SetNextWindowSize(ImVec2(box_w, box_h));
 		ImGui::Begin("###CAM_DISPLAY", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize);
@@ -1524,6 +1589,17 @@ void ModCad::render_GUI()
 		ImGui::SameLine();
 		if (set_shortcut("CAM_REFRESH", ImVec2(size, size)))
 			cam_refresh();
+		ImGui::SameLine();
+		// one icon: checked when the selection is a group, a click then releases the shapes
+		int selected_shapes = 0;
+		bool grouped = selection_grouped(selected_shapes);
+		if (set_shortcut(grouped ? "DRAWING_BLOCK_EXPLODE" : "DRAWING_BLOCK_CREATE", ImVec2(size, size), grouped, grouped || selected_shapes > 1))
+		{
+			if (grouped)
+				cad_block_explode();
+			else
+				cad_block_create();
+		}
 		ImGui::End();
 	}
 
@@ -2032,6 +2108,20 @@ void ModCad::render_menu()
 				}
 				ImGui::EndMenu();
 			}
+			if (ImGui::MenuItem(Lang::l("DRAWING_NESTING")))
+			{
+				cad_nesting();
+			}
+			// the same as the icon: checked when the selection is a group
+			int selected_shapes = 0;
+			bool grouped = selection_grouped(selected_shapes);
+			if (ImGui::MenuItem(Lang::l("DRAWING_BLOCK_CREATE"), nullptr, grouped, grouped || selected_shapes > 1))
+			{
+				if (grouped)
+					cad_block_explode();
+				else
+					cad_block_create();
+			}
 			if (ImGui::BeginMenu(Lang::l("DRAWING_BOOLEAN")))
 			{
 				if (ImGui::MenuItem(Lang::l("DRAWING_UNION")))
@@ -2479,6 +2569,7 @@ void ModCad::paste()
 	{
 		auto list = stringex::split(clip, '\n');
 		std::vector<Graphic*> graphics;
+		std::map<std::string, std::string> block_names;
 
 		for (std::string v : list)
 		{
@@ -2535,6 +2626,15 @@ void ModCad::paste()
 				{
 					x = glm::min(x, ((Shape*)g)->topLeft().x);
 					y = glm::max(y, ((Shape*)g)->topLeft().y);
+					// a pasted block is a new block, not more shapes in the block it was copied from
+					Shape* pasted = (Shape*)g;
+					if (!pasted->block().empty())
+					{
+						auto found = block_names.find(pasted->block());
+						if (found == block_names.end())
+							found = block_names.emplace(pasted->block(), _document->unique_block(pasted->block())).first;
+						pasted->block(found->second);
+					}
 				}
 
 				graphics.push_back(g);
@@ -2833,7 +2933,13 @@ HistoryAction ModCad::process_action(HistoryAction action)
 			if (g != nullptr)
 			{
 				output += g->write() + '\n';
+				// the block of a shape can change: the table of the blocks follows
+				Shape* shape = g->shape() ? (Shape*)g : nullptr;
+				if (shape != nullptr)
+					_document->block_remove(shape);
 				g->read(v);
+				if (shape != nullptr)
+					_document->block_add(shape);
 			}
 		}
 

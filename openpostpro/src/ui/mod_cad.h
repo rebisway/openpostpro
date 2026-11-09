@@ -138,6 +138,9 @@ private:
 	void remove(std::vector<Shape*> shapes);
 	void add(std::vector<Shape*> shapes);
 	bool are_shapes_connected(Shape* s1, Shape* s2, float precision, bool reverse=false);
+	// all the shapes of the hovered block are drawn as hovered
+	void hover_block();
+	bool selection_grouped(int& shapes);
 
 	void reset_display_boxes() { _display_chamfer_box = _display_arc_box = _display_poly_box = _display_offset_box = false; }
 
@@ -266,6 +269,14 @@ public:
 	void cad_rotation(float value);
 	void cad_chamfer(float value);
 	void cad_fillet(float value);
+	// block: the selected shapes are gathered under a name, or the shapes of the selected blocks are released
+	void cad_block_create();
+	void cad_block_explode();
+	// nesting: the window of the settings, then the parts (the blocks) are placed on the sheet
+	void cad_nesting();
+	void cad_nesting_run();
+	// the test bridge: nests every shape of the document
+	void cad_nesting_bridge(float width, float height, float spacing, int quantity);
 
 	void insert(std::string code);
 	Shape* find_shape(unsigned int id);

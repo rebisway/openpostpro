@@ -32,6 +32,7 @@ private:
 
 protected:
 	bool _over = false;								// true if mouse is over
+	std::string _block;								// name of the block this shape belongs to, empty if none (the last field of the shape in the file)
 	geometry::rectangle _bounds;					// clip rectangle
 
 public:
@@ -40,6 +41,12 @@ public:
 
 	int tag();
 	void tag(int value);
+
+	// A block gathers shapes under a name: selecting, hovering, moving, turning or mirroring one shape of a block acts on all of them.
+	// The block is only this name, nothing else is stored.
+	std::string block();
+	void block(std::string value);
+	// the document keeps a table of the blocks: change the block of a shape of a document with Document::block_set
 
 	// properties
 	std::string parent();

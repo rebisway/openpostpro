@@ -472,13 +472,14 @@ std::string Ellipse::write()
 		stringex::to_string(_minor) + ';' +
 		stringex::to_string(_start) + ';' +
 		stringex::to_string(_stop) + ';' +
-		stringex::to_string(_angle);
+		stringex::to_string(_angle) + ';' +
+		WS(block());
 }
 
 void Ellipse::read(std::string value, float version)
 {
 	auto data = stringex::split(value, ';');
-	if (data.size() == 11)
+	if (data.size() == 11 || data.size() == 12)
 	{
 		// data[0] = type
 		_id = (unsigned int)std::stoi(data[1]);
@@ -491,6 +492,7 @@ void Ellipse::read(std::string value, float version)
 		_start = std::stof(data[8]);
 		_stop = std::stof(data[9]);
 		_angle = std::stof(data[10]);
+		RS(_block, 11);
 
 		done(true);
 		compute();

@@ -39,6 +39,16 @@ std::string Shape::parent()
 	return _parent;
 }
 
+std::string Shape::block()
+{
+	return _block;
+}
+
+void Shape::block(std::string value)
+{
+	_block = value;
+}
+
 void Shape::parent(std::string value)
 {
 	if (_parent != value )

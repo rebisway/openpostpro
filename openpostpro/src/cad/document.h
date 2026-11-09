@@ -19,6 +19,7 @@
 #include <string>
 #include "graphic.h"
 #include <vector>
+#include <map>
 #include <layer.h>
 #include <group.h>
 #include <machine.h>
@@ -47,6 +48,10 @@ private:
 	Layer* _current_layer = nullptr;		// current selected layer
 	Group* _current_group = nullptr;		// current selected group
 	bool _modified = false;
+	// table of the blocks: their names in the order of their first shape, and the shapes of each one. It is filled while the file is
+	// read (each shape enters a layer) and kept up to date by block_add, block_remove and block_set: no search in the layers.
+	std::map<std::string, std::vector<Shape*>> _block_index;
+	std::vector<std::string> _block_names;
 	// display of all the toolpaths at once, on top of the visibility of each group. Not saved in the file
 	bool _show_toolpaths = true;
 
@@ -124,6 +129,17 @@ public:
 
 	void up(Graphic* g);
 	void down(Graphic* g);
+
+	// the blocks: names in the order of their first shape, and the shapes of one block (every layer)
+	const std::vector<std::string>& blocks() { return _block_names; }
+	const std::vector<Shape*>& block_shapes(const std::string& name);
+	// a shape enters a layer, leaves it (before it does): the table follows
+	void block_add(Shape* shape);
+	void block_remove(Shape* shape);
+	// the block of a shape which is in a layer ("" for none): the only way to change it
+	void block_set(Shape* shape, const std::string& name);
+	// the name with a number added if the block already exists
+	std::string unique_block(const std::string& name);
 
 	void select_all();
 	void unselect_all();

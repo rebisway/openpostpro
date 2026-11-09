@@ -723,7 +723,7 @@ std::string Text::write()
 		result += std::to_string(_reference_path[i].x) + ';' + std::to_string(_reference_path[i].y) + ';';
 
 	// 1: the position is the start of the text (older files have no marker: the position was its end)
-	result += "1;";
+	result += "1;" + WS(block());
 
 	return result;
 }
@@ -764,6 +764,7 @@ void Text::read(std::string value, float version)
 	// an older file has no marker after the path: the position was the end of the text
 	size_t marker = 18 + (size_t)count;
 	_reference_legacy = _reference != -1 && !(marker < data.size() && data[marker] == "1");
+	RS(_block, marker + 1);
 
 	_reference_length = 0;
 	if (count)

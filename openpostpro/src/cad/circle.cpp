@@ -272,13 +272,14 @@ std::string Circle::write()
 		_name + ';' +
 		stringex::to_string(_center.x) + ';' +
 		stringex::to_string(_center.y) + ';' +
-		stringex::to_string(_radius);
+		stringex::to_string(_radius) + ';' +
+		WS(block());
 }
 
 void Circle::read(std::string value, float version)
 {
 	auto data = stringex::split(value, ';');
-	if (data.size() == 7)
+	if (data.size() == 7 || data.size() == 8)
 	{
 		// data[0] = type
 		_id = (unsigned int)std::stoi(data[1]);
@@ -287,6 +288,7 @@ void Circle::read(std::string value, float version)
 		_center.x = std::stof(data[4]);
 		_center.y = std::stof(data[5]);
 		_radius = std::stof(data[6]);
+		RS(_block, 7);
 
 		done(true);
 		compute();

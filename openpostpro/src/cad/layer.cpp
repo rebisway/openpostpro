@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <document.h>
 #include "layer.h"
 #include <line.h>
 #include <geometry.h>
@@ -59,6 +60,8 @@ void Layer::add(Shape* value)
 		value->name(n);
 	}
 	_shapes.push_back(value);
+	if (_document != nullptr)
+		_document->block_add(value);
 	value->parent(_name);
 }
 
@@ -68,7 +71,11 @@ void Layer::remove(Shape* value)
 	{
 		auto it = std::find(_shapes.begin(), _shapes.end(), value);
 		if (it != _shapes.end())
+		{
+			if (_document != nullptr)
+				_document->block_remove(value);
 			_shapes.erase(it);
+		}
 	}
 }
 

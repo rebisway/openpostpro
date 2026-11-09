@@ -21,6 +21,8 @@
 #include "shape.h"
 #include "graphic.h"
 
+class Document;
+
 class Layer : public Graphic
 {
 private:
@@ -30,9 +32,12 @@ private:
 	// a locked layer can not be modified: its shapes can not be moved, edited, deleted, cut or extended. They stay visible,
 	// can be selected (to machine them) and the magnets work on them
 	bool _locked = false;
+	// the document the layer belongs to: it is told when a shape enters or leaves, to keep its table of the blocks
+	Document* _document = nullptr;
 
 public:
 	std::vector<Shape*>& shapes() { return _shapes; }
+	void document(Document* value) { _document = value; }
 	glm::vec4 color() { return _color; }
 	void color(glm::vec4 color) { _color = color; }
 	bool visible() { return _visible; }

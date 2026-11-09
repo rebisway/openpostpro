@@ -125,6 +125,7 @@ Layer* Document::layer(std::string name)
 	Layer* l = new Layer(_render);
 	l->name(name);
 	l->color(colors[index]);
+	l->document(this);
 	_layers.push_back(l);
 	if (_current_layer == nullptr)
 		_current_layer = l;
@@ -206,6 +207,10 @@ void Document::remove_layer(Layer* value)
 	if (it != _layers.end())
 	{
 		(*it)->selected(false);
+		// its shapes leave the document
+		for (Shape* shape : (*it)->shapes())
+			block_remove(shape);
+		(*it)->document(nullptr);
 		bool current = _current_layer == *it;
 		// the layer which takes the place: the previous one, or the next one if it was the first
 		size_t index = it - _layers.begin();
@@ -377,13 +382,72 @@ void Document::unselect_all()
 	_selected.clear();
 }
 
+const std::vector<Shape*>& Document::block_shapes(const std::string& name)
+{
+	static const std::vector<Shape*> none;
+	auto it = _block_index.find(name);
+	return it == _block_index.end() ? none : it->second;
+}
+
+void Document::block_add(Shape* shape)
+{
+	if (shape->block().empty())
+		return;
+	auto it = _block_index.find(shape->block());
+	if (it == _block_index.end())
+	{
+		it = _block_index.emplace(shape->block(), std::vector<Shape*>()).first;
+		_block_names.push_back(shape->block());
+	}
+	if (std::find(it->second.begin(), it->second.end(), shape) == it->second.end())
+		it->second.push_back(shape);
+}
+
+void Document::block_remove(Shape* shape)
+{
+	auto it = _block_index.find(shape->block());
+	if (it == _block_index.end())
+		return;
+	auto& shapes = it->second;
+	shapes.erase(std::remove(shapes.begin(), shapes.end(), shape), shapes.end());
+	if (shapes.empty())
+	{
+		_block_names.erase(std::remove(_block_names.begin(), _block_names.end(), it->first), _block_names.end());
+		_block_index.erase(it);
+	}
+}
+
+void Document::block_set(Shape* shape, const std::string& name)
+{
+	block_remove(shape);
+	shape->block(name);
+	block_add(shape);
+}
+
+std::string Document::unique_block(const std::string& name)
+{
+	auto names = blocks();
+	std::string result = name;
+	for (int i = 2; std::find(names.begin(), names.end(), result) != names.end(); i++)
+		result = name + "_" + std::to_string(i);
+	return result;
+}
+
 void Document::select(Graphic* g)
 {
-	if (std::find(_selected.begin(), _selected.end(), g) == _selected.end())
+	auto add = [this](Graphic* x)
 	{
-		g->selected(true);
-		_selected.push_back(g);
-	}
+		if (std::find(_selected.begin(), _selected.end(), x) == _selected.end())
+		{
+			x->selected(true);
+			_selected.push_back(x);
+		}
+	};
+	add(g);
+	// a shape of a block selects the whole block
+	if (g->shape() && !((Shape*)g)->block().empty())
+		for (Shape* s : block_shapes(((Shape*)g)->block()))
+			add(s);
 }
 
 void Document::select(std::vector<Graphic*> list)
@@ -394,12 +458,19 @@ void Document::select(std::vector<Graphic*> list)
 
 void Document::unselect(Graphic* g)
 {
-	auto it = std::find(_selected.begin(), _selected.end(), g);
-	if ( it != _selected.end())
+	auto remove = [this](Graphic* x)
 	{
-		(*it)->selected(false);
-		_selected.erase(it);
-	}
+		auto it = std::find(_selected.begin(), _selected.end(), x);
+		if (it != _selected.end())
+		{
+			(*it)->selected(false);
+			_selected.erase(it);
+		}
+	};
+	remove(g);
+	if (g->shape() && !((Shape*)g)->block().empty())
+		for (Shape* s : block_shapes(((Shape*)g)->block()))
+			remove(s);
 }
 
 void Document::unselect(std::vector<Graphic*> list)
@@ -471,6 +542,8 @@ void Document::clear()
 	auto t = std::chrono::high_resolution_clock::now();
 
 	_selected.clear();
+	_block_index.clear();
+	_block_names.clear();
 
 	for (Layer* layer : _layers)
 	{

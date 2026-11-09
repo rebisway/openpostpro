@@ -330,13 +330,14 @@ std::string Line::write()
 		stringex::to_string(_p1.x) + ';' +
 		stringex::to_string(_p1.y) + ';' +
 		stringex::to_string(_p2.x) + ';' +
-		stringex::to_string(_p2.y);
+		stringex::to_string(_p2.y) + ';' +
+		WS(block());
 }
 
 void Line::read(std::string value, float version)
 {
 	auto data = stringex::split(value, ';');
-	if (data.size() == 8)
+	if (data.size() == 8 || data.size() == 9)
 	{
 		// data[0] = type
 		_id = (unsigned int)std::stoi(data[1]);
@@ -346,6 +347,7 @@ void Line::read(std::string value, float version)
 		_p1.y = std::stof(data[5]);
 		_p2.x = std::stof(data[6]);
 		_p2.y = std::stof(data[7]);
+		RS(_block, 8);
 
 		done(true);
 		compute();

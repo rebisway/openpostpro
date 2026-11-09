@@ -318,6 +318,8 @@ std::string Spline::write()
 			result += stringex::to_string(s.center.x) + ';' + stringex::to_string(s.center.y) + ';' + stringex::to_string(s.radius) + ';' + std::to_string(s.cw) + ';';
 	}
 
+	result += WS(block());
+
 	return result.substr(0, result.size() - 1);
 }
 
@@ -348,6 +350,7 @@ void Spline::read(std::string value, float version)
 			j += 3;
 			_curve.push_back(s);
 		}
+		RS(_block, j);
 		done(true);
 		//compute();
 	}
