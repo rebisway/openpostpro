@@ -41,6 +41,7 @@ namespace nesting
 			Ring outer;
 			std::vector<Ring> holes;
 			Box box;
+			std::vector<Box> boxes;	// bounds of each ring: the outer one, then the holes
 			glm::vec2 size = glm::vec2();
 		};
 
@@ -85,6 +86,12 @@ namespace nesting
 			for (Ring& h : v.holes)
 				for (glm::vec2& p : h)
 					p += v.offset;
+			v.boxes.resize(1 + v.holes.size());
+			for (glm::vec2 p : v.outer)
+				v.boxes[0].add(p);
+			for (size_t i = 0; i < v.holes.size(); i++)
+				for (glm::vec2 p : v.holes[i])
+					v.boxes[i + 1].add(p);
 			v.size = v.box.max - v.box.min;
 			v.box.min = glm::vec2();
 			v.box.max = v.size;
@@ -170,14 +177,29 @@ namespace nesting
 			if (ba.separate(bb))
 				return false;
 
-			// edges which cross each other
-			std::vector<const Ring*> ra{ &a.outer }, rb{ &b.outer };
-			for (const Ring& h : a.holes) ra.push_back(&h);
-			for (const Ring& h : b.holes) rb.push_back(&h);
-			for (const Ring* x : ra)
-				for (const Ring* y : rb)
-					if (rings_cross(*x, pa, *y, pb, ba, bb))
+			// a part which starts inside the material of the other one: no need to look at the edges
+			if (!b.outer.empty() && in_material(b.outer[0] + pb, a, pa))
+				return true;
+			if (!a.outer.empty() && in_material(a.outer[0] + pa, b, pb))
+				return true;
+
+			// edges which cross each other (the rings whose bounds are apart are not compared)
+			for (size_t i = 0; i <= a.holes.size(); i++)
+			{
+				const Ring& x = i == 0 ? a.outer : a.holes[i - 1];
+				Box xb{ a.boxes[i].min + pa, a.boxes[i].max + pa };
+				if (xb.separate(bb))
+					continue;
+				for (size_t j = 0; j <= b.holes.size(); j++)
+				{
+					const Ring& y = j == 0 ? b.outer : b.holes[j - 1];
+					Box yb{ b.boxes[j].min + pb, b.boxes[j].max + pb };
+					if (xb.separate(yb))
+						continue;
+					if (rings_cross(x, pa, y, pb, xb, yb))
 						return true;
+				}
+			}
 
 			// no crossing: one outer ring can still be inside the material of the other one
 			for (glm::vec2 p : b.outer)
@@ -205,15 +227,28 @@ namespace nesting
 			return false;
 		}
 
-		bool fits(const Variant& v, glm::vec2 position, const std::vector<Placed>& placed)
+		// blocker: the part which stopped the previous position, tried first (the next position is likely stopped by the same one)
+		bool fits(const Variant& v, glm::vec2 position, const std::vector<Placed>& placed, size_t& blocker)
 		{
 			Box box{ position, position + v.size };
-			for (const Placed& p : placed)
+			if (blocker < placed.size())
 			{
+				const Placed& p = placed[blocker];
+				if (!box.separate(p.box) && overlap_variants(v, position, *p.variant, p.position))
+					return false;
+			}
+			for (size_t i = 0; i < placed.size(); i++)
+			{
+				if (i == blocker)
+					continue;
+				const Placed& p = placed[i];
 				if (box.separate(p.box))
 					continue;
 				if (overlap_variants(v, position, *p.variant, p.position))
+				{
+					blocker = i;
 					return false;
+				}
 			}
 			return true;
 		}
@@ -268,6 +303,7 @@ namespace nesting
 
 		std::vector<Placed> placed;
 		std::vector<Placement> result;
+		size_t blocker = 0;
 		glm::vec2 lo(options.margin), hi(options.width - options.margin, options.height - options.margin);
 
 		for (const Item& item : items)
@@ -288,7 +324,7 @@ namespace nesting
 					bool found = false;
 					for (float y = lo.y; y + v.size.y <= hi.y + EPS; y += options.step)
 					{
-						if (!fits(v, glm::vec2(x, y), placed))
+						if (!fits(v, glm::vec2(x, y), placed, blocker))
 							continue;
 						glm::vec2 p(x, y);
 						// slide towards the lower left with smaller and smaller moves
@@ -299,8 +335,8 @@ namespace nesting
 							{
 								moved = false;
 								glm::vec2 left(p.x - s, p.y), down(p.x, p.y - s);
-								if (left.x >= lo.x && fits(v, left, placed)) { p = left; moved = true; }
-								else if (down.y >= lo.y && fits(v, down, placed)) { p = down; moved = true; }
+								if (left.x >= lo.x && fits(v, left, placed, blocker)) { p = left; moved = true; }
+								else if (down.y >= lo.y && fits(v, down, placed, blocker)) { p = down; moved = true; }
 							}
 						}
 						float score = p.x + p.y * 0.001f;
