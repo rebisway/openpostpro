@@ -208,6 +208,7 @@
     <ClCompile Include="src\cam\drill.cpp" />
     <ClCompile Include="src\cam\follow.cpp" />
     <ClCompile Include="src\cam\moveTo.cpp" />
+    <ClCompile Include="src\cam\nesting.cpp" />
     <ClCompile Include="src\cam\offset.cpp" />
     <ClCompile Include="src\cam\pocket.cpp" />
     <ClCompile Include="src\cam\spiral.cpp" />
@@ -382,6 +383,7 @@
     <ClInclude Include="src\ui\config.h" />
     <ClInclude Include="src\ui\message_box.h" />
     <ClInclude Include="src\ui\module.h" />
+    <ClInclude Include="src\cam\nesting.h" />
     <ClInclude Include="src\ui\mod_cad.h" />
     <ClInclude Include="src\ui\mod_log.h" />
     <ClInclude Include="src\ui\tools_window.h" />

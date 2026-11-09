@@ -225,6 +225,9 @@
     <ClCompile Include="src\cam\follow.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="src\cam\nesting.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
     <ClCompile Include="src\cam\offset.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>

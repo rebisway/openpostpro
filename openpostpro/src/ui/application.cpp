@@ -268,6 +268,16 @@ void Application::initialize()
 			bridge::log("pocket done");
 			return true;
 		}
+		if (c[0] == "nest")
+		{
+			// "nest <width> <height> <spacing> [quantity]": every shape of the document is nested
+			ModCad* cad = (ModCad*)module("MOD_CAD");
+			if (cad == nullptr || c.size() < 4)
+				return false;
+			cad->cad_nesting_bridge(std::stof(c[1]), std::stof(c[2]), std::stof(c[3]), c.size() > 4 ? std::stoi(c[4]) : 1);
+			bridge::log("nesting done");
+			return true;
+		}
 		if (c[0] == "save" && c.size() > 1)
 		{
 			save_file(c[1]);

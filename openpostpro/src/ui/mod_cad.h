@@ -23,6 +23,8 @@
 #include <message_box.h>
 #include <curve.h>
 #include <pocket.h>
+#include <vector>
+#include <string>
 #include "tools_window.h"
 #include "machines_window.h"
 
@@ -73,6 +75,8 @@ private:
 	void fit_view();
 	// the area of the machine of the document under the drawing: the table, the zero of the machine and the direction of its axes
 	void draw_machine();
+	// the window of the settings of the nesting
+	void draw_nesting();
 	std::map<std::string, Texture*> _textures;
 
 	MessageBox _message_box;
@@ -114,6 +118,20 @@ private:
 	bool _display_chamfer_box = false;
 	bool _display_offset_box = false;
 	bool _display_pocket_box = false;
+	// nesting: the parts found in the selection and the settings of the window (not saved in the document)
+	struct NestPartInfo
+	{
+		std::string name;
+		std::vector<Curve> curves;	// the outer contour, then its holes
+		std::vector<Shape*> shapes;
+		float width = 0, height = 0;
+		int quantity = 1;
+	};
+	std::vector<NestPartInfo> _nest_parts;
+	bool _display_nesting = false;
+	float _nest_width = 1000, _nest_height = 500, _nest_margin = 5, _nest_spacing = 3, _nest_step = 8;
+	int _nest_rotation = 2;
+	bool _nest_fill_holes = true;
 	ToolsWindow _tools_window;
 	MachinesWindow _machines_window;
 	bool _display_delete_layer = false;
@@ -301,5 +319,6 @@ public:
 	void cam_offset(bool interior);
 	void cam_pocket(PocketMode mode);
 	void cam_spiral();
+
 
 };

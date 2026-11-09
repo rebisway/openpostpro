@@ -45,6 +45,11 @@
 #include <pocket.h>
 #include <tool.h>
 #include<chrono>
+#include <functional>
+#include <cmath>
+#include <algorithm>
+#include <nesting.h>
+#include <map>
 
 ModCad::ModCad(Window* window) : Module(window)
 {
@@ -1925,6 +1930,7 @@ void ModCad::render_GUI()
 
 	_tools_window.draw();
 	_machines_window.draw(_document);
+	draw_nesting();
 	draw_machine();
 	draw_link_hint();
 
@@ -4567,6 +4573,361 @@ void ModCad::cad_chamfer(float value)
 	}
 }
 
+// true if the selection is a group: it has shapes and each one is in a block (the selection takes a block whole); shapes: their number
+bool ModCad::selection_grouped(int& shapes)
+{
+	shapes = 0;
+	bool grouped = true;
+	for (Graphic* g : _document->selected())
+		if (g->shape())
+		{
+			shapes++;
+			if (((Shape*)g)->block().empty())
+				grouped = false;
+		}
+	return shapes > 0 && grouped;
+}
+
+// the selected shapes are gathered in a new block (the blocks they were part of are included whole: the selection takes them whole)
+void ModCad::cad_block_create()
+{
+	std::vector<Shape*> shapes;
+	for (Graphic* g : _document->selected())
+		if (g->shape() && !is_locked((Shape*)g))
+			shapes.push_back((Shape*)g);
+
+	if (shapes.size() < 2)
+	{
+		_message_box.display(Lang::t("ERROR") + "###MSG_BOX", Lang::l("ERR_BLOCK_SELECTION"));
+		return;
+	}
+
+	auto names = _document->blocks();
+	std::string name;
+	for (int i = 1; name.empty() || std::find(names.begin(), names.end(), name) != names.end(); i++)
+		name = Lang::t("CAD_BLOCK") + "_" + std::to_string(i);
+
+	History::begin_undo_record();
+	for (Shape* s : shapes)
+	{
+		History::undo(HistoryActionType::Modify, s->write());
+		_document->block_set(s, name);
+	}
+	History::end_undo_record();
+}
+
+// the shapes of the selected blocks are free again
+// the shapes of the selected blocks are free again
+void ModCad::cad_block_explode()
+{
+	std::vector<Shape*> shapes;
+	for (Graphic* g : _document->selected())
+		if (g->shape() && !((Shape*)g)->block().empty() && !is_locked((Shape*)g))
+			shapes.push_back((Shape*)g);
+
+	if (shapes.empty())
+		return;
+
+	History::begin_undo_record();
+	for (Shape* s : shapes)
+	{
+		History::undo(HistoryActionType::Modify, s->write());
+		_document->block_set(s, "");
+	}
+	History::end_undo_record();
+}
+
+// nesting: the polygon of a closed contour, and the contour moved away from its inside or towards it
+// polygon of a closed curve, the arcs are cut so that the chord is at most 0.1 from the arc
+static nesting::Ring nest_ring(Curve& curve)
+{
+	const float pi = 3.14159265358979f;
+	nesting::Ring ring;
+	size_t count = curve.size();
+	for (size_t i = 0; i < count; i++)
+	{
+		Segment& s = curve[i];
+		if (s.type == SegmentType::Line)
+		{
+			ring.push_back(s.point);
+			continue;
+		}
+		bool circle = s.type == SegmentType::Circle;
+		if (!circle && i + 1 >= count)
+			break;
+		float radius = s.radius;
+		float step = radius > 0.2f ? 2 * std::acos(std::max(0.0f, 1 - 0.1f / radius)) : pi / 4;
+		step = std::clamp(step, 0.035f, 0.26f);
+		glm::vec2 end = circle ? s.point : curve[i + 1].point;
+		float a1 = std::atan2(s.point.y - s.center.y, s.point.x - s.center.x);
+		float a2 = std::atan2(end.y - s.center.y, end.x - s.center.x);
+		float sweep = s.cw ? a1 - a2 : a2 - a1;
+		while (sweep < 0)
+			sweep += 2 * pi;
+		if (circle || sweep < 1e-6f)
+			sweep = 2 * pi;
+		int n = std::max(2, (int)std::ceil(sweep / step));
+		for (int k = 0; k < n; k++)
+		{
+			float a = a1 + (s.cw ? -1 : 1) * sweep * k / n;
+			ring.push_back(s.center + glm::vec2(std::cos(a), std::sin(a)) * radius);
+		}
+		if (circle)
+			break;
+	}
+	// the closing point repeats the first one
+	if (ring.size() > 1 && glm::distance(ring.front(), ring.back()) < 1e-4f)
+		ring.pop_back();
+	return ring;
+}
+
+static float nest_ring_area(const nesting::Ring& r)
+{
+	double s = 0;
+	for (size_t i = 0, j = r.size() - 1; i < r.size(); j = i++)
+		s += (double)r[j].x * r[i].y - (double)r[i].x * r[j].y;
+	return (float)std::fabs(s * 0.5);
+}
+
+// the ring moved away from its inside (grow) or towards it by the distance
+static nesting::Ring nest_grown(Curve& curve, float distance, bool grow)
+{
+	nesting::Ring base = nest_ring(curve);
+	if (distance <= 0 || base.size() < 3)
+		return base;
+	float area = nest_ring_area(base);
+	nesting::Ring best;
+	float best_gap = 0;
+	for (float sign : { 1.0f, -1.0f })
+	{
+		Curve c = curve;
+		std::vector<Curve> result = c.offset(sign * distance);
+		for (Curve& r : result)
+		{
+			nesting::Ring ring = nest_ring(r);
+			if (ring.size() < 3)
+				continue;
+			float gap = nest_ring_area(ring) - area;
+			if (!grow)
+				gap = -gap;
+			if (gap > best_gap)
+			{
+				best_gap = gap;
+				best = ring;
+			}
+		}
+	}
+	// a hole too small to survive the offset is dropped by the caller (empty ring)
+	if (best.empty() && grow)
+		return base;
+	return best;
+}
+
+void ModCad::cad_nesting()
+{
+	_nest_parts.clear();
+	if (_document->selected().empty())
+		return;
+
+	TreeCurve* tree = cad_tree();
+	std::map<int, std::vector<Shape*>> by_tag;
+	for (Graphic* g : _document->selected())
+		if (g->shape() && g->type() != GraphicType::Text)
+			by_tag[((Shape*)g)->tag()].push_back((Shape*)g);
+
+	std::function<void(TreeCurve*)> make = [&](TreeCurve* node)
+	{
+		Curve* outer = node->curve;
+		if (outer == nullptr || !outer->closed() || outer->size() < 2)
+			return;
+		NestPartInfo info;
+		info.curves.push_back(*outer);
+		for (Shape* s : by_tag[outer->tag()])
+			info.shapes.push_back(s);
+		std::vector<TreeCurve*> islands;
+		for (TreeCurve* h : node->children)
+		{
+			if (h->curve != nullptr && h->curve->closed() && h->curve->size() >= 2)
+			{
+				info.curves.push_back(*h->curve);
+				for (Shape* s : by_tag[h->curve->tag()])
+					info.shapes.push_back(s);
+			}
+			for (TreeCurve* island : h->children)
+				islands.push_back(island);
+		}
+		if (!info.shapes.empty())
+		{
+			glm::vec2 mn(1e30f), mx(-1e30f);
+			for (glm::vec2 p : nest_ring(info.curves[0]))
+			{
+				mn = glm::min(mn, p);
+				mx = glm::max(mx, p);
+			}
+			info.width = mx.x - mn.x;
+			info.height = mx.y - mn.y;
+			info.name = std::string(Lang::l("NESTING_PART")) + " " + std::to_string(_nest_parts.size() + 1);
+			_nest_parts.push_back(info);
+		}
+		for (TreeCurve* i : islands)
+			make(i);
+	};
+	for (TreeCurve* t : tree->children)
+		make(t);
+	delete tree;
+
+	_display_nesting = !_nest_parts.empty();
+}
+
+// the settings window, where the nesting is started
+void ModCad::draw_nesting()
+{
+	if (!_display_nesting)
+		return;
+
+	ImGui::SetNextWindowSize(ImVec2(520, 0), ImGuiCond_FirstUseEver);
+	if (!ImGui::Begin((std::string(Lang::l("NESTING")) + "###NESTING_WINDOW").c_str(), &_display_nesting, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::End();
+		return;
+	}
+
+	ImGui::SeparatorText(Lang::l("NESTING_SHEET"));
+	ImGui::InputFloat(Lang::l("NESTING_WIDTH"), &_nest_width, 0, 0, "%.1f");
+	ImGui::InputFloat(Lang::l("NESTING_HEIGHT"), &_nest_height, 0, 0, "%.1f");
+	ImGui::InputFloat(Lang::l("NESTING_MARGIN"), &_nest_margin, 0, 0, "%.1f");
+	ImGui::InputFloat(Lang::l("NESTING_SPACING"), &_nest_spacing, 0, 0, "%.1f");
+
+	ImGui::SeparatorText(Lang::l("NESTING_OPTIONS"));
+	const char* rotations[] = { Lang::l("NESTING_ROT_NONE"), Lang::l("NESTING_ROT_180"), Lang::l("NESTING_ROT_90"), Lang::l("NESTING_ROT_15") };
+	ImGui::Combo(Lang::l("NESTING_ROTATIONS"), &_nest_rotation, rotations, IM_ARRAYSIZE(rotations));
+	ImGui::Checkbox(Lang::l("NESTING_FILL_HOLES"), &_nest_fill_holes);
+	ImGui::InputFloat(Lang::l("NESTING_STEP"), &_nest_step, 0, 0, "%.1f");
+
+	ImGui::SeparatorText(Lang::l("NESTING_PARTS"));
+	if (ImGui::BeginTable("##NEST_PARTS", 3, ImGuiTableFlags_SizingStretchProp))
+	{
+		ImGui::TableSetupColumn(Lang::l("NESTING_NAME"));
+		ImGui::TableSetupColumn(Lang::l("NESTING_SIZE"));
+		ImGui::TableSetupColumn(Lang::l("NESTING_QUANTITY"));
+		ImGui::TableHeadersRow();
+		for (size_t i = 0; i < _nest_parts.size(); i++)
+		{
+			NestPartInfo& p = _nest_parts[i];
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::TextUnformatted(p.name.c_str());
+			ImGui::TableNextColumn();
+			ImGui::Text("%.1f x %.1f", p.width, p.height);
+			ImGui::TableNextColumn();
+			ImGui::SetNextItemWidth(90);
+			ImGui::InputInt(("##NEST_Q" + std::to_string(i)).c_str(), &p.quantity);
+			p.quantity = std::clamp(p.quantity, 0, 999);
+		}
+		ImGui::EndTable();
+	}
+
+	if (ImGui::Button(Lang::l("NESTING_RUN")))
+	{
+		cad_nesting_run();
+		_display_nesting = false;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(Lang::l("BTN_CANCEL")))
+		_display_nesting = false;
+	ImGui::End();
+}
+
+// the shapes of the parts are copied to their place, the originals stay where they are
+void ModCad::cad_nesting_run()
+{
+	std::vector<nesting::Part> parts;
+	for (NestPartInfo& info : _nest_parts)
+	{
+		nesting::Part part;
+		part.quantity = info.quantity;
+		part.outer = nest_grown(info.curves[0], _nest_spacing / 2, true);
+		if (_nest_fill_holes)
+			for (size_t i = 1; i < info.curves.size(); i++)
+			{
+				nesting::Ring h = nest_grown(info.curves[i], _nest_spacing / 2, false);
+				if (h.size() >= 3)
+					part.holes.push_back(h);
+			}
+		parts.push_back(part);
+	}
+
+	nesting::Options options;
+	options.width = _nest_width;
+	options.height = _nest_height;
+	// the parts are inflated by half of the spacing: the border is kept at the same distance
+	options.margin = _nest_margin + _nest_spacing / 2;
+	options.step = std::max(1.0f, _nest_step);
+	switch (_nest_rotation)
+	{
+	case 0: options.angles = { 0 }; break;
+	case 1: options.angles = { 0, 180 }; break;
+	case 2: options.angles = { 0, 90, 180, 270 }; break;
+	default:
+		options.angles.clear();
+		for (int a = 0; a < 360; a += 15)
+			options.angles.push_back((float)a);
+	}
+
+	auto t = std::chrono::high_resolution_clock::now();
+	std::vector<nesting::Placement> placements = nesting::nest(parts, options);
+
+	std::vector<Graphic*> created;
+	int placed = 0, missing = 0;
+	for (const nesting::Placement& p : placements)
+	{
+		if (!p.placed)
+		{
+			missing++;
+			continue;
+		}
+		placed++;
+		glm::mat4 m = glm::translate(glm::vec3(p.offset.x, p.offset.y, 0.0f)) * glm::rotate(glm::radians(p.angle), glm::vec3(0, 0, 1.0f));
+		for (Shape* shape : _nest_parts[p.part].shapes)
+		{
+			Shape* s = shape->clone();
+			if (s == nullptr)
+				continue;
+			s->transform(m);
+			_document->current_layer()->add(s);
+			created.push_back(s);
+		}
+	}
+
+	if (!created.empty())
+	{
+		History::begin_undo_record();
+		for (Graphic* g : created)
+			History::undo(HistoryActionType::Add, g->write());
+		History::end_undo_record();
+	}
+	_document->unselect_all();
+	_document->select(created);
+
+	double ms = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - t).count();
+	Logger::log(std::string("nesting: ") + std::to_string(placed) + " placed, " + std::to_string(missing) + " not placed, utilisation "
+		+ std::to_string((int)(nesting::utilisation(parts, placements, options) * 100)) + " %, " + std::to_string((int)ms) + " ms");
+}
+
+// the test bridge: the settings are given, every shape of the document is used (see Application::bridge_command)
+void ModCad::cad_nesting_bridge(float width, float height, float spacing, int quantity)
+{
+	_document->select_all();
+	cad_nesting();
+	for (NestPartInfo& p : _nest_parts)
+		p.quantity = quantity;
+	_nest_width = width;
+	_nest_height = height;
+	_nest_spacing = spacing;
+	cad_nesting_run();
+	_display_nesting = false;
+}
+
 //***************************************************************************************************
 //
 //                                         CAM PROCESSING
@@ -4828,4 +5189,3 @@ void ModCad::cam_pocket(PocketMode mode)
 		Logger::log("cad_offset process time (ms): " + std::to_string(std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - t).count()));
 	}
 }
-
