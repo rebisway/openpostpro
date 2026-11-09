@@ -4723,41 +4723,48 @@ static nesting::Ring nest_grown(Curve& curve, float distance, bool grow)
 	return best;
 }
 
+// the parts are the groups of the selection: the largest closed contour of a group is its outline, the closed contours inside it
+// are its holes
 void ModCad::cad_nesting()
 {
 	_nest_parts.clear();
-	if (_document->selected().empty())
-		return;
 
-	TreeCurve* tree = cad_tree();
-	std::map<int, std::vector<Shape*>> by_tag;
+	std::vector<std::string> names;
 	for (Graphic* g : _document->selected())
-		if (g->shape() && g->type() != GraphicType::Text)
-			by_tag[((Shape*)g)->tag()].push_back((Shape*)g);
+		if (g->shape() && !((Shape*)g)->block().empty() && std::find(names.begin(), names.end(), ((Shape*)g)->block()) == names.end())
+			names.push_back(((Shape*)g)->block());
 
-	std::function<void(TreeCurve*)> make = [&](TreeCurve* node)
+	if (names.empty())
 	{
-		Curve* outer = node->curve;
-		if (outer == nullptr || !outer->closed() || outer->size() < 2)
-			return;
-		NestPartInfo info;
-		info.curves.push_back(*outer);
-		for (Shape* s : by_tag[outer->tag()])
-			info.shapes.push_back(s);
-		std::vector<TreeCurve*> islands;
-		for (TreeCurve* h : node->children)
+		_message_box.display(Lang::t("ERROR") + "###MSG_BOX", Lang::l("ERR_NESTING_SELECTION"));
+		return;
+	}
+
+	// cad_tree() works on the selection: each group is selected in turn, then the selection comes back
+	std::vector<Graphic*> selection = _document->selected();
+	for (const std::string& name : names)
+	{
+		std::vector<Shape*> shapes = _document->block_shapes(name);
+		_document->unselect_all();
+		for (Shape* shape : shapes)
+			_document->select(shape);
+
+		TreeCurve* tree = cad_tree();
+		TreeCurve* outline = nullptr;
+		for (TreeCurve* t : tree->children)
+			if (t->curve != nullptr && t->curve->closed() && t->curve->size() >= 2 && (outline == nullptr || std::fabs(t->curve->area()) > std::fabs(outline->curve->area())))
+				outline = t;
+
+		if (outline != nullptr)
 		{
-			if (h->curve != nullptr && h->curve->closed() && h->curve->size() >= 2)
-			{
-				info.curves.push_back(*h->curve);
-				for (Shape* s : by_tag[h->curve->tag()])
-					info.shapes.push_back(s);
-			}
-			for (TreeCurve* island : h->children)
-				islands.push_back(island);
-		}
-		if (!info.shapes.empty())
-		{
+			NestPartInfo info;
+			info.name = name;
+			info.shapes = shapes;
+			info.curves.push_back(*outline->curve);
+			for (TreeCurve* hole : outline->children)
+				if (hole->curve != nullptr && hole->curve->closed() && hole->curve->size() >= 2)
+					info.curves.push_back(*hole->curve);
+
 			glm::vec2 mn(1e30f), mx(-1e30f);
 			for (glm::vec2 p : nest_ring(info.curves[0]))
 			{
@@ -4766,15 +4773,12 @@ void ModCad::cad_nesting()
 			}
 			info.width = mx.x - mn.x;
 			info.height = mx.y - mn.y;
-			info.name = std::string(Lang::l("NESTING_PART")) + " " + std::to_string(_nest_parts.size() + 1);
 			_nest_parts.push_back(info);
 		}
-		for (TreeCurve* i : islands)
-			make(i);
-	};
-	for (TreeCurve* t : tree->children)
-		make(t);
-	delete tree;
+		delete tree;
+	}
+	_document->unselect_all();
+	_document->select(selection);
 
 	_display_nesting = !_nest_parts.empty();
 }
@@ -4877,6 +4881,23 @@ void ModCad::cad_nesting_run()
 	auto t = std::chrono::high_resolution_clock::now();
 	std::vector<nesting::Placement> placements = nesting::nest(parts, options);
 
+	// the result goes in a new layer, and the layers of the drawing are hidden to see it alone
+	Layer* result = nullptr;
+	for (const nesting::Placement& p : placements)
+		if (p.placed)
+		{
+			std::string name = Lang::t("NESTING");
+			auto exists = [this](const std::string& n) { for (Layer* l : _document->layers()) if (l->name() == n) return true; return false; };
+			for (int i = 1; name == Lang::t("NESTING") || exists(name); i++)
+				name = Lang::t("NESTING") + "_" + std::to_string(i);
+			for (Layer* l : _document->layers())
+				l->visible(false);
+			result = _document->layer(name);
+			result->visible(true);
+			_document->current_layer(result);
+			break;
+		}
+
 	std::vector<Graphic*> created;
 	int placed = 0, missing = 0;
 	for (const nesting::Placement& p : placements)
@@ -4887,6 +4908,8 @@ void ModCad::cad_nesting_run()
 			continue;
 		}
 		placed++;
+		// the copy of a part is a group, like the part
+		std::string group_name = _document->unique_block(_nest_parts[p.part].name);
 		glm::mat4 m = glm::translate(glm::vec3(p.offset.x, p.offset.y, 0.0f)) * glm::rotate(glm::radians(p.angle), glm::vec3(0, 0, 1.0f));
 		for (Shape* shape : _nest_parts[p.part].shapes)
 		{
@@ -4894,7 +4917,8 @@ void ModCad::cad_nesting_run()
 			if (s == nullptr)
 				continue;
 			s->transform(m);
-			_document->current_layer()->add(s);
+			result->add(s);
+			_document->block_set(s, group_name);
 			created.push_back(s);
 		}
 	}
@@ -4902,6 +4926,7 @@ void ModCad::cad_nesting_run()
 	if (!created.empty())
 	{
 		History::begin_undo_record();
+		History::undo(HistoryActionType::Add, result->write());
 		for (Graphic* g : created)
 			History::undo(HistoryActionType::Add, g->write());
 		History::end_undo_record();
