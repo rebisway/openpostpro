@@ -44,7 +44,8 @@ Shape* Circle::clone()
 {
 	Circle* c = new Circle(_render);
 	c->center(_center);
-	c->radius(_radius);
+	// not radius(): it refuses a radius of 0 (a file can hold one) and the copy would get the default radius
+	c->_radius = _radius;
 	c->done(true);
 	c->compute();
 	return c;
@@ -101,9 +102,8 @@ void Circle::transform(glm::tmat4x4<float> mat)
 	auto p = glm::vec2(_center.x + _radius, _center.y);
 	_center = mat * glm::vec4(_center.x, _center.y, 1, 1);
 	p = mat * glm::vec4(p.x, p.y, 1, 1);
-	auto r = geometry::distance(_center, p);
-	if (r != _radius)
-		_radius = _radius * (r / _radius);
+	// the radius is the distance between the center and the moved point (a division by the radius gave NaN for a radius of 0)
+	_radius = geometry::distance(_center, p);
 	compute();
 }
 
