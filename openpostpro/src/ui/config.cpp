@@ -225,49 +225,49 @@ MessageBoxResult Config::drawUI()
 		if (ImGui::BeginTabItem(Lang::l("COLOR")))
 		{
 			glm::vec4 c = geometry::from_string(_ini_temp.get_string("COLOR", "AnchorLine"));
-			if (ImGui::ColorEdit4("Anchor", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_ANCHOR"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "AnchorLine", geometry::to_string(c));
 				c.a /= 2;
 				_ini_temp.set("COLOR", "AnchorFill", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "Decoration"));
-			if (ImGui::ColorEdit4("Decoration", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_DECORATION"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Decoration", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "MouseOver"));
-			if (ImGui::ColorEdit4("Mouse Over", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_MOUSE_OVER"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "MouseOver", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "Axe"));
-			if (ImGui::ColorEdit4("Axe", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_AXIS"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Axe", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "Grid"));
-			if (ImGui::ColorEdit4("Grid", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_GRID"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Grid", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "Background"));
-			if (ImGui::ColorEdit4("Background", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_BACKGROUND"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Background", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "Layer"));
-			if (ImGui::ColorEdit4("Default layer", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_LAYER"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Layer", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "Group"));
-			if (ImGui::ColorEdit4("Default group", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_OPERATION"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Group", geometry::to_string(c));
 			}
 			c = geometry::from_string(_ini_temp.get_string("COLOR", "Selected"));
-			if (ImGui::ColorEdit4("Selected", (float*)&c))
+			if (ImGui::ColorEdit4(Lang::l("PREF_COLOR_SELECTED"), (float*)&c))
 			{
 				_ini_temp.set("COLOR", "Selected", geometry::to_string(c));
 			}
@@ -299,7 +299,7 @@ MessageBoxResult Config::drawUI()
 	float windowWidth = ImGui::GetWindowSize().x;
 	float textWidth = std::max(ImGui::CalcTextSize(Lang::l("OK")).x, ImGui::CalcTextSize(Lang::l("CANCEL")).x);
 	ImGui::SetCursorPosX((windowWidth - (2 * textWidth + style.ItemSpacing.x)) * 0.5f);
-	if (ImGui::Button("Ok", ImVec2(textWidth, 0.0f)))
+	if (ImGui::Button(Lang::l("OK"), ImVec2(textWidth, 0.0f)))
 	{
 		_ini.load_data(_ini_temp.get_data());
 		_ini.write();
@@ -310,7 +310,7 @@ MessageBoxResult Config::drawUI()
 		result = MessageBoxResult::Ok;
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Cancel", ImVec2(textWidth, 0.0f)))
+	if (ImGui::Button(Lang::l("CANCEL"), ImVec2(textWidth, 0.0f)))
 	{
 		_load_temp = true;
 		result = MessageBoxResult::Cancel;
