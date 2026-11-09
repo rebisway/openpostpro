@@ -4901,17 +4901,40 @@ void ModCad::cad_nesting_run()
 	auto t = std::chrono::high_resolution_clock::now();
 	std::vector<nesting::Placement> placements = nesting::nest(parts, options);
 
-	// the result goes in a new layer, and the layers of the drawing are hidden to see it alone
+	// The sheet is drawn once, in a locked layer named after its size. The result goes in a new layer, and the other layers are
+	// hidden to see them alone.
 	Layer* result = nullptr;
+	Layer* sheet = nullptr;
+	std::vector<Graphic*> sheet_shapes;
+	auto exists = [this](const std::string& n) { for (Layer* l : _document->layers()) if (l->name() == n) return true; return false; };
 	for (const nesting::Placement& p : placements)
 		if (p.placed)
 		{
+			char size[40];
+			sprintf_s(size, "%gx%g", _nest_width, _nest_height);
+			std::string sheet_name = std::string(Lang::t("NESTING_SHEET")) + "_" + size;
+			bool draw_sheet = !exists(sheet_name);
+			sheet = _document->layer(sheet_name);
+			if (draw_sheet)
+			{
+				glm::vec2 corner[4] = { glm::vec2(0, 0), glm::vec2(_nest_width, 0), glm::vec2(_nest_width, _nest_height), glm::vec2(0, _nest_height) };
+				for (int i = 0; i < 4; i++)
+				{
+					Line* line = new Line(_render);
+					line->set(corner[i], corner[(i + 1) % 4]);
+					line->done(true);
+					line->compute();
+					sheet->add(line);
+					sheet_shapes.push_back(line);
+				}
+				sheet->locked(true);
+			}
+
 			std::string name = Lang::t("NESTING");
-			auto exists = [this](const std::string& n) { for (Layer* l : _document->layers()) if (l->name() == n) return true; return false; };
 			for (int i = 1; name == Lang::t("NESTING") || exists(name); i++)
 				name = Lang::t("NESTING") + "_" + std::to_string(i);
 			for (Layer* l : _document->layers())
-				l->visible(false);
+				l->visible(l == sheet);
 			result = _document->layer(name);
 			result->visible(true);
 			_document->current_layer(result);
@@ -4946,6 +4969,12 @@ void ModCad::cad_nesting_run()
 	if (!created.empty())
 	{
 		History::begin_undo_record();
+		if (!sheet_shapes.empty())
+		{
+			History::undo(HistoryActionType::Add, sheet->write());
+			for (Graphic* g : sheet_shapes)
+				History::undo(HistoryActionType::Add, g->write());
+		}
 		History::undo(HistoryActionType::Add, result->write());
 		for (Graphic* g : created)
 			History::undo(HistoryActionType::Add, g->write());
