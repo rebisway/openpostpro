@@ -120,6 +120,11 @@ ModCad::ModCad(Window* window) : Module(window)
 
 ModCad::~ModCad()
 {
+	// the calculation of the nesting must not go on without its window
+	_nest_progress.stop = true;
+	if (_nest_thread.joinable())
+		_nest_thread.join();
+
 	delete _b_grid;
 	delete _b_decoration;
 	delete _b_selection;
@@ -4815,9 +4820,80 @@ void ModCad::cad_nesting()
 }
 
 // the settings window, where the nesting is started
+// the explanation of a setting: a mark after it, the text appears when the mouse is over it
+static void nest_help(const char* key)
+{
+	ImGui::SameLine();
+	ImGui::TextDisabled("(?)");
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::BeginTooltip();
+		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 28);
+		ImGui::TextUnformatted(Lang::l(key));
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
+}
+
+// a turning arc: something is going on
+static void nest_spinner(float radius)
+{
+	ImDrawList* list = ImGui::GetWindowDrawList();
+	ImVec2 position = ImGui::GetCursorScreenPos();
+	ImVec2 center(position.x + radius, position.y + radius);
+	const float pi = 3.14159265f;
+	float start = (float)ImGui::GetTime() * 6.0f;
+	for (int i = 0; i <= 24; i++)
+		list->PathLineTo(ImVec2(center.x + std::cos(start + 1.5f * pi * i / 24) * radius, center.y + std::sin(start + 1.5f * pi * i / 24) * radius));
+	list->PathStroke(ImGui::GetColorU32(ImGuiCol_PlotHistogram), 0, radius * 0.3f);
+	ImGui::Dummy(ImVec2(radius * 2, radius * 2));
+}
+
+// the calculation of the nesting: a window which blocks the others, the time it takes, and the way to stop it
+void ModCad::draw_nesting_wait()
+{
+	if (!_nest_thread.joinable())
+		return;
+
+	if (_nest_finished)
+	{
+		_nest_thread.join();
+		if (!_nest_discard)
+			cad_nesting_end();
+		return;
+	}
+
+	const char* popup = "###NESTING_WAIT";
+	ImGui::OpenPopup(popup);
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	if (ImGui::BeginPopupModal((std::string(Lang::l("NESTING_WAIT_TITLE")) + popup).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
+	{
+		nest_spinner(14);
+		ImGui::SameLine();
+		ImGui::AlignTextToFramePadding();
+		ImGui::TextUnformatted(Lang::l("NESTING_WAIT"));
+		ImGui::ProgressBar(_nest_progress.done, ImVec2(320, 0));
+		float length = _nest_progress.length;
+		if (length > 0)
+			ImGui::Text("%s : %.1f", Lang::l("NESTING_BEST"), length);
+		if (_nest_job_options.algorithm != nesting::Algorithm::Greedy)
+			ImGui::Text("%s : %d", Lang::l("NESTING_TRIES"), _nest_progress.tries.load());
+		if (ImGui::Button(Lang::l("NESTING_STOP")))
+			_nest_progress.stop = true;
+		ImGui::SameLine();
+		if (ImGui::Button(Lang::l("BTN_CANCEL")))
+		{
+			_nest_discard = true;
+			_nest_progress.stop = true;
+		}
+		ImGui::EndPopup();
+	}
+}
+
 void ModCad::draw_nesting()
 {
-	if (!_display_nesting)
+	draw_nesting_wait();
+	if (!_display_nesting || _nest_thread.joinable())
 		return;
 
 	ImGui::SetNextWindowSize(ImVec2(520, 0), ImGuiCond_FirstUseEver);
@@ -4829,15 +4905,31 @@ void ModCad::draw_nesting()
 
 	ImGui::SeparatorText(Lang::l("NESTING_SHEET"));
 	ImGui::InputFloat(Lang::l("NESTING_WIDTH"), &_nest_width, 0, 0, "%.1f");
+	nest_help("NESTING_HELP_SIZE");
 	ImGui::InputFloat(Lang::l("NESTING_HEIGHT"), &_nest_height, 0, 0, "%.1f");
 	ImGui::InputFloat(Lang::l("NESTING_MARGIN"), &_nest_margin, 0, 0, "%.1f");
+	nest_help("NESTING_HELP_MARGIN");
 	ImGui::InputFloat(Lang::l("NESTING_SPACING"), &_nest_spacing, 0, 0, "%.1f");
+	nest_help("NESTING_HELP_SPACING");
 
 	ImGui::SeparatorText(Lang::l("NESTING_OPTIONS"));
-	const char* rotations[] = { Lang::l("NESTING_ROT_NONE"), Lang::l("NESTING_ROT_180"), Lang::l("NESTING_ROT_90"), Lang::l("NESTING_ROT_15") };
+	const char* algorithms[] = { Lang::l("NESTING_ALGO_GREEDY"), Lang::l("NESTING_ALGO_SEARCH"), Lang::l("NESTING_ALGO_OVERLAP") };
+	ImGui::Combo(Lang::l("NESTING_ALGORITHM"), &_nest_algorithm, algorithms, IM_ARRAYSIZE(algorithms));
+	nest_help("NESTING_HELP_ALGORITHM");
+	if (_nest_algorithm >= 1)
+	{
+		ImGui::InputFloat(Lang::l("NESTING_TIME"), &_nest_time, 0, 0, "%.0f");
+		_nest_time = std::max(1.0f, _nest_time);
+		nest_help("NESTING_HELP_TIME");
+	}
+	const char* rotations[] = { Lang::l("NESTING_ROT_NONE"), Lang::l("NESTING_ROT_180"), Lang::l("NESTING_ROT_90"), Lang::l("NESTING_ROT_15"),
+		Lang::l("NESTING_ROT_5"), Lang::l("NESTING_ROT_1") };
 	ImGui::Combo(Lang::l("NESTING_ROTATIONS"), &_nest_rotation, rotations, IM_ARRAYSIZE(rotations));
+	nest_help("NESTING_HELP_ROTATIONS");
 	ImGui::Checkbox(Lang::l("NESTING_FILL_HOLES"), &_nest_fill_holes);
+	nest_help("NESTING_HELP_FILL_HOLES");
 	ImGui::InputFloat(Lang::l("NESTING_STEP"), &_nest_step, 0, 0, "%.1f");
+	nest_help("NESTING_HELP_STEP");
 
 	ImGui::SeparatorText(Lang::l("NESTING_PARTS"));
 	if (ImGui::BeginTable("##NEST_PARTS", 3, ImGuiTableFlags_SizingStretchProp))
@@ -4873,8 +4965,8 @@ void ModCad::draw_nesting()
 	ImGui::End();
 }
 
-// the shapes of the parts are copied to their place, the originals stay where they are
-void ModCad::cad_nesting_run()
+// the parts and the options of the window, as the calculation wants them
+void ModCad::nesting_job()
 {
 	std::vector<nesting::Part> parts;
 	for (NestPartInfo& info : _nest_parts)
@@ -4905,13 +4997,46 @@ void ModCad::cad_nesting_run()
 	case 1: options.angles = { 0, 180 }; break;
 	case 2: options.angles = { 0, 90, 180, 270 }; break;
 	default:
+	{
+		// 15, 5 or 1 degree
+		int step = _nest_rotation == 3 ? 15 : _nest_rotation == 4 ? 5 : 1;
 		options.angles.clear();
-		for (int a = 0; a < 360; a += 15)
+		for (int a = 0; a < 360; a += step)
 			options.angles.push_back((float)a);
 	}
+	}
+	options.algorithm = _nest_algorithm == 2 ? nesting::Algorithm::Overlap : _nest_algorithm == 1 ? nesting::Algorithm::Search : nesting::Algorithm::Greedy;
+	options.time = _nest_time;
 
-	auto t = std::chrono::high_resolution_clock::now();
-	std::vector<nesting::Placement> placements = nesting::nest(parts, options);
+	_nest_job_parts = parts;
+	_nest_job_options = options;
+}
+
+// the calculation starts in a thread of its own: draw_nesting_wait takes the result
+void ModCad::cad_nesting_run()
+{
+	nesting_job();
+	_nest_progress.stop = false;
+	_nest_progress.done = 0;
+	_nest_progress.length = 0;
+	_nest_progress.tries = 0;
+	_nest_finished = false;
+	_nest_discard = false;
+	_nest_job_begin = std::chrono::high_resolution_clock::now();
+	_nest_thread = std::thread([this]
+	{
+		_nest_job_result = nesting::nest(_nest_job_parts, _nest_job_options, &_nest_progress);
+		_nest_finished = true;
+	});
+}
+
+// the shapes of the parts are copied to their place, the originals stay where they are
+void ModCad::cad_nesting_end()
+{
+	std::vector<nesting::Part>& parts = _nest_job_parts;
+	nesting::Options& options = _nest_job_options;
+	std::vector<nesting::Placement>& placements = _nest_job_result;
+	auto t = _nest_job_begin;
 
 	// The sheet is drawn once, in a locked layer named after its size. The result goes in a new layer, and the other layers are
 	// hidden to see them alone.
@@ -5008,7 +5133,7 @@ void ModCad::cad_nesting_run()
 }
 
 // the test bridge: the settings are given, every shape of the document is used (see Application::bridge_command)
-void ModCad::cad_nesting_bridge(float width, float height, float spacing, int quantity)
+void ModCad::cad_nesting_bridge(float width, float height, float spacing, int quantity, float seconds, int algorithm)
 {
 	_document->select_all();
 	cad_nesting();
@@ -5017,7 +5142,13 @@ void ModCad::cad_nesting_bridge(float width, float height, float spacing, int qu
 	_nest_width = width;
 	_nest_height = height;
 	_nest_spacing = spacing;
-	cad_nesting_run();
+	_nest_algorithm = seconds > 0 ? algorithm : 0;
+	_nest_time = seconds;
+	// the test waits for the result: no thread
+	nesting_job();
+	_nest_job_begin = std::chrono::high_resolution_clock::now();
+	_nest_job_result = nesting::nest(_nest_job_parts, _nest_job_options);
+	cad_nesting_end();
 	_display_nesting = false;
 }
 

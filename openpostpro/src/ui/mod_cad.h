@@ -25,6 +25,10 @@
 #include <pocket.h>
 #include <vector>
 #include <string>
+#include <thread>
+#include <atomic>
+#include <chrono>
+#include <nesting.h>
 #include "tools_window.h"
 #include "machines_window.h"
 
@@ -75,8 +79,9 @@ private:
 	void fit_view();
 	// the area of the machine of the document under the drawing: the table, the zero of the machine and the direction of its axes
 	void draw_machine();
-	// the window of the settings of the nesting
+	// the window of the settings of the nesting, and the window which shows the calculation
 	void draw_nesting();
+	void draw_nesting_wait();
 	std::map<std::string, Texture*> _textures;
 
 	MessageBox _message_box;
@@ -133,6 +138,18 @@ private:
 	float _nest_width = 1000, _nest_height = 500, _nest_margin = 5, _nest_spacing = 3, _nest_step = 8;
 	int _nest_rotation = 2;
 	bool _nest_fill_holes = true;
+	int _nest_algorithm = 0;				// 0 greedy, 1 search
+	float _nest_time = 60;					// seconds, for the search
+	// The calculation runs in a thread of its own, so that the interface does not freeze: the job is given to it, and the result is taken
+	// when it has ended (draw_nesting_wait).
+	std::thread _nest_thread;
+	nesting::Progress _nest_progress;
+	std::atomic<bool> _nest_finished{ false };
+	bool _nest_discard = false;
+	std::vector<nesting::Part> _nest_job_parts;
+	nesting::Options _nest_job_options;
+	std::vector<nesting::Placement> _nest_job_result;
+	std::chrono::high_resolution_clock::time_point _nest_job_begin;
 	ToolsWindow _tools_window;
 	MachinesWindow _machines_window;
 	bool _display_delete_layer = false;
@@ -293,9 +310,12 @@ public:
 	void cad_block_explode();
 	// nesting: the window of the settings, then the parts (the blocks) are placed on the sheet
 	void cad_nesting();
+	// the parts and the options of the window, then the calculation in a thread of its own, then the result is put in the drawing
+	void nesting_job();
 	void cad_nesting_run();
+	void cad_nesting_end();
 	// the test bridge: nests every shape of the document
-	void cad_nesting_bridge(float width, float height, float spacing, int quantity);
+	void cad_nesting_bridge(float width, float height, float spacing, int quantity, float seconds = 0, int algorithm = 1);
 
 	void insert(std::string code);
 	Shape* find_shape(unsigned int id);

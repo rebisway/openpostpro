@@ -270,11 +270,11 @@ void Application::initialize()
 		}
 		if (c[0] == "nest")
 		{
-			// "nest <width> <height> <spacing> [quantity]": every shape of the document is nested
+			// "nest <width> <height> <spacing> [quantity [seconds]]": every shape of the document is nested, for some seconds if they are given with the algorithm 1 (search, the default) or 2 (overlap)
 			ModCad* cad = (ModCad*)module("MOD_CAD");
 			if (cad == nullptr || c.size() < 4)
 				return false;
-			cad->cad_nesting_bridge(std::stof(c[1]), std::stof(c[2]), std::stof(c[3]), c.size() > 4 ? std::stoi(c[4]) : 1);
+			cad->cad_nesting_bridge(std::stof(c[1]), std::stof(c[2]), std::stof(c[3]), c.size() > 4 ? std::stoi(c[4]) : 1, c.size() > 5 ? std::stof(c[5]) : 0, c.size() > 6 ? std::stoi(c[6]) : 1);
 			bridge::log("nesting done");
 			return true;
 		}
