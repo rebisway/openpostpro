@@ -5077,6 +5077,9 @@ void ModCad::cam_follow()
 					f->reference(c.reference());
 					bool cw = _document->current_group()->cw();
 					f->cw(c.level() % 2 == 0 ? !cw : cw);
+					// The entry and the exit are inside of the holes: the level of a contour starts at 1, odd for an outline or an island (not
+					// inside), even for a hole (inside).
+					f->start_point_inside(c.level() % 2 == 0);
 					f->compute();
 					_document->current_group()->add(f);
 					_document->unselect_all();
