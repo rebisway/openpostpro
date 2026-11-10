@@ -306,6 +306,10 @@ void ModCad::add(std::vector<Shape*> shapes)
 
 void ModCad::document(Document* document)
 {
+	// the shapes of the previous document are gone: nothing is hovered, no magnet is on them
+	_shape_hovered = nullptr;
+	_magnet_shapes.clear();
+
 	Module::document(document);
 
 	document->render(_render);
