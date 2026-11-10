@@ -123,7 +123,7 @@ You can also build the application yourself. The project includes a Visual Studi
 
 The version number, the build number, and the build date shown in the About window are in `openpostpro/src/common/version.h` (the date is the compilation date).
 
-The source contains relatively few Windows-specific parts, and Linux or macOS builds may be possible, but **neither has been tested yet**.
+The Linux build is described in [docs/BUILD-LINUX.md](docs/BUILD-LINUX.md) (CMake). macOS has **not been tested yet**.
 
 ## ✅ Tests
 
@@ -136,7 +136,7 @@ Run them after any change to the geometry code (`curve.cpp`, `geometry.cpp`, `po
 
 ## 🐧 Linux and macOS
 
-OpenPostPro is designed with cross-platform compatibility in mind, with very few dependencies on Windows-specific features. The application was successfully compiled and run on **Ubuntu 21.04** in the past, using Visual Studio Code. This demonstrates that building and running OpenPostPro on Linux is feasible, although the exact build setup has not yet been documented and may need to be recreated. macOS should also be a possible target, but has not yet been tested. Contributions to restore, document, and validate builds on these platforms are welcome.
+OpenPostPro builds and runs on **Linux** with CMake and GCC (tested on Zorin OS and Linux Mint 22.3, both Ubuntu 24.04 based): see [docs/BUILD-LINUX.md](docs/BUILD-LINUX.md). The file dialogs need `zenity` or `kdialog`. macOS should also be a possible target, but has not yet been tested; contributions to validate it are welcome.
 
 ## 🚧 Project status
 

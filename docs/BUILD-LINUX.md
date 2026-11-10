@@ -1,6 +1,6 @@
 # Building OpenPostPro on Linux
 
-Tested target: Debian/Ubuntu 24.04 (GCC 13, Python 3.12). Any distribution with GCC >= 11 (C++20), CMake >= 3.16 and Python >= 3.12 should work.
+Tested: Zorin OS and Linux Mint 22.3 (Cinnamon, X11, Ubuntu 24.04 base) in a virtual machine: drawing, machining operations, output, simulation and the CAD scripts work. Any distribution with GCC >= 11 (C++20), CMake >= 3.16 and Python >= 3.12 should work.
 
 ## Dependencies
 
@@ -32,6 +32,14 @@ cmake --build ../build-linux -j$(nproc)
 
 User data (settings, cloned scripts and post-processors, log) are in `~/.openpostpro/`; the log is `~/.openpostpro/openpostpro.log`.
 
+## Fonts
+
+The text tool lists the fonts found in `/usr/share/fonts`, `/usr/local/share/fonts`, `~/.fonts` and `~/.local/share/fonts`, plus the `fonts` folder beside the executable. A font which is missing (for example Arial, in a document made on Windows) is replaced by the first of: Arial, Helvetica, Liberation Sans, Arimo, DejaVu Sans, Noto Sans, Ubuntu, FreeSans, Roboto, then any other. The name saved in the document does not change. To have Arial itself: `sudo apt install ttf-mscorefonts-installer`.
+
+## Documents
+
+The documents made on Windows (CR LF line ends) and on Linux (LF) open on both systems.
+
 ## OpenGL
 
 OpenGL 3.3 core is required. Check with `glxinfo | grep "OpenGL core"` (package `mesa-utils`). Without a 3.3 driver (virtual machine, old GPU), the software renderer of Mesa can be forced with `LIBGL_ALWAYS_SOFTWARE=1 ../build-linux/openpostpro`. An X11 session is the safest choice for GLFW 3.3.
@@ -41,4 +49,5 @@ OpenGL 3.3 core is required. Check with `glxinfo | grep "OpenGL core"` (package 
 - The file dialogs block the window while they are open (they are external processes).
 - The clipboard goes through GLFW (works on X11).
 - The tests of `tests/cpp` still use the `.bat` files (MSVC); `python3 tests/run_tests.py` works on Linux.
+- The GCC warnings are off by default (the code gives many, written with MSVC): `-DOPP_WARNINGS=ON` shows them.
 - The build uses `-fpermissive` by default (code written with MSVC); disable with `-DOPP_PERMISSIVE=OFF` to see what GCC really thinks.
