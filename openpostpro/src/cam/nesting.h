@@ -25,6 +25,7 @@
 #define _NESTING_H
 
 #include <glm/glm.hpp>
+#include <atomic>
 #include <vector>
 
 namespace nesting
@@ -41,6 +42,17 @@ namespace nesting
 		int quantity = 1;
 	};
 
+	enum class Algorithm
+	{
+		// the parts one after the other, the biggest first, each one at its best place: seconds
+		Greedy,
+		// the greedy result, then many other orders of the parts tried on all the cores, as long as the time given: it keeps the shortest
+		Search,
+		// the greedy result, then the sheet is made shorter than it, which makes parts overlap, and the parts which overlap are moved (and
+		// turned) to the places where they overlap the least, until nothing overlaps: as long as the time given, on all the cores
+		Overlap
+	};
+
 	struct Options
 	{
 		float width = 1000;
@@ -52,6 +64,9 @@ namespace nesting
 		float precision = 0.1f;
 		// rotations tried for each part, in degrees
 		std::vector<float> angles = { 0, 90, 180, 270 };
+		Algorithm algorithm = Algorithm::Greedy;
+		// time of the search, in seconds (the greedy algorithm ends by itself)
+		float time = 60;
 	};
 
 	// where a part is: a point p of the part goes to R(angle) * p + offset
@@ -63,6 +78,17 @@ namespace nesting
 		glm::vec2 offset = glm::vec2();
 	};
 
+	// What the caller and the calculation, which runs in another thread, tell each other.
+	struct Progress
+	{
+		// set by the caller: the calculation ends as soon as it can and gives the best result it has
+		std::atomic<bool> stop{ false };
+		// set by the calculation: 0 to 1, the length of the best result so far (0 until there is one), the number of tries
+		std::atomic<float> done{ 0 };
+		std::atomic<float> length{ 0 };
+		std::atomic<int> tries{ 0 };
+	};
+
 	// the placed ring of a part
 	Ring transform(const Ring& ring, float angle, glm::vec2 offset);
 
@@ -72,8 +98,9 @@ namespace nesting
 	// area of the material of a part (the outer ring without its holes, plus its islands...)
 	float area(const Part& part);
 
-	// places each part (as many times as its quantity). One Placement per instance, in the order of placement.
-	std::vector<Placement> nest(const std::vector<Part>& parts, const Options& options);
+	// places each part (as many times as its quantity). One Placement per instance, in the order of placement. progress, if it is given,
+	// is the way to follow the calculation and to stop it.
+	std::vector<Placement> nest(const std::vector<Part>& parts, const Options& options, Progress* progress = nullptr);
 
 	// length of the sheet used: the right edge of the farthest part
 	float length(const std::vector<Part>& parts, const std::vector<Placement>& placements);
