@@ -86,6 +86,23 @@ static void check(bool ok, const char* text)
 
 int main()
 {
+	// Outlines put on each other: the ring of a part is the same as the island of another one. Three copies of the small ring go into
+	// the hole of the big one, none of them on the island (this was placed on it when only the second part looked at its edges).
+	{
+		std::vector<Part> two{ rings_part(70, 52, 38, 26), ring_part(38, 26, 0, 0) };
+		two[1].quantity = 3;
+		Options small;
+		small.width = 400;
+		small.height = 300;
+		std::vector<Placement> r = nest(two, small);
+		bool clear = true;
+		for (size_t i = 0; i < r.size(); i++)
+			for (size_t j = i + 1; j < r.size(); j++)
+				if (r[i].placed && r[j].placed && overlap(two[r[i].part], r[i], two[r[j].part], r[j]))
+					clear = false;
+		check(clear, "rings on the island of another part");
+	}
+
 	std::vector<Part> parts;
 	auto add = [&](Part p, int q) { p.quantity = q; parts.push_back(p); };
 	add(frame(260, 400, 12, 30, 60, 200, 300), 2);
@@ -112,7 +129,7 @@ int main()
 
 	int count = 0, placed = 0;
 	for (const Placement& p : result) { count++; placed += p.placed ? 1 : 0; }
-	std::printf("%d parts, %d placed, utilisation %.1f %%\n", count, placed, utilisation(parts, result, o) * 100);
+	std::printf("%d parts, %d placed, utilisation %.1f %%, length used %.0f\n", count, placed, utilisation(parts, result, o) * 100, length(parts, result));
 	check(placed == count, "every part is placed");
 
 	// independent check: no cell of a 1 mm grid is inside the material of two parts
@@ -150,7 +167,14 @@ int main()
 				if (around % 2 == 1)
 					continue;
 				if (owner[y * 1100 + x] != -1 && owner[y * 1100 + x] != (int)k)
+				{
+					if (!clash)
+					{
+						const Placement& other = result[owner[y * 1100 + x]];
+						std::printf("clash at %d,%d: item %d (part %d angle %.0f offset %.2f,%.2f) with item %d (part %d angle %.0f offset %.2f,%.2f)\n", x, y, (int)k, result[k].part, result[k].angle, result[k].offset.x, result[k].offset.y, owner[y * 1100 + x], other.part, other.angle, other.offset.x, other.offset.y);
+					}
 					clash = true;
+				}
 				owner[y * 1100 + x] = (int)k;
 			}
 		check(mn.x >= o.margin - 0.5f && mn.y >= o.margin - 0.5f && mx.x <= o.width - o.margin + 0.5f && mx.y <= o.height - o.margin + 0.5f, "part inside the sheet");

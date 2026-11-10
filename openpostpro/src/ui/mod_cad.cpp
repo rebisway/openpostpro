@@ -4985,7 +4985,7 @@ void ModCad::cad_nesting_run()
 
 	double ms = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - t).count();
 	Logger::log(std::string("nesting: ") + std::to_string(placed) + " placed, " + std::to_string(missing) + " not placed, utilisation "
-		+ std::to_string((int)(nesting::utilisation(parts, placements, options) * 100)) + " %, " + std::to_string((int)ms) + " ms");
+		+ std::to_string((int)(nesting::utilisation(parts, placements, options) * 100)) + " %, length " + std::to_string((int)nesting::length(parts, placements)) + ", " + std::to_string((int)ms) + " ms");
 }
 
 // the test bridge: the settings are given, every shape of the document is used (see Application::bridge_command)

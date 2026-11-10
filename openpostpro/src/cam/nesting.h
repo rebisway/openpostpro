@@ -75,6 +75,9 @@ namespace nesting
 	// places each part (as many times as its quantity). One Placement per instance, in the order of placement.
 	std::vector<Placement> nest(const std::vector<Part>& parts, const Options& options);
 
+	// length of the sheet used: the right edge of the farthest part
+	float length(const std::vector<Part>& parts, const std::vector<Placement>& placements);
+
 	// used area / area of the sheet
 	float utilisation(const std::vector<Part>& parts, const std::vector<Placement>& placements, const Options& options);
 }
