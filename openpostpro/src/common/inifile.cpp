@@ -22,7 +22,7 @@
 
 #include "environment.h"
 #include "file.h"
-#include "strings.h"
+#include "stringex.h"
 
 IniFile::IniFile(std::string path)
 {

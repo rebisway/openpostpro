@@ -17,7 +17,7 @@
 
 #include "script.h"
 #include <python_api.h>
-#include "strings.h"
+#include "stringex.h"
 #include <stdexcept>
 #include <filesystem>
 #include <config.h>

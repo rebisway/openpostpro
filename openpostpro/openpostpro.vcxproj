@@ -357,7 +357,7 @@
     <ClInclude Include="src\common\inifile.h" />
     <ClInclude Include="src\common\lang.h" />
     <ClInclude Include="src\common\logger.h" />
-    <ClInclude Include="src\common\strings.h" />
+    <ClInclude Include="src\common\stringex.h" />
     <ClInclude Include="src\import\dxf.h" />
     <ClInclude Include="src\import\dxfloader.h" />
     <ClInclude Include="src\export\dxfexport.h" />

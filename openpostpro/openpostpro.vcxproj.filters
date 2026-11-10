@@ -263,7 +263,7 @@
     <ClInclude Include="src\common\logger.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="src\common\strings.h">
+    <ClInclude Include="src\common\stringex.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="src\common\environment.h">

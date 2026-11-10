@@ -18,7 +18,7 @@
 #include <offset.h>
 #include <imgui.h>
 #include <lang.h>
-#include "strings.h"
+#include "stringex.h"
 
 void Offset::update()
 {

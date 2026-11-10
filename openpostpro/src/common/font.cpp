@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "font.h"
-#include "strings.h"
+#include "stringex.h"
 
 #include FT_OUTLINE_H
 #include FT_BBOX_H
@@ -471,6 +471,10 @@ namespace environment
 				folders.push_back(home + "/.local/share/fonts");
 			}
 #endif
+#ifndef _WIN32
+			// the fonts delivered with the application: a last resort when the system has none of the usual ones
+			folders.push_back(combine_path(application_path(), "fonts"));
+#endif
 			return folders;
 		}
 
@@ -572,6 +576,21 @@ namespace environment
 		return font_list().families;
 	}
 
+	// Arial where it exists (Windows, macOS, and Linux with the Microsoft fonts), else a font which looks like it, else any family
+	std::string default_font_name()
+	{
+		const FontList& list = font_list();
+		static const char* preferred[] = { "arial", "helvetica", "liberation sans", "arimo", "dejavu sans", "noto sans", "ubuntu", "freesans", "roboto" };
+		for (const char* wanted : preferred)
+			for (const auto& entry : list.families)
+				if (stringex::to_lower(entry.first) == wanted && !entry.second.regular_path.empty())
+					return entry.first;
+		for (const auto& entry : list.families)
+			if (!entry.second.regular_path.empty())
+				return entry.first;
+		return "arial";
+	}
+
 	FontFamily font_family(const std::string& name)
 	{
 		const FontList& list = font_list();
@@ -591,6 +610,11 @@ namespace environment
 			if (found != list.families.end())
 				return found->second;
 		}
+
+		// the font does not exist on this system (a document made on another one): the default font replaces it, the text is not lost
+		auto fallback = list.families.find(default_font_name());
+		if (fallback != list.families.end())
+			return fallback->second;
 		return FontFamily();
 	}
 }

@@ -21,7 +21,7 @@
 #include <geometry.h>
 #include <config.h>
 #include <lang.h>
-#include "strings.h"
+#include "stringex.h"
 
 void Layer::add(Shape* value)
 {

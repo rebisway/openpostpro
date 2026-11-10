@@ -20,7 +20,7 @@
 #include "geometry.h"
 #include "imgui.h"
 #include <lang.h>
-#include "strings.h"
+#include "stringex.h"
 #include <logger.h>
 #include <font.h>
 #include <environment.h>
@@ -37,7 +37,7 @@ Text::Text(Renderer* r) : Shape(r)
 	_buffer = r->create_buffer(vertices);
 	_a1 = new Anchor(r);
 
-	_family = "arial";
+	_family = environment::default_font_name();
 	_height = 50.0f;
 	_text = "no_text";
 	_mirror = false;
@@ -379,7 +379,13 @@ void Text::compute()
 			}
 		}
 		if (_font == nullptr)
+		{
 			Logger::log("ERROR: font " + _family + " missing or not readable");
+			_origin.clear();
+			_transf.clear();
+			_vertices.clear();
+			_indices.clear();
+		}
 
 	}
 

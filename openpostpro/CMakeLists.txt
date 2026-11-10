@@ -61,22 +61,22 @@ list(REMOVE_ITEM SOURCES ${SRC}/common/pch.cpp)		# only creates the precompiled 
 add_executable(openpostpro ${SOURCES})
 
 foreach(module ${MODULES})
-	if(NOT module STREQUAL "common")		# common goes after the system folders, see below
-		target_include_directories(openpostpro PRIVATE ${SRC}/${module})
-	endif()
+	target_include_directories(openpostpro PRIVATE ${SRC}/${module})
 endforeach()
 
-# Two traps with the include order:
-# - src/common/strings.h hides <strings.h> of the C library (used by <cstring>): the folder goes after the system ones
-# - src/third holds a GLFW header: the one of the system must win, so it also goes after
+# Include order: our folders first (our dialog.h must win over /usr/include/dialog.h), but the GLFW header
+# of src/third goes after the system one, which must win
 target_compile_options(openpostpro PRIVATE
-	"SHELL:-idirafter ${SRC}/common"
 	"SHELL:-idirafter ${SRC}/third"
 	"SHELL:-include ${SRC}/common/compat.h"
 	"SHELL:-include ${SRC}/common/pch.h")
-target_include_directories(openpostpro PRIVATE ${Python3_INCLUDE_DIRS})
+target_include_directories(openpostpro PRIVATE ${SRC}/third/stb ${Python3_INCLUDE_DIRS})
 
-target_compile_options(openpostpro PRIVATE -Wall -Wno-unknown-pragmas -Wno-sign-compare -Wno-unused-variable -Wno-reorder)
+# Warnings off: the MSVC code gives thousands of them and hides the errors. Use -DOPP_WARNINGS=ON to see them.
+option(OPP_WARNINGS "Show the GCC warnings" OFF)
+if(NOT OPP_WARNINGS)
+	target_compile_options(openpostpro PRIVATE -w)
+endif()
 if(OPP_PERMISSIVE)
 	target_compile_options(openpostpro PRIVATE -fpermissive)
 endif()

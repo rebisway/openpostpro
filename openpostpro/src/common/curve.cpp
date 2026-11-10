@@ -123,10 +123,12 @@ std::vector<Segment> Segment::split_at(float length, glm::vec2 dst)
 	switch (type)
 	{
 	case SegmentType::Line:
+	{
 		auto p = geometry::position(dst, length, point);
 		result.push_back(*this);
 		result.push_back(Segment(p));
 		break;
+	}
 	case SegmentType::Arc:
 	case SegmentType::Circle:
 		result.push_back(Segment(point, center, radius, cw, SegmentType::Arc));

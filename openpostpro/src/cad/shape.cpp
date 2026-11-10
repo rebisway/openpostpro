@@ -20,7 +20,7 @@
 #include <imgui.h>
 #include <logger.h>
 #include <lang.h>
-#include "strings.h"
+#include "stringex.h"
 
 float Shape::precision = PRECISION;
 

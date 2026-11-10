@@ -38,7 +38,7 @@
 #include <../export/dxfexport.h>
 #include <dialog.h>
 #include <file.h>
-#include "strings.h"
+#include "stringex.h"
 #include <version.h>
 #include <history.h>
 #include <script.h>

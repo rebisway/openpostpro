@@ -17,7 +17,7 @@
 
 #include "message_box.h"
 #include <lang.h>
-#include "strings.h"
+#include "stringex.h"
 
 std::string MessageBox::result()
 {

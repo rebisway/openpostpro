@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "dialog.h"
-#include "strings.h"
+#include "stringex.h"
 
 #ifdef _WIN32
 #include <Windows.h>

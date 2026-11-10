@@ -9,7 +9,7 @@
 // Run: test_fonts.exe [folder of fonts]   (exit code 0 = every family of the list can draw text)
 #include <environment.h>
 #include <font.h>
-#include <strings.h>
+#include <stringex.h>
 #include <filesystem>
 #include <algorithm>
 #include <cstdio>
