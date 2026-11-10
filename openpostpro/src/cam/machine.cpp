@@ -17,7 +17,7 @@
 #include "machine.h"
 #include <algorithm>
 #include <filesystem>
-#include <strings.h>
+#include "strings.h"
 #include <file.h>
 #include <environment.h>
 

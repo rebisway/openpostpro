@@ -17,7 +17,7 @@
 
 #include "moveTo.h"
 #include <imgui.h>
-#include <strings.h>
+#include "strings.h"
 #include <logger.h>
 #include <lang.h>
 

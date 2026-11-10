@@ -25,7 +25,7 @@
 #include <logger.h>
 #include <file.h>
 #include <dialog.h>
-#include <strings.h>
+#include "strings.h"
 #include <config.h>
 #include <environment.h>
 #include <filesystem>

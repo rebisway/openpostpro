@@ -23,7 +23,7 @@
 #include <imgui.h>
 #include <logger.h>
 #include <lang.h>
-#include <strings.h>
+#include "strings.h"
 
 
 

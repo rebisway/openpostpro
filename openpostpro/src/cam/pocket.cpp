@@ -19,7 +19,7 @@
 #include "pocket.h"
 #include <imgui.h>
 #include <lang.h>
-#include <strings.h>
+#include "strings.h"
 #include <algorithm>
 #include <chrono>
 #include <limits>

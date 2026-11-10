@@ -92,3 +92,22 @@ void Clipboard::text(std::string value)
 }
 
 #endif
+
+#if defined(__linux__)
+
+#include <GLFW/glfw3.h>
+
+// GLFW owns the clipboard of the window system (X11 or Wayland); the window is not needed for the text
+
+std::string Clipboard::text()
+{
+	const char* content = glfwGetClipboardString(nullptr);
+	return content != nullptr ? std::string(content) : std::string();
+}
+
+void Clipboard::text(std::string value)
+{
+	glfwSetClipboardString(nullptr, value.c_str());
+}
+
+#endif

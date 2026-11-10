@@ -21,3 +21,6 @@ split_patches/
 
 # Working notes of the simulator (personal, not versioned)
 simulator-notes.md
+
+# Linux build output
+build-linux/

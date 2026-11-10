@@ -132,9 +132,106 @@ namespace dialog
 }
 #else
 #include <cstdlib>
+#include <cstdio>
 
 namespace dialog
 {
+    namespace
+    {
+        // quote a text for a POSIX shell
+        std::string shell_quote(const std::string& text)
+        {
+            std::string result = "'";
+            for (char c : text)
+            {
+                if (c == '\'')
+                    result += "'\\''";
+                else
+                    result += c;
+            }
+            return result + "'";
+        }
+
+        // run a command and keep its first output line; true if the command succeeded and printed something
+        bool run(const std::string& command, std::string& result)
+        {
+            FILE* pipe = popen(command.c_str(), "r");
+            if (pipe == nullptr)
+                return false;
+
+            std::string output;
+            char buffer[512];
+            while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
+                output += buffer;
+
+            int status = pclose(pipe);
+
+            while (!output.empty() && (output.back() == '\n' || output.back() == '\r'))
+                output.pop_back();
+
+            if (status != 0 || output.empty())
+                return false;
+
+            result = output;
+            return true;
+        }
+
+        // "*.nc;*.gcode" -> "*.nc *.gcode"
+        std::string patterns(std::string pattern, char separator)
+        {
+            for (char& c : pattern)
+                if (c == ';')
+                    c = separator;
+            return pattern;
+        }
+
+        bool has_command(const char* name)
+        {
+            std::string command = std::string("command -v ") + name + " >/dev/null 2>&1";
+            return std::system(command.c_str()) == 0;
+        }
+
+        // zenity (GTK) first, then kdialog (KDE); false if no tool exists or the person cancelled
+        bool file_dialog(bool save, const std::string& initial_path, std::string& result, const std::string& filter_name, const std::string& filter_pattern)
+        {
+            std::string command;
+
+            if (has_command("zenity"))
+            {
+                command = "zenity --file-selection";
+                if (save)
+                    command += " --save --confirm-overwrite";
+                if (!initial_path.empty())
+                    command += " --filename=" + shell_quote(initial_path);
+                if (!filter_pattern.empty())
+                    command += " --file-filter=" + shell_quote(filter_name + " | " + patterns(filter_pattern, ' '));
+                command += " 2>/dev/null";
+            }
+            else if (has_command("kdialog"))
+            {
+                command = std::string("kdialog ") + (save ? "--getsavefilename " : "--getopenfilename ");
+                command += shell_quote(initial_path.empty() ? "." : initial_path);
+                if (!filter_pattern.empty())
+                    command += " " + shell_quote(patterns(filter_pattern, ' ') + " | " + filter_name);
+                command += " 2>/dev/null";
+            }
+            else
+                return false;
+
+            return run(command, result);
+        }
+    }
+
+    bool open_file_dialog(std::string initial_path, std::string& result, std::string filter_name, std::string filter_pattern)
+    {
+        return file_dialog(false, initial_path, result, filter_name, filter_pattern);
+    }
+
+    bool save_file_dialog(std::string initial_path, std::string& result, std::string filter_name, std::string filter_pattern)
+    {
+        return file_dialog(true, initial_path, result, filter_name, filter_pattern);
+    }
+
     void open_folder(std::string path)
     {
 #ifdef __APPLE__

@@ -32,7 +32,7 @@
 #include <polyline.h>
 #include <text.h>
 #include <environment.h>
-#include <strings.h>
+#include "strings.h"
 #include <clipboard.h>
 #include <cad.h>
 #include <extend_shape.h>

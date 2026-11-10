@@ -25,7 +25,7 @@
 #pragma once
 #ifndef _GEOMETRY_H
 #define _GEOMETRY_H
-#include "GLM/glm.hpp"
+#include <glm/glm.hpp>
 #include <glm/ext/scalar_constants.hpp>
 #include <glm/gtc/constants.hpp>
 #include <ios>

@@ -18,7 +18,7 @@
 #include "spline.h"
 #include <imgui.h>
 #include <lang.h>
-#include <strings.h>
+#include "strings.h"
 #include <config.h>
 #include <logger.h>
 #include<chrono>

@@ -20,7 +20,7 @@
 #include "geometry.h"
 #include "imgui.h"
 #include <lang.h>
-#include <strings.h>
+#include "strings.h"
 #include <logger.h>
 #include <font.h>
 #include <environment.h>

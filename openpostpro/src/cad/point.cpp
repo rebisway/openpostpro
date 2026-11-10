@@ -19,7 +19,7 @@
 #include "geometry.h"
 #include "imgui.h"
 #include <lang.h>
-#include <strings.h>
+#include "strings.h"
 #include <logger.h>
 #include <history.h>
 #include <config.h>

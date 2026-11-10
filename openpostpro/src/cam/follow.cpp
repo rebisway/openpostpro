@@ -16,7 +16,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include <follow.h>
-#include <strings.h>
+#include "strings.h"
 #include <imgui.h>
 #include <lang.h>
 

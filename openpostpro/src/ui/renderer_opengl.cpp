@@ -26,7 +26,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#include <strings.h>
+#include "strings.h"
 
 int OpenGlRenderer::pr_points()
 {

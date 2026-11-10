@@ -18,11 +18,11 @@
 // openpostpro.cpp : this file contains the 'main' function. Program execution begins and ends here.
 //
 
-#include <Logger.h>
+#include <logger.h>
 #include <lang.h>
 #include <environment.h>
 #include "src/ui/application.h"
-#include <strings.h>
+#include "strings.h"
 
 // Python requirement (Windows):
 // This executable is built against the Python stable ABI (Py_LIMITED_API, Python >= 3.12)
