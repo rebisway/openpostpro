@@ -71,17 +71,9 @@ Spline::~Spline()
 
 Shape* Spline::clone()
 {
-	return nullptr;
 	Spline* s = new Spline(_render);
-	for (auto c : _curve)
-	{
-		if (c.type == SegmentType::Line)
-			s->add(c.point);
-		else if (c.type == SegmentType::Arc)
-			s->add(c.point, c.center, c.radius, c.cw);
-		else
-			s->add(c.center, c.radius, c.cw);
-	}
+	// each segment with its type: a circle already has its closing segment
+	s->add(_curve);
 	s->done(true);
 	s->compute();
 	return s;

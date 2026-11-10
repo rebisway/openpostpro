@@ -53,10 +53,8 @@ Ellipse::~Ellipse()
 Shape* Ellipse::clone()
 {
 	Ellipse* e = new Ellipse(_render);
-	e->center(_center);
-	e->minor(_minor);
-	e->major(_major);
-	e->angle(_angle);
+	// the start and the stop of an elliptic arc too
+	e->set(_center, _minor, _major, _start, _stop, _angle);
 	e->done(true);
 	e->compute();
 	return e;

@@ -4958,7 +4958,10 @@ void ModCad::cad_nesting_run()
 		{
 			Shape* s = shape->clone();
 			if (s == nullptr)
+			{
+				not_copied++;
 				continue;
+			}
 			s->transform(m);
 			result->add(s);
 			_document->block_set(s, group_name);
@@ -4982,6 +4985,10 @@ void ModCad::cad_nesting_run()
 	}
 	_document->unselect_all();
 	_document->select(created);
+
+	// a shape which can not be copied is missing in the parts: it is said, not hidden
+	if (not_copied > 0)
+		Logger::log("Warning: nesting: " + std::to_string(not_copied) + " shapes could not be copied");
 
 	double ms = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - t).count();
 	Logger::log(std::string("nesting: ") + std::to_string(placed) + " placed, " + std::to_string(missing) + " not placed, utilisation "
