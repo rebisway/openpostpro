@@ -76,6 +76,11 @@ namespace file
 			{
 				result.push_back(line);
 			}
+
+			// a file made on Windows read on another system: the text mode does not remove the CR of the line ends there
+			for (std::string& l : result)
+				if (!l.empty() && l.back() == '\r')
+					l.pop_back();
 		}
 
 		return result;
@@ -91,6 +96,17 @@ namespace file
 			std::string content;
 			content.reserve(size);
 			content.assign((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+
+			// a file made on Windows read on another system: the text mode does not turn CR LF into LF there
+			if (content.find('\r') != std::string::npos)
+			{
+				std::string clean;
+				clean.reserve(content.size());
+				for (size_t i = 0; i < content.size(); i++)
+					if (!(content[i] == '\r' && i + 1 < content.size() && content[i + 1] == '\n'))
+						clean += content[i];
+				content.swap(clean);
+			}
 
 			if (content.size() > 3 && content[0] == '\xef' && content[1] == '\xbb' && content[2] == '\xbf')
 				return content.substr(3);

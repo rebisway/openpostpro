@@ -22,7 +22,7 @@
 #include <lang.h>
 #include <config.h>
 #include <future>
-#include "strings.h"
+#include "stringex.h"
 #include <history.h>
 
 

@@ -18,7 +18,7 @@
 #include "tool.h"
 #include <algorithm>
 #include <filesystem>
-#include "strings.h"
+#include "stringex.h"
 #include <file.h>
 #include <environment.h>
 

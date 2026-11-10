@@ -17,7 +17,7 @@
 
 #include "dxf.h"
 #include "file.h"
-#include "strings.h"
+#include "stringex.h"
 #include <filesystem>
 #include <fstream>
 #include <logger.h>

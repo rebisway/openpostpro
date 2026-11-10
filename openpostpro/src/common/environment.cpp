@@ -18,7 +18,7 @@
 #include "environment.h"
 #include <stdio.h>  /* defines FILENAME_MAX */
 #include <iostream>
-#include "strings.h"
+#include "stringex.h"
 
 #ifdef _WIN32
 #include <direct.h>

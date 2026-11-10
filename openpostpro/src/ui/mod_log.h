@@ -30,7 +30,7 @@ private:
 	bool _scrollToBottom = false;
 	bool _copy = false;
 	bool _dock_toggle = false;	// the button of the window was clicked: the application switches between the tab and the bottom panel
-	std::filesystem::file_time_type _log_file_time;
+	std::filesystem::file_time_type _log_file_time = std::filesystem::file_time_type::min();	// not the default value: its epoch depends on the standard library
 
 	double _last_modify;
 

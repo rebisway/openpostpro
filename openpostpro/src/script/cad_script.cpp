@@ -21,7 +21,7 @@
 
 #include <python_api.h>
 #include <inifile.h>
-#include "strings.h"
+#include "stringex.h"
 #include <cstdarg>
 #include <logger.h>
 #include <config.h>

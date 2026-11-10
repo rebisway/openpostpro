@@ -21,8 +21,8 @@
 
 
 #pragma once
-#ifndef STRINGS_H
-#define STRINGS_H
+#ifndef OPP_STRINGEX_H
+#define OPP_STRINGEX_H
 
 #include <string>
 #include <vector>

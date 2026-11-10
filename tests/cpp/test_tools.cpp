@@ -22,7 +22,7 @@
 #include <feeds.h>
 #include <machine.h>
 #include <cut_path.h>
-#include <strings.h>
+#include <stringex.h>
 #include <environment.h>
 #include <filesystem>
 #include <cstdlib>

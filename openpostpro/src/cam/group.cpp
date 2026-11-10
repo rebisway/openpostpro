@@ -17,7 +17,7 @@
 
 #include "group.h"
 #include <config.h>
-#include "strings.h"
+#include "stringex.h"
 #include <lang.h>
 #include <logger.h>
 

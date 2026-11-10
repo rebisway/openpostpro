@@ -19,7 +19,7 @@
 #include "environment.h"
 #include <filesystem>
 #include <fstream>
-#include "strings.h"
+#include "stringex.h"
 
 #ifdef _WIN32
 #define _NEW_LINE "\r\n"

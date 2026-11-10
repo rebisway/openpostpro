@@ -22,7 +22,7 @@
 #include <lang.h>
 #include <environment.h>
 #include "src/ui/application.h"
-#include "strings.h"
+#include "stringex.h"
 
 // Python requirement (Windows):
 // This executable is built against the Python stable ABI (Py_LIMITED_API, Python >= 3.12)

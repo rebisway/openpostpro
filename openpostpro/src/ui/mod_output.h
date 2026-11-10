@@ -28,7 +28,7 @@
 class ModOutput : public Module
 {
 private:
-	std::filesystem::file_time_type _output_file_time;
+	std::filesystem::file_time_type _output_file_time = std::filesystem::file_time_type::min();	// not the default value: its epoch depends on the standard library
 	TextEditor editor;
 
 	double _last_modify;

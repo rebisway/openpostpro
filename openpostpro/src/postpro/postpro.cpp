@@ -23,7 +23,7 @@
 #include <python_api.h>
 
 #include <script.h>
-#include "strings.h"
+#include "stringex.h"
 #include <message_box.h>
 #include <lang.h>
 #include <config.h>

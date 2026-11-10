@@ -23,7 +23,7 @@
 #include <circle.h>
 #include <geometry.h>
 #include <lang.h>
-#include "strings.h"
+#include "stringex.h"
 #include <arc.h>
 #include <ellipse.h>
 #include <line.h>

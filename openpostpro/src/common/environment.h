@@ -76,6 +76,8 @@ namespace environment
 	// A family by its name: exact, then without the case, then by the name which the first versions of the application gave (a name made of
 	// the file name: "arial", "segoeu"), so the documents which were saved before keep their font. An empty family if there is none.
 	FontFamily font_family(const std::string& name);
+	// The family used when a font is missing and for a new text: Arial if the system has it, else a similar one.
+	std::string default_font_name();
 
 	static unsigned int _next_id = 1;
 	unsigned int next_id();
