@@ -23,7 +23,10 @@
 // Order of the curves which shortens the rapid moves: the curve whose first point is the nearest to the end of the previous one is
 // taken, again and again. A curve keeps its direction (it is machined from its first point to its last one). cursor is the position of
 // the tool, and is set at the end of the last curve.
-inline std::vector<int> sort_by_travel(const std::vector<glm::vec2>& starts, const std::vector<glm::vec2>& ends, glm::vec2& cursor)
+// before[i], if it is given, holds the curves which must be done before the curve i (the holes of a contour are cut before it): the
+// curve i is only taken when they all are done. The curves which wait for others are not an obstacle for the others.
+inline std::vector<int> sort_by_travel(const std::vector<glm::vec2>& starts, const std::vector<glm::vec2>& ends, glm::vec2& cursor,
+	const std::vector<std::vector<int>>& before = std::vector<std::vector<int>>())
 {
 	const int n = (int)starts.size();
 	std::vector<int> order;
@@ -36,6 +39,16 @@ inline std::vector<int> sort_by_travel(const std::vector<glm::vec2>& starts, con
 		for (int i = 0; i < n; i++)
 		{
 			if (used[i])
+				continue;
+			bool ready = true;
+			if (i < (int)before.size())
+				for (int b : before[i])
+					if (!used[b])
+					{
+						ready = false;
+						break;
+					}
+			if (!ready)
 				continue;
 			float d = glm::distance(cursor, starts[i]);
 			if (d < best_distance)

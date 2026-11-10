@@ -88,6 +88,17 @@ public:
 	void radius(float value) { _radius = value; }
 	float radius() { return _radius; }
 
+	// the contours the toolpath is made from, before the entry, the exit, the tabs and the offset
+	std::vector<Curve>& original() { return _original; }
+
+	// The contour of a follow or an offset which is a single closed one, null for the others: the order of the nested contours (the
+	// holes before the outline) only concerns these.
+	Curve* contour()
+	{
+		bool followed = type() == GraphicType::CamFollow || type() == GraphicType::CamOffset;
+		return followed && _original.size() == 1 && _original[0].closed() ? &_original[0] : nullptr;
+	}
+
 	std::vector<int> references();
 	void references(std::vector<int> value);
 	void reference(int value);

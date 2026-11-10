@@ -317,6 +317,10 @@ public:
 	void select_contour();
 	// computes the selected toolpaths again (all of them without selection) from their referenced shapes, which may have been modified
 	void cam_refresh();
+	// the radius compensation of the followed contours: the tool outside of the outlines and inside of the holes
+	void cam_compensation();
+	// the toolpaths of the operations in the order of the machining: the inner contours before the outer ones
+	void cam_organize();
 	void cam_offset(bool interior);
 	void cam_pocket(PocketMode mode);
 	void cam_spiral();

@@ -814,6 +814,43 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 				for (Curve& c : curves)
 					runs.back().push_back({ t, c, lead_in });
 			}
+			// The contours inside of another one are machined before it, at any depth: the holes of a part, then its outline (and an island
+			// which is inside of a hole before the hole). before[r][i]: the items of the run r which must be done before the item i.
+			std::vector<std::vector<std::vector<int>>> before(runs.size());
+			for (size_t r = 0; r < runs.size(); r++)
+			{
+				if (!run_sorted[r])
+					continue;
+				std::vector<Item>& items = runs[r];
+				std::vector<Curve*> contours;
+				for (Item& item : items)
+					contours.push_back(item.toolpath->contour());
+				bool any = false;
+				std::vector<std::vector<int>> list(items.size());
+				for (size_t i = 0; i < items.size(); i++)
+				{
+					if (contours[i] == nullptr)
+						continue;
+					geometry::rectangle& outer = contours[i]->bounds();
+					for (size_t j = 0; j < items.size(); j++)
+					{
+						if (i == j || contours[j] == nullptr || items[i].toolpath == items[j].toolpath)
+							continue;
+						// the bounds first: a contour which is inside of another one has its bounds inside of the bounds of the other one
+						geometry::rectangle& inner = contours[j]->bounds();
+						if (inner.left() < outer.left() || inner.right() > outer.right() || inner.top() > outer.top() || inner.bottom() < outer.bottom())
+							continue;
+						if (contours[j]->inside(*contours[i]))
+						{
+							list[i].push_back((int)j);
+							any = true;
+						}
+					}
+				}
+				if (any)
+					before[r] = list;
+			}
+
 			// a toolpath out of the area of the machine can not be machined: the file is written anyway, with a warning
 			if (doc->has_machine())
 			{
@@ -830,17 +867,21 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 				}
 			}
 			glm::vec2 cursor(0.0f);
+			// the items of the runs with nested contours as they are before the sort: before[r] gives indices in this list
+			std::vector<std::vector<Item>> unsorted(runs.size());
 			for (size_t r = 0; r < runs.size(); r++)
 			{
 				if (!run_sorted[r])
 					continue;
+				if (!before[r].empty())
+					unsorted[r] = runs[r];
 				std::vector<glm::vec2> starts, ends;
 				for (Item& item : runs[r])
 				{
 					starts.push_back(item.curve.front().point);
 					ends.push_back(item.curve.back().point);
 				}
-				auto order = sort_by_travel(starts, ends, cursor);
+				auto order = sort_by_travel(starts, ends, cursor, before[r]);
 				std::vector<Item> sorted;
 				for (int i : order)
 					sorted.push_back(runs[r][i]);
@@ -856,7 +897,20 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 				std::vector<const Item*> sequence;
 				for (size_t r = 0; r < runs.size(); r++)
 				{
-					if (run_sorted[r] && level % 2 == 1)
+					if (run_sorted[r] && level % 2 == 1 && !before[r].empty())
+					{
+						// nested contours: the order is made again from where the previous pass ended, the inner ones first
+						std::vector<glm::vec2> starts, ends;
+						for (Item& item : unsorted[r])
+						{
+							starts.push_back(item.curve.front().point);
+							ends.push_back(item.curve.back().point);
+						}
+						glm::vec2 here = sequence.empty() ? glm::vec2(0.0f) : sequence.back()->curve.back().point;
+						for (int i : sort_by_travel(starts, ends, here, before[r]))
+							sequence.push_back(&unsorted[r][i]);
+					}
+					else if (run_sorted[r] && level % 2 == 1)
 						for (size_t i = runs[r].size(); i > 0; i--)
 							sequence.push_back(&runs[r][i - 1]);
 					else

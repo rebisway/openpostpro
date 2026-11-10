@@ -2289,6 +2289,14 @@ void ModCad::render_menu()
 		{
 			_tools_window.show();
 		}
+		if (ImGui::MenuItem(Lang::l("WORKSHOP_COMPENSATION")))
+		{
+			cam_compensation();
+		}
+		if (ImGui::MenuItem(Lang::l("WORKSHOP_ORGANIZE")))
+		{
+			cam_organize();
+		}
 		if (ImGui::MenuItem(Lang::l("WORKSHOP_DELETE_TOOLPATH")))
 		{
 			if (_document->selected().size() == 1 && _document->selected()[0]->toolpath())
@@ -4942,7 +4950,7 @@ void ModCad::cad_nesting_run()
 		}
 
 	std::vector<Graphic*> created;
-	int placed = 0, missing = 0;
+	int placed = 0, missing = 0, not_copied = 0;
 	for (const nesting::Placement& p : placements)
 	{
 		if (!p.placed)
@@ -5128,6 +5136,122 @@ void ModCad::check_drawing()
 		Logger::log(Lang::t("DRAWING_CHECK_OK"));
 	else
 		Logger::log(Lang::t("DRAWING_CHECK_RESULT") + " " + cad_diag::summary(issues, Lang::t("DRAWING_CHECK_ZERO"), Lang::t("DRAWING_CHECK_DUPLICATE"), Lang::t("DRAWING_CHECK_FREE_END")));
+}
+
+// The followed and offset contours get the side which suits them: the tool outside of an outline or an island, inside of a hole.
+// The level of a contour is the number of contours around it in its operation (even: outline, odd: hole, at any depth). The
+// toolpaths to change are the selected ones, the ones of the selected operations, or all of them.
+void ModCad::cam_compensation()
+{
+	std::vector<Toolpath*> targets;
+	for (Graphic* g : _document->selected())
+	{
+		if (g->toolpath())
+			targets.push_back((Toolpath*)g);
+		else if (g->type() == GraphicType::Group)
+			for (Toolpath* t : ((Group*)g)->toolpaths())
+				targets.push_back(t);
+	}
+	bool all = targets.empty();
+
+	// the toolpath, and true if the tool must be inside
+	std::vector<std::pair<Toolpath*, bool>> changes;
+	for (Group* group : _document->groups())
+	{
+		std::vector<Toolpath*> contours;
+		for (Toolpath* t : group->toolpaths())
+			if (t->contour() != nullptr)
+				contours.push_back(t);
+
+		for (Toolpath* t : contours)
+		{
+			if (!all && std::find(targets.begin(), targets.end(), t) == targets.end())
+				continue;
+			Curve contour = t->original()[0];
+			int around = 0;
+			for (Toolpath* other : contours)
+				if (other != t && contour.inside(other->original()[0]))
+					around++;
+			bool inside = around % 2 == 1;
+			bool now = t->type() == GraphicType::CamFollow ? ((Follow*)t)->tool_side() == ToolSide::Inside : ((Offset*)t)->interior();
+			// a followed contour with no compensation is changed too
+			if (now != inside || (t->type() == GraphicType::CamFollow && ((Follow*)t)->tool_side() == ToolSide::Centered))
+				changes.push_back({ t, inside });
+		}
+	}
+
+	if (!changes.empty())
+	{
+		History::begin_undo_record();
+		for (auto& change : changes)
+		{
+			History::undo(HistoryActionType::Modify, change.first->write());
+			if (change.first->type() == GraphicType::CamFollow)
+				((Follow*)change.first)->tool_side(change.second ? ToolSide::Inside : ToolSide::Outside);
+			else
+			{
+				((Offset*)change.first)->interior(change.second);
+				change.first->compute();
+			}
+		}
+		History::end_undo_record();
+	}
+	Logger::log(Lang::t("CAM_COMPENSATION_DONE") + " " + std::to_string(changes.size()));
+}
+
+// The toolpaths of each operation are put in the order of the machining of a part: the contours which are inside of another one before
+// it, at any depth (the islands, then the holes, then the outline). Only the contours which follow each other are sorted, the other
+// toolpaths keep their place, and the contours of the same depth keep their order. The selected operations, or all of them.
+void ModCad::cam_organize()
+{
+	std::vector<Group*> groups;
+	for (Graphic* g : _document->selected())
+		if (g->type() == GraphicType::Group)
+			groups.push_back((Group*)g);
+	if (groups.empty())
+		groups = _document->groups();
+
+	int moved = 0;
+	for (Group* group : groups)
+	{
+		std::vector<Toolpath*>& list = group->toolpaths();
+		size_t first = 0;
+		while (first < list.size())
+		{
+			if (list[first]->contour() == nullptr)
+			{
+				first++;
+				continue;
+			}
+			size_t end = first;
+			while (end < list.size() && list[end]->contour() != nullptr)
+				end++;
+
+			// the depth of a contour: the number of contours of the run around it
+			std::vector<int> depth(end - first, 0);
+			for (size_t i = first; i < end; i++)
+				for (size_t j = first; j < end; j++)
+					if (i != j && list[i]->contour()->inside(*list[j]->contour()))
+						depth[i - first]++;
+
+			std::vector<size_t> order(end - first);
+			for (size_t i = 0; i < order.size(); i++)
+				order[i] = i;
+			std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b) { return depth[a] > depth[b]; });
+
+			std::vector<Toolpath*> sorted;
+			for (size_t i : order)
+				sorted.push_back(list[first + i]);
+			for (size_t i = 0; i < sorted.size(); i++)
+			{
+				if (list[first + i] != sorted[i])
+					moved++;
+				list[first + i] = sorted[i];
+			}
+			first = end;
+		}
+	}
+	Logger::log(Lang::t("CAM_ORGANIZE_DONE") + " " + std::to_string(moved));
 }
 
 void ModCad::cam_refresh()
