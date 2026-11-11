@@ -5132,6 +5132,13 @@ void ModCad::cad_nesting_end()
 		+ std::to_string((int)(nesting::utilisation(parts, placements, options) * 100)) + " %, length " + std::to_string((int)nesting::length(parts, placements)) + ", " + std::to_string((int)ms) + " ms");
 }
 
+// the test bridge: the window of the settings for every shape of the document
+void ModCad::cad_nesting_window()
+{
+	_document->select_all();
+	cad_nesting();
+}
+
 // the test bridge: the settings are given, every shape of the document is used (see Application::bridge_command)
 void ModCad::cad_nesting_bridge(float width, float height, float spacing, int quantity, float seconds, int algorithm)
 {

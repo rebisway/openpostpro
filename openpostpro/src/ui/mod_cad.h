@@ -314,6 +314,8 @@ public:
 	void nesting_job();
 	void cad_nesting_run();
 	void cad_nesting_end();
+	// the test bridge: every shape is selected and the window of the nesting is shown (to take pictures of it)
+	void cad_nesting_window();
 	// the test bridge: nests every shape of the document
 	void cad_nesting_bridge(float width, float height, float spacing, int quantity, float seconds = 0, int algorithm = 1);
 

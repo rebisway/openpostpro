@@ -1,8 +1,24 @@
 # Writes a sample document with one part of each type of a real nesting sheet, in the file given as argument:
 #   python tools/make_nest_types.py tests/cpp/data/nest_types.opp
+# A second argument, fr or en, names the layers and the groups in that language and leaves the texts out (the examples of the manual):
+#   python tools/make_nest_types.py docs/examples/nesting.en.opp en
 # The types: a plate with a label, a ring with a slit and a label, a disc with six holes, a ring sector with a row of holes,
 # a fork and a slot with a hole at one end. One layer and one group (block) per part. Lines, arcs, circles and texts. Units: millimetre.
 import math, sys
+
+NAMES = {
+    'fr': {'PL-01': 'Plaque', 'R-2': 'Anneau', 'Disque': 'Disque', 'Arc': 'Arc', 'Fourche': 'Fourche', 'Oblong': 'Oblong'},
+    'en': {'PL-01': 'Plate', 'R-2': 'Ring', 'Disque': 'Disc', 'Arc': 'Arc', 'Fourche': 'Fork', 'Oblong': 'Slot'},
+}
+language = sys.argv[2] if len(sys.argv) > 2 else ''
+
+
+SHAPES = {'en': ('Line', 'Arc', 'Circle', 'Text')}.get(language, ('Ligne', 'Arc', 'Cercle', 'Texte'))
+
+
+def named(name):
+    return NAMES[language][name] if language else name
+
 
 LAYERS = [
     ('PL-01', '(0.3:0.75:0.85:1)'), ('R-2', '(1:0.9:0.45:1)'), ('Disque', '(0.93:0.4:0.7:1)'),
@@ -107,14 +123,14 @@ def emit(layer, block, shape, dx, dy):
     next_id[0] += 1
     n = number
     if k == 'line':
-        lines.append(';'.join(['103', str(i), layer, 'Ligne_%d' % i, n(shape[1] + dx), n(shape[2] + dy), n(shape[3] + dx), n(shape[4] + dy), block, '']))
+        lines.append(';'.join(['103', str(i), layer, SHAPES[0] + '_%d' % i, n(shape[1] + dx), n(shape[2] + dy), n(shape[3] + dx), n(shape[4] + dy), block, '']))
     elif k == 'arc':
-        lines.append(';'.join(['102', str(i), layer, 'Arc_%d' % i, n(shape[1] + dx), n(shape[2] + dy), n(shape[3] + dx), n(shape[4] + dy),
+        lines.append(';'.join(['102', str(i), layer, SHAPES[1] + '_%d' % i, n(shape[1] + dx), n(shape[2] + dy), n(shape[3] + dx), n(shape[4] + dy),
                                n(shape[5] + dx), n(shape[6] + dy), str(shape[7]), block, '']))
     elif k == 'circle':
-        lines.append(';'.join(['100', str(i), layer, 'Cercle_%d' % i, n(shape[1] + dx), n(shape[2] + dy), n(shape[3]), block, '']))
+        lines.append(';'.join(['100', str(i), layer, SHAPES[2] + '_%d' % i, n(shape[1] + dx), n(shape[2] + dy), n(shape[3]), block, '']))
     elif k == 'text':
-        lines.append(';'.join(['106', str(i), layer, 'Texte_%d' % i, 'arial', shape[3], '0', '1', '%.6f' % shape[4], n(shape[1] + dx), n(shape[2] + dy),
+        lines.append(';'.join(['106', str(i), layer, SHAPES[3] + '_%d' % i, 'arial', shape[3], '0', '1', '%.6f' % shape[4], n(shape[1] + dx), n(shape[2] + dy),
                                '-1', '0', '0', '1', '0', '0', '0', '1', block, '']))
 
 
@@ -127,14 +143,16 @@ for row in ROWS:
         shapes = builders[name]()
         x0, y0, x1, y1 = bounds(shapes)
         for s in shapes:
-            emit(name, name, s, x - x0, y - y0)
+            if language and s[0] == 'text':
+                continue
+            emit(named(name), named(name), s, x - x0, y - y0)
         x += x1 - x0 + GAP
         row_height = max(row_height, y1 - y0)
     y += row_height + GAP
 
 head = ['{OPENPOSTPRO}', '0;version;0.1', '0;output;nest.nc', '0;unit;0', '{LAYERS}']
 for i, (name, color) in enumerate(LAYERS):
-    head.append('1;%d;%s;%s;1;0' % (i + 1, name, color))
+    head.append('1;%d;%s;%s;1;0' % (i + 1, named(name), color))
 head += ['{GROUPS}', '{SHAPES}']
 with open(sys.argv[1], 'w', encoding='utf-8', newline='\n') as f:
     f.write('\n'.join(head + lines) + '\n')

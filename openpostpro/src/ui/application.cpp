@@ -268,6 +268,16 @@ void Application::initialize()
 			bridge::log("pocket done");
 			return true;
 		}
+		if (c[0] == "nestwindow")
+		{
+			// every shape is selected and the window of the nesting is shown
+			ModCad* cad = (ModCad*)module("MOD_CAD");
+			if (cad == nullptr)
+				return false;
+			cad->cad_nesting_window();
+			bridge::log("nesting window");
+			return true;
+		}
 		if (c[0] == "nest")
 		{
 			// "nest <width> <height> <spacing> [quantity [seconds]]": every shape of the document is nested, for some seconds if they are given with the algorithm 1 (search, the default) or 2 (overlap)
