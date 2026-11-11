@@ -995,6 +995,8 @@ std::string Postpro::run(Document* doc, std::string path, std::string version)
 							}
 							else
 							{
+								// without the Z axis (a plasma with its own height control) the cutting feed is still written
+								output += feed(g->feed());
 								output += start_single_path();
 
 								auto from = c.front();

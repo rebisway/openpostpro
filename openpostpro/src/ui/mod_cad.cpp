@@ -2025,6 +2025,7 @@ void ModCad::render_GUI()
 	_tools_window.draw();
 	_machines_window.draw(_document);
 	draw_nesting();
+	draw_array();
 	draw_machine();
 	draw_link_hint();
 
@@ -2175,7 +2176,7 @@ void ModCad::render_menu()
 		{
 			delete_layer();
 		}
-		if (ImGui::MenuItem(Lang::l("DRAWING_RENAME")))
+		if (ImGui::MenuItem(Lang::l("DRAWING_RENAME"), "F2"))
 		{
 			key_pressed(GLFW_KEY_F2, 0, GLFW_PRESS, 0);
 		}
@@ -2227,10 +2228,6 @@ void ModCad::render_menu()
 					History::end_undo_record();
 				}
 				ImGui::EndMenu();
-			}
-			if (ImGui::MenuItem(Lang::l("DRAWING_NESTING")))
-			{
-				cad_nesting();
 			}
 			// the same as the icon: checked when the selection is a group
 			int selected_shapes = 0;
@@ -2386,10 +2383,11 @@ void ModCad::render_menu()
 		{
 			delete_group();
 		}
-		if (ImGui::MenuItem(Lang::l("WORKSHOP_RENAME")))
+		if (ImGui::MenuItem(Lang::l("WORKSHOP_RENAME"), "F2"))
 		{
 			key_pressed(GLFW_KEY_F2, 0, GLFW_PRESS, 0);
 		}
+		ImGui::Separator();
 		if (ImGui::MenuItem(Lang::l("WORKSHOP_MACHINES")))
 		{
 			_machines_window.show();
@@ -2398,6 +2396,43 @@ void ModCad::render_menu()
 		{
 			_tools_window.show();
 		}
+		ImGui::Separator();
+		// the machinings: the same as the icons of the right column (a torch does not drill and does not clear a pocket)
+		const bool mill = _document->current_group() == nullptr || !_document->current_group()->is_torch();
+		if (ImGui::MenuItem(Lang::l("CAM_MOVETO")))
+		{
+			reset_display_boxes();
+			_cad_creation = GraphicType::CamMoveTo;
+		}
+		if (ImGui::MenuItem(Lang::l("CAM_DRILL"), NULL, false, mill))
+		{
+			reset_display_boxes();
+			_cad_creation = GraphicType::CamDrill;
+		}
+		if (ImGui::MenuItem(Lang::l("CAM_FOLLOW")))
+		{
+			reset_display_boxes();
+			cam_follow();
+		}
+		if (ImGui::BeginMenu(Lang::l("CAM_OFFSET")))
+		{
+			if (ImGui::MenuItem(Lang::l("CAM_OFFSET_INTERIOR")))
+				cam_offset(true);
+			if (ImGui::MenuItem(Lang::l("CAM_OFFSET_EXTERIOR")))
+				cam_offset(false);
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu(Lang::l("CAM_POCKET"), mill))
+		{
+			if (ImGui::MenuItem("Zigzag"))
+				cam_pocket(PocketMode::Zigzag);
+			if (ImGui::MenuItem("Offset"))
+				cam_pocket(PocketMode::Offset);
+			if (ImGui::MenuItem("Spiral"))
+				cam_pocket(PocketMode::Spiral);
+			ImGui::EndMenu();
+		}
+		ImGui::Separator();
 		if (ImGui::MenuItem(Lang::l("WORKSHOP_COMPENSATION")))
 		{
 			cam_compensation();
@@ -2414,7 +2449,39 @@ void ModCad::render_menu()
 				_document->group(t->parent())->remove(t);
 			}
 		}
+		ImGui::Separator();
+		if (ImGui::MenuItem(Lang::l("DRAWING_NESTING")))
+		{
+			cad_nesting();
+		}
 		ImGui::EndMenu();
+	}
+}
+
+// the same choices as the icons of the top toolbar, and the grid of the preferences
+void ModCad::render_display_menu()
+{
+	if (ImGui::MenuItem(Lang::l("DISPLAY_FIT"), "Home"))
+		fit_view();
+	if (ImGui::MenuItem(Lang::l("DISPLAY_GRID"), NULL, config.use_grid))
+	{
+		config.use_grid = !config.use_grid;
+		updateGrid();
+	}
+	ImGui::Separator();
+	if (ImGui::MenuItem(Lang::l("DISPLAY_TOOLPATHS"), NULL, _document->show_toolpaths()))
+		_document->show_toolpaths(!_document->show_toolpaths());
+	if (ImGui::MenuItem(Lang::l("DISPLAY_DIRECTION"), NULL, config.show_cam_arrow))
+	{
+		config.show_cam_arrow = !config.show_cam_arrow;
+		for (Group* g : _document->groups())
+			g->scaled();
+	}
+	if (ImGui::MenuItem(Lang::l("DISPLAY_START"), NULL, config.show_cam_start))
+	{
+		config.show_cam_start = !config.show_cam_start;
+		for (Group* g : _document->groups())
+			g->scaled();
 	}
 }
 
@@ -5058,6 +5125,104 @@ void ModCad::draw_nesting()
 	}
 	if (cancel)
 		_display_nesting = false;
+	ImGui::End();
+}
+
+// the copy of the shapes, moved by the offset, on the layer of each one: a group is copied as a new group
+std::vector<Graphic*> ModCad::cad_copy(const std::vector<Shape*>& source, glm::vec2 offset)
+{
+	std::vector<Graphic*> created;
+	std::map<std::string, std::string> blocks;
+	glm::mat4 m = glm::translate(glm::vec3(offset.x, offset.y, 0.0f));
+	for (Shape* shape : source)
+	{
+		Layer* layer = _document->layer_of(shape);
+		if (layer == nullptr || layer->locked())
+			continue;
+		Shape* s = shape->clone();
+		if (s == nullptr)
+			continue;
+		s->transform(m);
+		layer->add(s);
+		if (!shape->block().empty())
+		{
+			auto it = blocks.find(shape->block());
+			if (it == blocks.end())
+				it = blocks.emplace(shape->block(), _document->unique_block(shape->block())).first;
+			_document->block_set(s, it->second);
+		}
+		created.push_back(s);
+	}
+	return created;
+}
+
+// the copies are selected, one undo removes all of them
+void ModCad::cad_array(int columns, int rows, float dx, float dy)
+{
+	std::vector<Shape*> source = get_selection();
+	std::vector<Graphic*> created;
+	for (int j = 0; j < rows; j++)
+		for (int i = 0; i < columns; i++)
+		{
+			if (i == 0 && j == 0)
+				continue;
+			std::vector<Graphic*> cell = cad_copy(source, glm::vec2(i * dx, j * dy));
+			created.insert(created.end(), cell.begin(), cell.end());
+		}
+	if (created.empty())
+		return;
+	History::begin_undo_record();
+	for (Graphic* g : created)
+		History::undo(HistoryActionType::Add, g->write());
+	History::end_undo_record();
+	_document->unselect_all();
+	_document->select(created);
+}
+
+void ModCad::duplicate()
+{
+	std::vector<Shape*> source = get_selection();
+	std::vector<Graphic*> created = cad_copy(source, glm::vec2(10.0f, 10.0f));
+	if (created.empty())
+		return;
+	History::begin_undo_record();
+	for (Graphic* g : created)
+		History::undo(HistoryActionType::Add, g->write());
+	History::end_undo_record();
+	_document->unselect_all();
+	_document->select(created);
+}
+
+void ModCad::array_window()
+{
+	_display_array = true;
+}
+
+void ModCad::draw_array()
+{
+	if (!_display_array)
+		return;
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+	if (!ImGui::Begin((Lang::t("ARRAY_TITLE") + "###ARRAY_WINDOW").c_str(), &_display_array, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse))
+	{
+		ImGui::End();
+		return;
+	}
+	ImGui::InputInt(Lang::l("ARRAY_COLUMNS"), &_array_columns);
+	ImGui::InputInt(Lang::l("ARRAY_ROWS"), &_array_rows);
+	_array_columns = std::clamp(_array_columns, 1, 200);
+	_array_rows = std::clamp(_array_rows, 1, 200);
+	ImGui::InputFloat(Lang::l("ARRAY_DX"), &_array_dx, 0, 0, "%.1f");
+	ImGui::InputFloat(Lang::l("ARRAY_DY"), &_array_dy, 0, 0, "%.1f");
+	bool run, cancel;
+	nest_buttons(Lang::l("BTN_OK"), Lang::l("BTN_CANCEL"), run, cancel);
+	if (run)
+	{
+		cad_array(_array_columns, _array_rows, _array_dx, _array_dy);
+		_display_array = false;
+	}
+	if (cancel)
+		_display_array = false;
 	ImGui::End();
 }
 

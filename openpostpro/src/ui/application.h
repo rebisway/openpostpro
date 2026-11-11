@@ -75,6 +75,9 @@ private:
 	std::string _clone_source;			// file to clone
 	bool _clone_script = false;			// true for a cad script, false for a post-processor
 	bool _save_requested = false;		// CTRL+S pressed, handled when the interface is drawn
+	bool _new_requested = false;		// CTRL+N pressed
+	bool _open_requested = false;		// CTRL+O pressed
+	bool _show_shortcuts = false;		// the window of the keyboard shortcuts is displayed
 	CadScript* _current_script = nullptr;	// script whose properties dialog box is displayed
 
 public:
@@ -115,7 +118,10 @@ public:
 	void reload_script(const std::string& path);	// use again a script after its compilation
 
 	void new_document();
-	void load_file(std::string path);
+	// remember: the file is added to the recent documents (not for an example, which is a copy to work on)
+	void load_file(std::string path, bool remember = true);
+	void open_dialog();								// the dialog box to choose a document, then its loading
+	void add_recent(const std::string& path);
 	void save_file(std::string path);
 	void load_dxf(std::string path);
 	void export_dxf(std::string path);

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  OpenPostPro - www.rebisway.com - contact@rebisway.com
+  Copyright (C) 2024-2026 Thomas Gourgnier
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  Windows installer (WiX 5). Per user: no administrator rights, installed under %LocalAppData%\Programs\OpenPostPro.
+  Built by tools\build-release.ps1 from the staged folder of the release (the same files as the zip).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="OpenPostPro" Manufacturer="Thomas Gourgnier" Version="$(Version)" UpgradeCode="6B3F0C52-8D7A-4E1B-9C64-2A5E7D10F3B8" Scope="perUser" Compressed="yes">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of OpenPostPro is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+    <Icon Id="OpenPostPro.ico" SourceFile="$(IconFile)" />
+    <Property Id="ARPPRODUCTICON" Value="OpenPostPro.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://openpostpro.rebisway.com" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="OpenPostPro" />
+      </Directory>
+    </StandardDirectory>
+
+    <ComponentGroup Id="Application" Directory="INSTALLFOLDER">
+      <Files Include="$(StageDir)\**" />
+    </ComponentGroup>
+
+    <!-- Start menu entry. The settings of the user stay in his own folder and are kept when the program is removed. -->
+    <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder">
+      <Shortcut Id="OpenPostProShortcut" Name="OpenPostPro" Description="CAD/CAM and post-processors" Target="[INSTALLFOLDER]openpostpro.exe" WorkingDirectory="INSTALLFOLDER" />
+      <RegistryValue Root="HKCU" Key="Software\OpenPostPro" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <Feature Id="Main" Title="OpenPostPro" Level="1">
+      <ComponentGroupRef Id="Application" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>

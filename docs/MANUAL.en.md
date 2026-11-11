@@ -71,7 +71,7 @@ The whole manual uses a 400 × 200 mm plate, machined on a 600 × 400 mm router:
 
 ## 2. First start and layout of the interface
 
-At the very first start, a **Welcome** window asks for the **language** of the interface and the default **unit** of new documents (millimetre or inch). The language changes as soon as you pick it, and **Ok** confirms. You can change both choices later in **Tools / Preferences**.
+At the very first start, a **Welcome** window asks for the **language** of the interface and the default **unit** of new documents (millimetre or inch). The language changes as soon as you pick it, and **Ok** confirms. You can change both choices later in **Edit / Preferences**.
 
 ![The OpenPostPro screen with the example project](img/ui-overview.en.png)
 
@@ -117,31 +117,31 @@ A greyed-out icon is not available: for example, the current operation uses a to
 
 ![File menu](img/menu-file.en.png)
 
-**New**, **Open** and **Save** (`.opp` documents); **Import** opens a DXF file; **Export DXF** writes the shapes (only the selection, if there is one). Import and export of SVG, Gerber and Excellon are scripts (chapter 9).
+**New**, **Open** and **Save** (`.opp` documents); **Open recent** lists the last ten documents; **Examples** opens the example projects of the manual, as a copy to save under another name. **Import** opens a DXF file; **Export** writes, in DXF format, the shapes (only the selection, if there is one). SVG, Gerber and Excellon import and export are scripts (chapter 9). **Quit**: Ctrl+Q.
 
 ### Edit
 
 ![Edit menu](img/menu-edit.en.png)
 
-**Undo / Redo** (Ctrl+Z, Ctrl+Y), **Cut / Copy / Paste / Delete**. The **Select** submenu has: *Select all* (Ctrl+A), *Objects of the current layer*, *The layer* (chooses a layer by name), *Contour* (selects every shape connected to the selection) and *Invert selection*.
+**Undo / Redo** (Ctrl+Z, Ctrl+Y), **Cut / Copy / Paste / Delete**. **Duplicate** copies the selection a little further; **Array copy...** makes a grid of copies (columns, rows and spacings). The **Select** submenu has: *All* (Ctrl+A), *The objects of the current layer*, *The layer* (picks a layer by its name), *Contour* (selects all the shapes connected to the selection) and *Invert selection*. **Preferences** opens the preferences (language, unit, look).
 
 ### Drawing
 
 ![Drawing menu](img/menu-drawing.en.png)
 
-Add, delete and rename a layer; **Check the drawing** (see chapter 4); reverse the direction of the selected objects; convert the whole drawing to inches (or millimetres). With a selection, the menu also offers cutting at intersections, the boolean operations (union, intersection, subtraction), conversion to a spline, and linking a text to a curve. It also has **Group / Ungroup** (see "Groups", chapter 4) and **Nesting...** (chapter 12).
+Add, delete and rename a layer (F2); **Check the drawing** (see chapter 4); reverse the direction of the selected objects; convert the whole drawing to inches (or millimeters). With a selection, the menu also offers to cut at intersections, the boolean operations (union, intersection, subtraction), the conversion to a spline, and the link of a text to a curve. It also offers **Group / Ungroup** (see "Groups", chapter 4).
 
 ### Machining
 
 ![Machining menu](img/menu-machining.en.png)
 
-Add, delete and rename an **operation**; open the table of **machines** and the table of **tools** (chapter 5); delete the selected machining; **Automatic radius compensation** and **Organize the operations** (chapter 7).
+Add, delete and rename an **operation**; open the table of **machines** and the table of **tools** (chapter 5); create the machinings (move to the position, drilling, follow the line, go around the line, pocket), as with the icons; delete the selected machining; **Automatic radius compensation** and **Organize the toolpaths** (chapter 7); **Nesting...** (chapter 12).
 
 ### Post-processor
 
 ![Post-processor menu](img/menu-postprocessor.en.png)
 
-**Generate** writes the output file with the chosen post-processor (its name is in brackets); **Run and simulate** generates it and plays it in the simulator; **Configure** opens its settings; **Clone** makes an editable copy; **Open the folder**; **Select** chooses the post-processor by category. See chapter 8.
+**Generate** writes the output file with the chosen post-processor (its name is in parentheses); **Run and simulate** generates it and plays it in the simulator; **Configure** opens its settings; **Manage** gathers the editing, the cloning (an editable copy) and the opening of the folder; **Select** chooses the post-processor by category. See chapter 8.
 
 ### Scripts
 
@@ -149,11 +149,11 @@ Add, delete and rename an **operation**; open the table of **machines** and the 
 
 The delivered scripts are sorted by category: *Import*, *Modify*, *Generation*, *Geometry*, *Examples*, *Export*. **Clone a script** makes an editable copy. See chapter 9.
 
-### Tools, Display, Help
+### Display and Help
 
 ![Display menu](img/menu-display.en.png)
 
-**Tools / Preferences** opens the preferences (language, unit, look). **Display** chooses the style of the interface (classic, dark, light) and shows or hides the Output and Log windows. **Help / About** gives the version and the build date.
+**Display** fits the drawing (Home), shows or hides the grid, the machinings, their direction and their start, chooses the style of the interface (classic, dark, light) and shows or hides the Output and Log windows. **Help** opens the online manual, the list of keyboard shortcuts, the OpenPostPro web site and the project site (GitHub), and gives the version and the build date in **About**.
 
 ![The preferences](img/win-preferences.en.png)
 
@@ -308,7 +308,7 @@ On a selection with **holes** (contours inside another one, at any depth: a hole
 Two entries of the **Machining** menu set several machinings at once. They act on the selected machinings, otherwise on those of the selected operations, otherwise on all of them.
 
 - **Automatic radius compensation**: for every closed *follow the line* and *go around the line*, the tool is placed **outside** an outer contour or an island and **inside** a hole. The level of a contour is the number of contours around it in its operation. This replaces the choice made when the machining was created. Ctrl+Z undoes it in one step.
-- **Organize the operations**: sorts the machinings of each operation in the order in which a part is machined: each contour comes after the contours it contains, at any depth (the islands, then the holes, then the outer contour). Only consecutive contours are sorted: drillings, pockets and moves keep their place, and contours of the same depth keep their order. Ctrl+Z does not undo this.
+- **Organize the toolpaths**: sorts the machinings of each operation in the order in which a part is machined: each contour comes after the contours it contains, at any depth (the islands, then the holes, then the outer contour). Only consecutive contours are sorted: drillings, pockets and moves keep their place, and contours of the same depth keep their order. Ctrl+Z does not undo this.
 
 The log shows how many machinings changed.
 
@@ -396,7 +396,7 @@ Plasma post-processors add torch settings (ignition commands, pierce time, refer
 
 ### The order of the contours
 
-So that a part which is cut out does not move before the end of the cut, the post-processor machines **the contours which are inside another one before it**, at any depth: the islands, then the holes, then the outer contour of the part. The *follow the line*, *go around the line* and drillings which follow each other are still sorted to shorten the rapid moves, but a contour is never machined before the ones it contains. With several passes in depth, the rule is kept at each pass. The **Machining / Organize the operations** menu (chapter 7) puts the list of the operation in the same order, to see it in the Project window.
+So that a part which is cut out does not move before the end of the cut, the post-processor machines **the contours which are inside another one before it**, at any depth: the islands, then the holes, then the outer contour of the part. The *follow the line*, *go around the line* and drillings which follow each other are still sorted to shorten the rapid moves, but a contour is never machined before the ones it contains. With several passes in depth, the rule is kept at each pass. The **Machining / Organize the toolpaths** menu (chapter 7) puts the list of the operation in the same order, to see it in the Project window.
 
 ### Generating
 
@@ -560,7 +560,7 @@ The operation *Cut out* (tool T3, 6 mm end mill, depth −8 mm) follows the oute
 
 ## 12. Automatic nesting
 
-The **nesting** places copies of parts on a sheet to lose as little of it as possible. It starts from **Drawing / Nesting...** and creates new layers: the original drawing is not modified.
+The **nesting** places copies of parts on a sheet to lose as little of it as possible. It starts from **Machining / Nesting...** and creates new layers: the original drawing is not modified.
 
 The example `docs/examples/nesting.en.opp` holds six types of parts (a group each) to try the nesting.
 
@@ -568,7 +568,7 @@ The example `docs/examples/nesting.en.opp` holds six types of parts (a group eac
 
 1. Draw or import each part, with its holes.
 2. **Group** the shapes of each part (see "Groups", chapter 4). A part is a group.
-3. Select the groups to nest (a rectangle around the drawing, or **Edit / Select / Select all**) then choose **Drawing / Nesting...**. Without a group in the selection, a message says so.
+3. Select the groups to nest (a rectangle around the drawing, or **Edit / Select / Select all**) then choose **Machining / Nesting...**. Without a group in the selection, a message says so.
 
 For each group, the **largest closed contour** is the outline of the part, and the closed contours inside it are its holes, its islands in the holes, and so on: a part can be placed in the hole of another one. The open shapes of a group are copied with it but do not count for the placement.
 
@@ -621,7 +621,7 @@ The calculation runs in the background: a window shows a turning circle, the pro
 
 ### After the nesting
 
-To machine the result: create the machinings on the *Nesting_n* layer (*follow the line* on the selection of the groups), then set them with **Machining / Automatic radius compensation** and **Machining / Organize the operations** (chapter 7). The post-processor machines the holes of each part before its outer contour (chapter 8).
+To machine the result: create the machinings on the *Nesting_n* layer (*follow the line* on the selection of the groups), then set them with **Machining / Automatic radius compensation** and **Machining / Organize the toolpaths** (chapter 7). The post-processor machines the holes of each part before its outer contour (chapter 8).
 
 ## 13. Going further
 

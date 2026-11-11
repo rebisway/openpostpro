@@ -4,7 +4,7 @@
 
 OpenPostPro réunit un environnement de dessin 2D léger, des opérations d'usinage (FAO) et des post-processeurs Python configurables. Importez un dessin DXF ou créez la géométrie directement dans l'application, préparez des opérations d'usinage ou de découpe, puis générez une sortie adaptée à votre machine grâce à un post-processeur.
 
-La version actuelle est la **1.0**. Le projet est stable et utilisable, mais certains algorithmes de géométrie et de parcours d'outil peuvent encore échouer sur des formes difficiles : la sortie générée doit donc toujours être vérifiée avec soin avant d'être utilisée sur une vraie machine.
+La version actuelle est la **1.1**. Le projet est stable et utilisable, mais certains algorithmes de géométrie et de parcours d'outil peuvent encore échouer sur des formes difficiles : la sortie générée doit donc toujours être vérifiée avec soin avant d'être utilisée sur une vraie machine.
 
 Manuel d'utilisation : [Manuel d'utilisation](docs/MANUAL.fr.md) · [User manual](docs/MANUAL.en.md)
 
@@ -154,7 +154,7 @@ OpenPostPro se compile et fonctionne sous **Linux** avec CMake et GCC (testé su
 
 ## État du projet
 
-OpenPostPro est un projet open source indépendant, en version 1.0. La priorité pour la suite est la robustesse des calculs de géométrie et de contours (décalages et poches sur des formes difficiles).
+OpenPostPro est un projet open source indépendant, en version 1.1. La priorité pour la suite est la robustesse des calculs de géométrie et de contours (décalages et poches sur des formes difficiles).
 
 Vérifiez toujours le programme généré : simulez-le, contrôlez les réglages de la machine, les outils, les dégagements, les avances et les vitesses avant de l'exécuter sur une vraie machine.
 
@@ -168,6 +168,7 @@ Les composants tiers gardent leurs propres licences, toutes compatibles avec l'A
 
 ## Liens
 
+- **Site :** https://openpostpro.rebisway.com
 - **Dépôt :** https://github.com/rebisway/openpostpro
 - **Contact :** contact@rebisway.com
 

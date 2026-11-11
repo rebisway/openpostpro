@@ -31,6 +31,21 @@ void Config::read()
 	display_style = _ini.get_int(_section, "Style", 1);
 	open_last_file = _ini.get_bool(_section, "OpenLastFile", true);
 	last_file_path = _ini.get_string(_section, "LastFilePath");
+	// the recent documents are separated by '|'
+	file_history.clear();
+	{
+		std::string history = _ini.get_string(_section, "History");
+		size_t start = 0;
+		while (start <= history.size())
+		{
+			size_t end = history.find('|', start);
+			if (end == std::string::npos)
+				end = history.size();
+			if (end > start)
+				file_history.push_back(history.substr(start, end - start));
+			start = end + 1;
+		}
+	}
 	small_axe = _ini.get_bool(_section, "SmallAxe", false);
 	use_grid = _ini.get_bool(_section, "UseGrid", false);
 	inc_grid = _ini.get_float(_section, "IncGrid", 10);
@@ -76,6 +91,12 @@ void Config::write()
 	_ini.set(_section, "Style", display_style);
 	_ini.set(_section, "OpenLastFile", open_last_file);
 	_ini.set(_section, "LastFilePath", last_file_path);
+	{
+		std::string history;
+		for (const std::string& path : file_history)
+			history += (history.empty() ? "" : "|") + path;
+		_ini.set(_section, "History", history);
+	}
 	_ini.set(_section, "SmallAxe", small_axe);
 	_ini.set(_section, "UseGrid", use_grid);
 	_ini.set(_section, "IncGrid", inc_grid);

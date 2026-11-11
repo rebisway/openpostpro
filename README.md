@@ -4,7 +4,7 @@
 
 OpenPostPro brings together a lightweight 2D drawing environment, CAM operations, and configurable Python post-processors. Import a DXF drawing or create geometry directly in the application, prepare machining or cutting operations, then generate output adapted to your machine through a post-processor.
 
-The current version is **1.0**. The project is stable and usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
+The current version is **1.1**. The project is stable and usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
 
 User manual: [MANUAL.en.md](docs/MANUAL.en.md) · [Manuel d'utilisation](docs/MANUAL.fr.md)
 
@@ -152,7 +152,7 @@ OpenPostPro builds and runs on **Linux** with CMake and GCC (tested on Zorin OS 
 
 ## Project status
 
-OpenPostPro is an independent open-source project, at version 1.0. The priority for what comes next is the robustness of the geometry and outline calculations (offsets and pockets on difficult shapes).
+OpenPostPro is an independent open-source project, at version 1.1. The priority for what comes next is the robustness of the geometry and outline calculations (offsets and pockets on difficult shapes).
 
 Always check the generated program: simulate it, and check the machine settings, tools, clearances, feeds and speeds before running it on a real machine.
 
@@ -166,6 +166,7 @@ Third-party components keep their own licenses, all compatible with the AGPL; se
 
 ## Links
 
+- **Web site:** https://openpostpro.rebisway.com
 - **Repository:** https://github.com/rebisway/openpostpro
 - **Contact:** contact@rebisway.com
 

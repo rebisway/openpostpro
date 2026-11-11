@@ -761,6 +761,27 @@ void Application::onKeyPressed(int key, int scancode, int action, int mods)
 		_save_requested = true;
 		return;
 	}
+	// the keys are compared by the letter they type, not by their position: on an AZERTY keyboard the key of the A is the Q of the codes
+	if (action == GLFW_PRESS && (mods & GLFW_MOD_CONTROL))
+	{
+		const char* name = glfwGetKeyName(key, scancode);
+		char letter = name != nullptr ? (char)std::tolower((unsigned char)name[0]) : 0;
+		if (letter == 'n')
+		{
+			_new_requested = true;
+			return;
+		}
+		if (letter == 'o')
+		{
+			_open_requested = true;
+			return;
+		}
+		if (letter == 'q')
+		{
+			close();
+			return;
+		}
+	}
 
 	bool throw_module = !ImGui::IsWindowFocused(ImGuiHoveredFlags_AnyWindow);
 
@@ -937,6 +958,68 @@ void Application::onRenderGUI()
 	ImGui::PopFont();
 }
 
+// the most recent document is the first one of the list, which keeps ten of them
+void Application::add_recent(const std::string& path)
+{
+	auto& history = config.file_history;
+	history.erase(std::remove(history.begin(), history.end(), path), history.end());
+	history.insert(history.begin(), path);
+	if (history.size() > 10)
+		history.resize(10);
+}
+
+void Application::open_dialog()
+{
+	std::string path("");
+	if (dialog::open_file_dialog("", path, "OpenPostPro", "*.opp"))
+		load_file(path);
+}
+
+// the folder of the example projects: next to the program, or in the docs folder of the sources
+static std::string examples_folder()
+{
+	namespace fs = std::filesystem;
+	std::error_code error;
+	fs::path folder = fs::path(environment::application_path());
+	for (int i = 0; i < 6 && !folder.empty(); i++)
+	{
+		for (const char* name : { "examples", "docs/examples" })
+		{
+			fs::path candidate = folder / name;
+			if (fs::is_directory(candidate, error))
+				return candidate.string();
+		}
+		folder = folder.parent_path();
+	}
+	return "";
+}
+
+// the examples in the language of the interface (French, otherwise English): the name shown and the path
+static std::vector<std::pair<std::string, std::string>> example_files(const std::string& folder)
+{
+	namespace fs = std::filesystem;
+	std::string wanted = Lang::getName().substr(0, 2) == "fr" ? "fr" : "en";
+	std::vector<std::pair<std::string, std::string>> result;
+	std::error_code error;
+	for (const auto& entry : fs::directory_iterator(folder, error))
+	{
+		if (!entry.is_regular_file() || entry.path().extension() != ".opp")
+			continue;
+		std::string name = entry.path().stem().string();
+		size_t dot = name.rfind('.');
+		if (dot != std::string::npos)
+		{
+			// "plaque.fr": the tag of the language is not shown, the examples of the other languages are not listed
+			if (name.substr(dot + 1) != wanted)
+				continue;
+			name = name.substr(0, dot);
+		}
+		result.push_back({ name, entry.path().string() });
+	}
+	std::sort(result.begin(), result.end());
+	return result;
+}
+
 void Application::render_menu()
 {
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -976,11 +1059,46 @@ void Application::render_menu()
 			{
 				new_document();
 			}
-			if (ImGui::MenuItem(Lang::l("FILE_OPEN"), "CTRL+O", false)) 
+			if (ImGui::MenuItem(Lang::l("FILE_OPEN"), "CTRL+O", false))
 			{
-				std::string path("");
-				if (dialog::open_file_dialog("", path, "OpenPostPro", "*.opp"))
-					load_file(path);
+				open_dialog();
+			}
+			// the recent documents (the ones which do not exist any more are dropped)
+			auto& history = config.file_history;
+			history.erase(std::remove_if(history.begin(), history.end(), [](const std::string& p) { return !std::filesystem::exists(p); }), history.end());
+			if (ImGui::BeginMenu(Lang::l("FILE_RECENT"), !history.empty()))
+			{
+				std::string chosen;
+				for (size_t i = 0; i < history.size(); i++)
+				{
+					std::string name = std::filesystem::path(history[i]).filename().string();
+					if (ImGui::MenuItem((name + "###RECENT_" + std::to_string(i)).c_str()))
+						chosen = history[i];
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("%s", history[i].c_str());
+				}
+				ImGui::Separator();
+				if (ImGui::MenuItem(Lang::l("FILE_RECENT_CLEAR")))
+					history.clear();
+				ImGui::EndMenu();
+				if (!chosen.empty())
+					load_file(chosen);
+			}
+			// the examples are copies: the document has no file, so a save asks for a name
+			std::string examples = examples_folder();
+			if (ImGui::BeginMenu(Lang::l("FILE_EXAMPLES"), !examples.empty()))
+			{
+				std::string chosen;
+				for (const auto& example : example_files(examples))
+					if (ImGui::MenuItem(example.first.c_str()))
+						chosen = example.second;
+				ImGui::EndMenu();
+				if (!chosen.empty())
+				{
+					load_file(chosen, false);
+					_document->path("");
+					title(_application_title);
+				}
 			}
 			if (ImGui::MenuItem(Lang::l("FILE_SAVE"), "CTRL+S", false)) 
 			{
@@ -1012,7 +1130,7 @@ void Application::render_menu()
 				}
 			}
 			ImGui::Separator();
-			if (ImGui::MenuItem(Lang::l("FILE_EXIT"), "ALT+X")) 
+			if (ImGui::MenuItem(Lang::l("FILE_EXIT"), "CTRL+Q")) 
 			{ 
 				close(); 
 			}
@@ -1044,6 +1162,14 @@ void Application::render_menu()
 			if (ImGui::MenuItem(Lang::l("EDIT_REMOVE"), "DEL", false))
 			{
 				_current_module->remove();
+			}
+			if (_current_module->code() == "MOD_CAD")
+			{
+				bool any = _document->selected().size() > 0;
+				if (ImGui::MenuItem(Lang::l("EDIT_DUPLICATE"), NULL, false, any))
+					((ModCad*)_current_module)->duplicate();
+				if (ImGui::MenuItem(Lang::l("EDIT_ARRAY"), NULL, false, any))
+					((ModCad*)_current_module)->array_window();
 			}
 			ImGui::Separator();
 			if (ImGui::BeginMenu(Lang::l("EDIT_SELECT")))
@@ -1098,6 +1224,11 @@ void Application::render_menu()
 				}
 				ImGui::EndMenu();
 			}
+			ImGui::Separator();
+			if (ImGui::MenuItem(Lang::l("PREFERENCES")))
+			{
+				_display_preferences = true;
+			}
 			ImGui::EndMenu();
 		}
 
@@ -1145,29 +1276,29 @@ void Application::render_menu()
 			{
 				_display_postpro_preferences = true;
 			}
-			if (configure && edit)
-				ImGui::Separator();
-			if (edit && ImGui::MenuItem(Lang::l("POST_EDIT")))
+			if (ImGui::BeginMenu(Lang::l("POST_MANAGE")))
 			{
-				auto m = module("MOD_SCRIPT");
-				m->load(_current_postpro->path());
-				m->show(true);
-				m->selected(true);
-			}
-			if (configure || edit)
-				ImGui::Separator();
-			if (_current_postpro != nullptr && ImGui::MenuItem(Lang::l("POST_CLONE")))
-			{
-				_clone_source = _current_postpro->path();
-				_clone_script = false;
-				_clone_name = _current_postpro->module() + "_custom";
-				_clone_description = _current_postpro->description();
-				_clone_error = "";
-				_display_clone = true;
-			}
-			if (ImGui::MenuItem(Lang::l("POST_OPEN_FOLDER")))
-			{
-				dialog::open_folder(environment::combine_path(environment::application_data_path(), "postpro"));
+				if (edit && ImGui::MenuItem(Lang::l("POST_EDIT")))
+				{
+					auto m = module("MOD_SCRIPT");
+					m->load(_current_postpro->path());
+					m->show(true);
+					m->selected(true);
+				}
+				if (_current_postpro != nullptr && ImGui::MenuItem(Lang::l("POST_CLONE")))
+				{
+					_clone_source = _current_postpro->path();
+					_clone_script = false;
+					_clone_name = _current_postpro->module() + "_custom";
+					_clone_description = _current_postpro->description();
+					_clone_error = "";
+					_display_clone = true;
+				}
+				if (ImGui::MenuItem(Lang::l("POST_OPEN_FOLDER")))
+				{
+					dialog::open_folder(environment::combine_path(environment::application_data_path(), "postpro"));
+				}
+				ImGui::EndMenu();
 			}
 			ImGui::Separator();
 			if (ImGui::BeginMenu(Lang::l("POST_SELECT")))
@@ -1271,18 +1402,13 @@ void Application::render_menu()
 		}
 
 
-		if (ImGui::BeginMenu(Lang::l("TOOLS")))
-		{
-			if (ImGui::MenuItem(Lang::l("PREFERENCES")))
-			{
-				_display_preferences = true;
-			}
-			ImGui::EndMenu();
-		}
-
-
 		if (ImGui::BeginMenu(Lang::l("DISPLAY")))
 		{
+			if (_current_module->code() == "MOD_CAD")
+			{
+				((ModCad*)_current_module)->render_display_menu();
+				ImGui::Separator();
+			}
 			if (ImGui::BeginMenu(Lang::l("DISPLAY_STYLE")))
 			{
 
@@ -1326,6 +1452,17 @@ void Application::render_menu()
 
 		if (ImGui::BeginMenu(Lang::l("HELP")))
 		{
+			// the manual and the sources are on the web site of the project
+			std::string manual = Lang::getName().substr(0, 2) == "fr" ? "fr" : "en";
+			if (ImGui::MenuItem(Lang::l("HELP_MANUAL")))
+				dialog::open_folder("https://github.com/rebisway/openpostpro/blob/main/docs/MANUAL." + manual + ".md");
+			if (ImGui::MenuItem(Lang::l("HELP_SHORTCUTS")))
+				_show_shortcuts = true;
+			if (ImGui::MenuItem(Lang::l("HELP_WEBSITE")))
+				dialog::open_folder("https://openpostpro.rebisway.com");
+			if (ImGui::MenuItem(Lang::l("HELP_GITHUB")))
+				dialog::open_folder("https://github.com/rebisway/openpostpro");
+			ImGui::Separator();
 			if (ImGui::MenuItem(Lang::l("ABOUT")))
 				_show_about = true;
 			ImGui::EndMenu();
@@ -1380,6 +1517,36 @@ void Application::render_menu()
 		ImGui::EndMainMenuBar();
 	}
 
+	if (_show_shortcuts)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x * 0.5f, io.DisplaySize.y * 0.5f), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		if (ImGui::Begin((Lang::t("HELP_SHORTCUTS") + "###SHORTCUTS_WINDOW").c_str(), &_show_shortcuts, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			static const std::pair<const char*, const char*> shortcuts[] = {
+				{ "Ctrl+N", "FILE_NEW" }, { "Ctrl+O", "FILE_OPEN" }, { "Ctrl+S", "FILE_SAVE" }, { "Ctrl+Q", "FILE_EXIT" },
+				{ "Ctrl+Z", "EDIT_UNDO" }, { "Ctrl+Y", "EDIT_REDO" }, { "Ctrl+X", "EDIT_CUT" }, { "Ctrl+C", "EDIT_COPY" },
+				{ "Ctrl+V", "EDIT_PASTE" }, { "KEY_DEL", "EDIT_REMOVE" }, { "Ctrl+A", "EDIT_SELECT_ALL" },
+				{ "KEY_HOME", "DISPLAY_FIT" }, { "F2", "SHORTCUT_RENAME" }, { "KEY_SPACE", "SHORTCUT_END_POLYLINE" }, { "KEY_ESC", "SHORTCUT_CANCEL" },
+				{ "KEY_CTRL_CLICK", "SHORTCUT_CTRL_CLICK" }, { "KEY_SHIFT_CLICK", "SHORTCUT_SHIFT_CLICK" },
+				{ "KEY_WHEEL", "SHORTCUT_ZOOM" }, { "KEY_RIGHT_BUTTON", "SHORTCUT_PAN" } };
+			if (ImGui::BeginTable("##SHORTCUTS_TABLE", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg))
+			{
+				for (const auto& shortcut : shortcuts)
+				{
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					// the names of the keys and of the mouse actions are translated, the combinations with Ctrl are not
+					ImGui::TextUnformatted(strncmp(shortcut.first, "KEY_", 4) == 0 ? Lang::l(shortcut.first) : shortcut.first);
+					ImGui::TableNextColumn();
+					ImGui::TextUnformatted(Lang::l(shortcut.second));
+				}
+				ImGui::EndTable();
+			}
+		}
+		ImGui::End();
+	}
+
 	if (_show_about)
 	{
 		// the version is the one of the application, not the one of the document file format
@@ -1414,6 +1581,7 @@ void Application::render_menu()
 			ImGui::NewLine();
 			centered("Copyright (C) 2024-2026 Thomas Gourgnier");
 			centered("GNU Affero General Public License v3 or later");
+			centered("https://openpostpro.rebisway.com");
 			centered("https://github.com/rebisway/openpostpro");
 			ImGui::NewLine();
 
@@ -1505,6 +1673,16 @@ void Application::render_menu()
 		_save_requested = false;
 		save_current();
 	}
+	if (_new_requested)
+	{
+		_new_requested = false;
+		new_document();
+	}
+	if (_open_requested)
+	{
+		_open_requested = false;
+		open_dialog();
+	}
 
 	if (_display_clone)
 	{
@@ -1582,7 +1760,7 @@ void Application::new_document()
 	}
 }
 
-void Application::load_file(std::string path)
+void Application::load_file(std::string path, bool remember)
 {
 	if (std::filesystem::exists(path))
 	{
@@ -1610,6 +1788,8 @@ void Application::load_file(std::string path)
 
 
 				title(_application_title + " - " + _document->path());
+				if (remember)
+					add_recent(path);
 
 				//onSizeChanged(width(), height());
 
@@ -1638,6 +1818,7 @@ void Application::save_file(std::string path)
 			file::write_all_text(path, data);
 
 			title(_application_title + " - " + _document->path());
+			add_recent(path);
 
 			_mutex.unlock();
 		}

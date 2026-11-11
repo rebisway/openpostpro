@@ -71,7 +71,7 @@ Tout le manuel utilise une plaque de 400 × 200 mm, usinée avec une fraiseuse d
 
 ## 2. Premier démarrage et organisation de l'interface
 
-Au tout premier démarrage, une fenêtre **Bienvenue** demande la **langue** de l'interface et l'**unité** par défaut des nouveaux documents (millimètre ou pouce). La langue de l'interface change dès que vous la choisissez ; le bouton **Ok** valide. Ces deux choix pourront être modifiés plus tard dans **Outils / Préférences**.
+Au tout premier démarrage, une fenêtre **Bienvenue** demande la **langue** de l'interface et l'**unité** par défaut des nouveaux documents (millimètre ou pouce). La langue de l'interface change dès que vous la choisissez ; le bouton **Ok** valide. Ces deux choix pourront être modifiés plus tard dans **Édition / Préférences**.
 
 ![L'écran d'OpenPostPro avec le projet d'exemple](img/ui-overview.fr.png)
 
@@ -117,31 +117,31 @@ Une icône grisée n'est pas disponible : par exemple, l'opération courante uti
 
 ![Menu Fichier](img/menu-file.fr.png)
 
-**Nouveau**, **Ouvrir** et **Enregistrer** (documents `.opp`) ; **Importer** ouvre un fichier DXF ; **Exporter en DXF** écrit les formes (seulement la sélection, s'il y en a une). L'import et l'export SVG, Gerber et Excellon sont des scripts (chapitre 9).
+**Nouveau**, **Ouvrir** et **Enregistrer** (documents `.opp`) ; **Ouvrir un récent** liste les dix derniers documents ; **Exemples** ouvre les projets d'exemple du manuel, comme une copie à enregistrer sous un autre nom. **Importer** ouvre un fichier DXF ; **Exporter** écrit au format DXF les formes (seulement la sélection, s'il y en a une). L'import et l'export SVG, Gerber et Excellon sont des scripts (chapitre 9). **Quitter** : Ctrl+Q.
 
 ### Édition
 
 ![Menu Édition](img/menu-edit.fr.png)
 
-**Annuler / Refaire** (Ctrl+Z, Ctrl+Y), **Couper / Copier / Coller / Supprimer**. Le sous-menu **Sélection** contient : *Tout* (Ctrl+A), *Les objets du calque courant*, *Le calque* (choisit un calque par son nom), *Contour* (sélectionne toutes les formes reliées à la sélection) et *Inverser la sélection*.
+**Annuler / Refaire** (Ctrl+Z, Ctrl+Y), **Couper / Copier / Coller / Supprimer**. **Dupliquer** copie la sélection un peu plus loin ; **Copie en réseau...** en fait une grille de copies (colonnes, lignes et écarts). Le sous-menu **Sélection** contient : *Tout* (Ctrl+A), *Les objets du calque courant*, *Le calque* (choisit un calque par son nom), *Contour* (sélectionne toutes les formes reliées à la sélection) et *Inverser la sélection*. **Préférences** ouvre les préférences (langue, unité, aspect).
 
 ### Dessin
 
 ![Menu Dessin](img/menu-drawing.fr.png)
 
-Ajouter, supprimer et renommer un calque ; **Vérifier le dessin** (voir le chapitre 4) ; inverser le sens des objets sélectionnés ; convertir tout le dessin en pouces (ou en millimètres). Avec une sélection, le menu propose aussi de couper aux intersections, les opérations booléennes (fusion, intersection, soustraction), la conversion en spline, et le lien d'un texte à une courbe. Il propose aussi **Grouper / Dégrouper** (voir « Les groupes », chapitre 4) et **Imbrication...** (chapitre 12).
+Ajouter, supprimer et renommer un calque (F2) ; **Vérifier le dessin** (voir le chapitre 4) ; inverser le sens des objets sélectionnés ; convertir tout le dessin en pouces (ou en millimètres). Avec une sélection, le menu propose aussi de couper aux intersections, les opérations booléennes (fusion, intersection, soustraction), la conversion en spline, et le lien d'un texte à une courbe. Il propose aussi **Grouper / Dégrouper** (voir « Les groupes », chapitre 4).
 
 ### Usinage
 
 ![Menu Usinage](img/menu-machining.fr.png)
 
-Ajouter, supprimer et renommer une **opération** ; ouvrir la table des **machines** et la table des **outils** (chapitre 5) ; supprimer l'usinage sélectionné ; **Compensation de rayon automatique** et **Organiser les opérations** (chapitre 7).
+Ajouter, supprimer et renommer une **opération** ; ouvrir la table des **machines** et la table des **outils** (chapitre 5) ; créer les usinages (déplacer à la position, perçage, suivre le trait, contourner le trait, poche), comme avec les icônes ; supprimer l'usinage sélectionné ; **Compensation de rayon automatique** et **Organiser les usinages** (chapitre 7) ; **Imbrication...** (chapitre 12).
 
 ### Post-processeur
 
 ![Menu Post-processeur](img/menu-postprocessor.fr.png)
 
-**Générer** écrit le fichier de sortie avec le post-processeur choisi (son nom est entre parenthèses) ; **Lancer et simuler** le génère et le joue dans le simulateur ; **Configurer** ouvre ses réglages ; **Cloner** en fait une copie modifiable ; **Ouvrir le dossier** ; **Sélectionner** choisit le post-processeur par catégorie. Voir le chapitre 8.
+**Générer** écrit le fichier de sortie avec le post-processeur choisi (son nom est entre parenthèses) ; **Lancer et simuler** le génère et le joue dans le simulateur ; **Configurer** ouvre ses réglages ; **Gérer** regroupe l'édition, le clonage (une copie modifiable) et l'ouverture du dossier ; **Sélectionner** choisit le post-processeur par catégorie. Voir le chapitre 8.
 
 ### Scripts
 
@@ -149,11 +149,11 @@ Ajouter, supprimer et renommer une **opération** ; ouvrir la table des **machin
 
 Les scripts livrés sont rangés par catégorie : *Import*, *Modification*, *Génération*, *Géométrie*, *Exemples*, *Export*. **Cloner un script** en fait une copie modifiable. Voir le chapitre 9.
 
-### Outils, Affichage, Aide
+### Affichage et Aide
 
 ![Menu Affichage](img/menu-display.fr.png)
 
-**Outils / Préférences** ouvre les préférences (langue, unité, aspect). **Affichage** choisit le style de l'interface (classique, sombre, clair) et montre ou cache les fenêtres Sortie et Journal. **Aide / À propos** donne la version et la date de compilation.
+**Affichage** cadre le dessin (Début), montre ou cache la grille, les usinages, leur sens et leur départ, choisit le style de l'interface (classique, sombre, clair) et montre ou cache les fenêtres Sortie et Journal. **Aide** ouvre le manuel en ligne, la liste des raccourcis clavier, le site d'OpenPostPro et le site du projet (GitHub), et donne la version et la date de compilation dans **À propos**.
 
 ![Les préférences](img/win-preferences.fr.png)
 
@@ -308,7 +308,7 @@ Sur une sélection qui a des **trous** (des contours à l'intérieur d'un autre,
 Deux entrées du menu **Usinage** règlent un ensemble d'usinages d'un coup. Elles agissent sur les usinages sélectionnés, sinon sur ceux des opérations sélectionnées, sinon sur tous.
 
 - **Compensation de rayon automatique** : pour chaque *suivre le trait* et *contourner le trait* dont le contour est fermé, l'outil est placé **à l'extérieur** d'un contour extérieur ou d'un îlot et **à l'intérieur** d'un trou. Le niveau d'un contour est le nombre de contours qui l'entourent dans son opération. Cette entrée remplace le choix fait à la création de l'usinage. Un Ctrl+Z la défait en une fois.
-- **Organiser les opérations** : range les usinages de chaque opération dans l'ordre d'usinage d'une pièce : chaque contour passe après ceux qu'il contient, à n'importe quelle profondeur (les îlots, puis les trous, puis le contour extérieur). Seuls les contours qui se suivent sont triés : les perçages, les poches et les déplacements gardent leur place, et les contours de même profondeur gardent leur ordre. Cette entrée ne se défait pas par Ctrl+Z.
+- **Organiser les usinages** : range les usinages de chaque opération dans l'ordre d'usinage d'une pièce : chaque contour passe après ceux qu'il contient, à n'importe quelle profondeur (les îlots, puis les trous, puis le contour extérieur). Seuls les contours qui se suivent sont triés : les perçages, les poches et les déplacements gardent leur place, et les contours de même profondeur gardent leur ordre. Cette entrée ne se défait pas par Ctrl+Z.
 
 Le journal indique le nombre d'usinages modifiés.
 
@@ -396,7 +396,7 @@ Les post-processeurs de plasma ajoutent des réglages de torche (commandes d'all
 
 ### L'ordre des contours
 
-Pour qu'une pièce découpée ne bouge pas avant la fin de la découpe, le post-processeur usine **les contours qui sont à l'intérieur d'un autre avant lui**, à n'importe quelle profondeur : les îlots, puis les trous, puis le contour extérieur de la pièce. Les *suivre le trait*, *contourner le trait* et perçages qui se suivent sont toujours triés pour raccourcir les déplacements rapides, mais un contour n'est jamais usiné avant ceux qu'il contient. Avec plusieurs passes en profondeur, la règle est respectée à chaque passe. Le menu **Usinage / Organiser les opérations** (chapitre 7) range la liste de l'opération dans le même ordre, pour le voir dans la fenêtre Projet.
+Pour qu'une pièce découpée ne bouge pas avant la fin de la découpe, le post-processeur usine **les contours qui sont à l'intérieur d'un autre avant lui**, à n'importe quelle profondeur : les îlots, puis les trous, puis le contour extérieur de la pièce. Les *suivre le trait*, *contourner le trait* et perçages qui se suivent sont toujours triés pour raccourcir les déplacements rapides, mais un contour n'est jamais usiné avant ceux qu'il contient. Avec plusieurs passes en profondeur, la règle est respectée à chaque passe. Le menu **Usinage / Organiser les usinages** (chapitre 7) range la liste de l'opération dans le même ordre, pour le voir dans la fenêtre Projet.
 
 ### Générer
 
@@ -560,7 +560,7 @@ L'opération *Découpe* (outil T3, fraise de 6 mm, profondeur −8 mm) suit le c
 
 ## 12. L'imbrication automatique
 
-L'**imbrication** (*nesting*) place des copies de pièces sur un panneau pour en perdre le moins possible. Elle se lance depuis **Dessin / Imbrication...** et crée de nouveaux calques : le dessin d'origine n'est pas modifié.
+L'**imbrication** (*nesting*) place des copies de pièces sur un panneau pour en perdre le moins possible. Elle se lance depuis **Usinage / Imbrication...** et crée de nouveaux calques : le dessin d'origine n'est pas modifié.
 
 L'exemple `docs/examples/imbrication.fr.opp` contient six types de pièces (un groupe chacun) pour essayer l'imbrication.
 
@@ -568,7 +568,7 @@ L'exemple `docs/examples/imbrication.fr.opp` contient six types de pièces (un g
 
 1. Dessinez ou importez chaque pièce, avec ses trous.
 2. **Groupez** les formes de chaque pièce (voir « Les groupes », chapitre 4). Une pièce est un groupe.
-3. Sélectionnez les groupes à imbriquer (un rectangle autour du dessin, ou **Édition / Sélection / Tout**) puis choisissez **Dessin / Imbrication...**. S'il n'y a aucun groupe dans la sélection, un message vous le signale.
+3. Sélectionnez les groupes à imbriquer (un rectangle autour du dessin, ou **Édition / Sélection / Tout**) puis choisissez **Usinage / Imbrication...**. S'il n'y a aucun groupe dans la sélection, un message vous le signale.
 
 Pour chaque groupe, le **plus grand contour fermé** est le contour de la pièce, et les contours fermés qui sont à l'intérieur sont ses trous, ses îlots dans les trous, et ainsi de suite : une pièce peut être placée dans le trou d'une autre. Les formes ouvertes d'un groupe sont copiées avec lui mais ne comptent pas pour le placement.
 
@@ -621,7 +621,7 @@ Le calcul se fait en arrière-plan : une fenêtre s'affiche avec un cercle qui t
 
 ### Après l'imbrication
 
-Pour usiner le résultat : créez les usinages sur le calque *Imbrication_n* (*suivre le trait* sur la sélection des groupes), puis réglez-les avec **Usinage / Compensation de rayon automatique** et **Usinage / Organiser les opérations** (chapitre 7). Le post-processeur usine les trous de chaque pièce avant son contour extérieur (chapitre 8).
+Pour usiner le résultat : créez les usinages sur le calque *Imbrication_n* (*suivre le trait* sur la sélection des groupes), puis réglez-les avec **Usinage / Compensation de rayon automatique** et **Usinage / Organiser les usinages** (chapitre 7). Le post-processeur usine les trous de chaque pièce avant son contour extérieur (chapitre 8).
 
 ## 13. Pour aller plus loin
 

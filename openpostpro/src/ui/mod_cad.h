@@ -177,6 +177,14 @@ private:
 	Graphic* _tree_target = nullptr;
 	std::vector<Graphic*> _tree_order;
 	bool _collapse_layers = false;
+	bool _display_array = false;
+	int _array_columns = 2;
+	int _array_rows = 1;
+	float _array_dx = 50.0f;
+	float _array_dy = 50.0f;
+	std::vector<Graphic*> cad_copy(const std::vector<Shape*>& source, glm::vec2 offset);
+	void cad_array(int columns, int rows, float dx, float dy);
+	void draw_array();
 	void construct_shape();
 	void remove(std::vector<Shape*> shapes);
 	void add(std::vector<Shape*> shapes);
@@ -344,6 +352,12 @@ public:
 	void check_drawing();
 	// selects every shape connected to the selection (the contour it belongs to)
 	void select_contour();
+
+	// the part of the menu Display which is about the drawing
+	void render_display_menu();
+	// copies of the selection: one copy a little further, or a grid of copies set in a window
+	void duplicate();
+	void array_window();
 	// computes the selected toolpaths again (all of them without selection) from their referenced shapes, which may have been modified
 	void cam_refresh();
 	// the radius compensation of the followed contours: the tool outside of the outlines and inside of the holes
