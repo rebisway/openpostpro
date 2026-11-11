@@ -4,7 +4,7 @@
 
 Cette référence s'adresse à qui écrit un script CAO : un fichier Python qui crée de la géométrie (lignes, cercles, arcs) dans le dessin, à la position de la souris. Elle liste chaque méthode de la classe `Cadscript` et chaque appel du moteur, avec les arguments, le moment de l'appel et un exemple. Le fichier fourni `script/oblong.py` (un trou oblong, avec une boîte `tkinter`) est l'implémentation de référence. Les post-processeurs sont dans [POSTPROCESSOR.fr.md](POSTPROCESSOR.fr.md).
 
-Contenu : installation, déroulement d'une exécution, méthodes de `Cadscript`, appels de dessin du moteur et un exemple minimal complet.
+>>>
 
 ## 0. Conventions
 
@@ -31,7 +31,7 @@ Contenu : installation, déroulement d'une exécution, méthodes de `Cadscript`,
 OpenPostPro (C++)  ->  Cadcore (cadcore.py)  ->  Cadscript (votre fichier)
 ```
 
-Le moteur se transmet à votre classe : c'est `self.core`, renseigné par `set_core()`. Votre classe dessine en appelant `self.core` ; le moteur collecte le dessin sous forme de texte et le renvoie à l'application quand `run()` se termine.
+Le moteur est transmis à votre classe par `set_core()` et accessible par `self.core`. Votre classe dessine en l'appelant ; il collecte le dessin sous forme de texte et le renvoie à l'application à la fin de `run()`.
 
 ### Types et encodages
 
@@ -176,9 +176,9 @@ def get_property_file(self, index):
 | `self.core.modify_text(id, x, y, text, height, family, bold, italic, inter)` | change un texte |
 | `self.core.remove(id)` | supprime une forme |
 
-`id` est la clé `id` d'une forme de `self.core.selection`. Une modification ne change que les paramètres : une ligne reste une ligne, et la forme garde son `id`, son calque et ses usinages. Appliquer `modify_circle` à l'id d'une ligne est refusé et écrit dans le log. Supprimer une forme ne supprime pas les usinages qui l'utilisent.
+`id` est la clé `id` d'une forme de `self.core.selection`. Une modification ne change que les paramètres : une ligne reste une ligne, et la forme garde son `id`, son calque et ses usinages. Appliquer `modify_circle` à l'id d'une ligne est refusé et signalé dans le journal. Supprimer une forme ne supprime pas les usinages qui l'utilisent.
 
-Tous les changements, nouvelles formes comprises, s'annulent en une seule fois. `scale_circles.py` en est un exemple, tout comme `fillet.py` et `chamfer.py` : ils arrondissent ou coupent les coins des lignes, des splines de lignes et des polylignes sélectionnées. `chamfer.py` réutilise le code de `fillet.py` (`import fillet`), ce qui montre comment des scripts peuvent partager du code.
+Tous les changements, nouvelles formes comprises, s'annulent en une seule fois. `scale_circles.py` en est un exemple, tout comme `fillet.py` et `chamfer.py` : ils arrondissent ou coupent les coins des lignes, des splines de lignes et des polylignes sélectionnées. `chamfer.py` réutilise le code de `fillet.py` (`import fillet`).
 
 ### Dessin
 

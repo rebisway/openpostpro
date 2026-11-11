@@ -4,7 +4,7 @@
 
 Cette référence s'adresse à qui écrit un post-processeur. Elle liste chaque méthode, regroupée par usage, avec ses arguments, le moment où elle est appelée, ce qu'elle doit retourner et un exemple. L'implémentation de référence est `postpro/generic_mill.py` : copiez-la pour démarrer. Les scripts CAO sont dans [CAD-SCRIPTS.fr.md](CAD-SCRIPTS.fr.md).
 
-Contenu : installation, déroulement d'une génération, toutes les méthodes de la classe `Postpro`, la boîte des propriétés et un exemple minimal complet.
+>>>
 
 ## 0. Conventions
 
@@ -30,7 +30,7 @@ Contenu : installation, déroulement d'une génération, toutes les méthodes de
 OpenPostPro (C++)  ->  Postcore (postcore.py)  ->  Postpro (votre fichier)
 ```
 
-OpenPostPro n'appelle jamais votre classe directement. Il appelle le moteur, qui tient la **position courante** (`x`, `y`, `z`), les numéros de ligne et le nombre de lignes, puis demande à votre classe le texte de chaque étape. Le moteur se transmet à votre classe : c'est `self.core`, renseigné par `set_core()`.
+OpenPostPro n'appelle jamais votre classe directement. Il appelle le moteur, qui tient la **position courante** (`x`, `y`, `z`), les numéros de ligne et le nombre de lignes, puis demande à votre classe le texte de chaque étape. Le moteur est transmis à votre classe par `set_core()` et accessible par `self.core`.
 
 ### La règle sur les coordonnées
 

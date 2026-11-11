@@ -4,7 +4,7 @@
 
 This is the reference for anyone who writes a CAD script: a Python file that creates geometry (lines, circles, arcs) in the drawing, at the position of the mouse. It lists every method of the `Cadscript` class and every call of the engine, with arguments, when it is called and an example. The bundled `script/oblong.py` (an oblong hole, with a `tkinter` dialog) is the reference implementation. Post-processors are in [POSTPROCESSOR.en.md](POSTPROCESSOR.en.md).
 
-Covered here: installation, the life cycle of a run, the methods of `Cadscript`, the drawing calls of the engine and a complete minimal example.
+>>>
 
 ## 0. Conventions
 
@@ -31,7 +31,7 @@ Covered here: installation, the life cycle of a run, the methods of `Cadscript`,
 OpenPostPro (C++)  ->  Cadcore (cadcore.py)  ->  Cadscript (your file)
 ```
 
-The engine hands itself to your class: it is `self.core`, set through `set_core()`. Your class draws by calling `self.core`; the engine collects the drawing as text and returns it to the application when `run()` ends.
+The engine is passed to your class by `set_core()` and available as `self.core`. Your class draws by calling it; it collects the drawing as text and returns it to the application when `run()` ends.
 
 ### Types and encodings
 
@@ -176,9 +176,9 @@ def get_property_file(self, index):
 | `self.core.modify_text(id, x, y, text, height, family, bold, italic, inter)` | changes a text |
 | `self.core.remove(id)` | deletes a shape |
 
-`id` is the `id` key of a shape of `self.core.selection`. A modification changes the parameters only: a line stays a line, and the shape keeps its `id`, its layer and its toolpaths. Applying `modify_circle` to the id of a line is refused and written to the log. Deleting a shape does not delete the toolpaths that use it.
+`id` is the `id` key of a shape of `self.core.selection`. A modification changes the parameters only: a line stays a line, and the shape keeps its `id`, its layer and its toolpaths. Applying `modify_circle` to the id of a line is refused and reported in the log. Deleting a shape does not delete the toolpaths that use it.
 
-All the changes, the new shapes included, are undone in one step. `scale_circles.py` is an example, and so are `fillet.py` and `chamfer.py`: they round or cut the corners of the selected lines, splines made of lines and polylines. `chamfer.py` reuses the code of `fillet.py` (`import fillet`), which shows how scripts can share code.
+All the changes, the new shapes included, are undone in one step. `scale_circles.py` is an example, and so are `fillet.py` and `chamfer.py`: they round or cut the corners of the selected lines, splines made of lines and polylines. `chamfer.py` reuses the code of `fillet.py` (`import fillet`).
 
 ### Drawing
 

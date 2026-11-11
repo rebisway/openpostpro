@@ -4,8 +4,6 @@
 
 L'onglet **Simulation** joue un programme de machine sur un bloc de matière, en 3D, avant de l'envoyer à une machine. Cette référence s'adresse à qui utilise l'onglet et à qui écrit un **traducteur**, le module Python qui transforme un programme (du G-code, ou un autre format) en quelques commandes simples que le simulateur joue. L'implémentation de référence est `simulator/gcode.py` : copiez-la pour démarrer. Les scripts CAO sont dans [CAD-SCRIPTS.fr.md](CAD-SCRIPTS.fr.md), les post-processeurs dans [POSTPROCESSOR.fr.md](POSTPROCESSOR.fr.md).
 
-Contenu : installation d'un traducteur, l'onglet Simulation, le déroulement d'une traduction, les trois méthodes de la classe `Translator`, toutes les commandes du simulateur, les erreurs et avertissements, le traducteur de G-code générique et un exemple minimal complet.
-
 ## 0. Conventions
 
 ### Fichiers et chargement
@@ -30,9 +28,9 @@ OpenPostPro (C++)  ->  Translator (votre fichier)  ->  commandes (dictionnaires)
 
 L'application lit le texte du programme et donne **une ligne à la fois** à votre `next()`. Votre classe retourne les commandes de cette ligne, et garde elle-même son état (position, avance, unités, modes) : le simulateur ne garde aucune mémoire du langage du programme.
 
-**Le traducteur ne fait que traduire.** La lecture, la pause, le pas à pas, le retour en arrière, l'aller à une ligne, la vitesse et le résultat final appartiennent au simulateur : ses boutons agissent quoi que dise le programme, et un arrêt ou une temporisation du programme est une commande comme les autres (section 4).
+Le traducteur ne fait que traduire. La lecture, la pause, le pas à pas, le retour en arrière, l'aller à une ligne, la vitesse et le résultat final appartiennent au simulateur : ses boutons agissent quoi que dise le programme, et un arrêt ou une temporisation du programme est une commande comme les autres (section 4).
 
-Le choix du traducteur dans la liste de l'onglet Simulation : *Auto* prend celui qui annonce l'extension du fichier, sinon `gcode` ; un traducteur choisi est forcé.
+>>>
 
 ```mermaid
 flowchart TB
@@ -55,7 +53,7 @@ flowchart TB
 
 ## 1. L'onglet Simulation
 
-**Charger un programme.** *Programme actuel* charge le fichier de sortie du document (lancez d'abord le post-processeur, ou utilisez **Post-processeur / Lancer et simuler**). *Ouvrir...* charge un fichier de G-code quelconque, qu'on peut aussi déposer sur la fenêtre. Le traducteur se choisit dans la liste à côté des boutons.
+**Charger un programme.** *Programme actuel* charge le fichier de sortie du document (lancez d'abord le post-processeur, ou utilisez **Post-processeur / Lancer et simuler**). *Ouvrir...* charge un fichier de G-code quelconque, que vous pouvez aussi glisser sur la fenêtre. Le traducteur se choisit dans la liste à côté des boutons.
 
 **Lecteur.** Tous ces boutons agissent à tout moment, quoi que fasse le programme :
 
@@ -65,11 +63,11 @@ flowchart TB
 | Début | retour au début, la matière est de nouveau entière |
 | Pas | joue jusqu'à la fin du déplacement suivant, puis met en pause |
 | Ligne | joue les commandes de la ligne suivante du programme, puis met en pause |
-| Résultat | va directement à la fin du programme, en calculant par tranches pour que la fenêtre reste vivante |
+| Résultat | va directement à la fin du programme, en calculant par tranches pour que la fenêtre reste réactive |
 | Vitesse | x1 est la vitesse réelle de la machine (d'après les avances) ; x2 à x500 vont plus vite. *Pleine vitesse* joue aussi vite que possible |
 | Un clic sur une ligne du programme | va à cette ligne (le programme est joué depuis le début jusqu'à elle, rapidement) et met en pause |
 
-Les commandes du programme sont exécutées comme le fait une machine quand la vitesse est un multiple : une **temporisation** (`G4`) attend son temps, un **arrêt** (`M0`, et `M1` si *Arrêt facultatif* est coché) met le lecteur en pause jusqu'à ce qu'on appuie sur Lecture, `M2` et `M30` terminent le programme. Quand le simulateur va vite (*Pleine vitesse*, *Résultat*, un clic sur une ligne, *Pas*), les temporisations et les arrêts sont ignorés. Le temps affiché est toujours le temps de la machine, calculé d'après les avances, et ne dépend pas de la vitesse du lecteur. Les déplacements rapides sont calculés à 5000 mm/min.
+Aux vitesses x1 à x500, les commandes du programme sont exécutées comme sur une machine : une **temporisation** (`G4`) attend son temps, un **arrêt** (`M0`, et `M1` si *Arrêt facultatif* est coché) met le lecteur en pause jusqu'à ce que vous appuyiez sur Lecture, `M2` et `M30` terminent le programme. Quand le simulateur va vite (*Pleine vitesse*, *Résultat*, un clic sur une ligne, *Pas*), les temporisations et les arrêts sont ignorés. Le temps affiché est toujours le temps de la machine, calculé d'après les avances, et ne dépend pas de la vitesse du lecteur. Les déplacements rapides sont calculés à 5000 mm/min.
 
 **La scène.** Le bouton gauche tourne la vue, le bouton droit la déplace, la molette zoome. *Dessus*, *Face* et *Iso* sont des vues standard. Les cases montrent ou cachent la matière, les déplacements d'usinage (orange), les déplacements rapides (bleu), l'outil et les axes (l'origine du programme). Le panneau de droite est le programme, avec la ligne jouée en couleur (rouge pour une ligne en erreur, jaune pour un avertissement).
 
@@ -87,7 +85,7 @@ Les commandes du programme sont exécutées comme le fait une machine quand la v
 
 Le bloc est fait autour des déplacements qui coupent, avec une marge de deux fois le rayon de l'outil plus 2 mm. Changer un réglage refait le bloc et rejoue le programme jusqu'à l'endroit où il en était.
 
-**Messages.** Les erreurs et avertissements du traducteur sont écrits dans le journal avec la ligne du programme, comptés à côté du nom du programme, et les lignes sont colorées dans le panneau du programme.
+**Messages.** Les erreurs et les avertissements du traducteur apparaissent dans le journal avec le numéro de ligne, leur nombre est affiché à côté du nom du programme et les lignes concernées sont colorées dans le panneau du programme.
 
 ## 2. Déroulement d'une traduction
 
@@ -97,9 +95,9 @@ next(line)            une fois pour chaque ligne du programme, dans l'ordre, num
 close()               une fois, à la fin ou quand la traduction est annulée
 ```
 
-La traduction se fait par tranches de 10 ms à chaque image de la fenêtre, avec une barre de progression et un bouton Annuler : un programme de 100 000 lignes est traduit en environ 2 secondes de Python pendant que la fenêtre reste fluide. Vos méthodes doivent donc être rapides et n'attendre rien. Elles sont toutes appelées depuis un seul fil, dans l'ordre.
+La traduction se fait par tranches de 10 ms à chaque image de la fenêtre, avec une barre de progression et un bouton Annuler : un programme de 100 000 lignes est traduit en environ 2 secondes de Python pendant que la fenêtre reste fluide. Vos méthodes doivent donc être rapides et ne rien attendre. Elles sont toutes appelées depuis un seul fil, dans l'ordre.
 
-Le contrat d'un traducteur : `start`, `next` pour chaque ligne, `close`, et la méthode facultative `extensions`. Il rend les commandes de la section 4.
+>>>
 
 ```mermaid
 flowchart TB
@@ -151,7 +149,7 @@ Chaque dictionnaire a `'cmd'`. L'application ajoute le numéro de la ligne du pr
 | `spindle` | `state` (`'cw'`, `'ccw'`, `'off'`), `rpm` | broche. Une torche plasma coupe tant qu'elle n'est pas `'off'` |
 | `coolant` | `state` (`'flood'`, `'mist'`, `'off'`) | arrosage |
 | `torch` | `state` (`'on'`, `'off'`) | torche plasma, pour un traducteur qui a sa propre commande pour elle |
-| `stop` | `optional`, `end` | arrêt du programme. `end` (`M2`, `M30`) termine le programme, ce qui suit n'est pas joué. Sans `end`, le lecteur se met en pause jusqu'à ce qu'on appuie sur Lecture, sauf si `optional` est vrai et *Arrêt facultatif* décoché |
+| `stop` | `optional`, `end` | arrêt du programme. `end` (`M2`, `M30`) termine le programme, ce qui suit n'est pas joué. Sans `end`, le lecteur se met en pause jusqu'à ce que vous appuyiez sur Lecture, sauf si `optional` est vrai et *Arrêt facultatif* décoché |
 | `message` | `level` (`'info'`, `'warning'`, `'error'`), `text` | un message pour la personne, écrit dans le journal |
 
 Les autres champs d'une commande (par exemple `a`, `b`, `c` pour des axes rotatifs) sont ignorés : le simulateur montre un usinage 2,5 axes en X, Y, Z. Une commande dont le `'cmd'` n'est pas dans ce tableau est notée une fois et ignorée : un traducteur peut donc envoyer de nouvelles commandes avant que le simulateur les connaisse.

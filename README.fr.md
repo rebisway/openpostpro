@@ -12,7 +12,7 @@ English version: [README.md](README.md)
 
 ![OpenPostPro](https://github.com/user-attachments/assets/fc224d77-bbef-4d37-98aa-c54a5e4b89e1)
 
-## ✏️ Dessiner et préparer la géométrie
+## Dessiner et préparer la géométrie
 
 OpenPostPro contient des outils pour créer et modifier directement la géométrie 2D :
 
@@ -29,8 +29,11 @@ OpenPostPro contient des outils pour créer et modifier directement la géométr
 - Import et export SVG, import Gerber (RS-274X) et Excellon : scripts CAO des menus **Import** et **Export**
 - Unité du document (millimètres ou pouces), avec la conversion d'un DXF importé ou de tout le dessin
 - Calques (un calque peut être verrouillé : ses formes ne peuvent plus être déplacées, modifiées, supprimées, coupées ni prolongées, mais l'aimantation s'y accroche toujours), annuler et rétablir, et une aimantation sur les points du dessin
+- **Groupes** : des formes rassemblées sous un nom, sélectionnées, survolées, déplacées, tournées et prises en symétrie comme un tout (l'icône **Grouper** / **Dégrouper** et le menu Dessin) ; les formes d'un calque caché ou verrouillé ne sont pas prises par la souris ni par *Tout sélectionner*
 
-## 🐍 Scripts Python pour la CAO
+![Texte suivant un contour (médaillon)](docs/img/ex-medal-view.fr.png)
+
+## Scripts Python pour la CAO
 
 OpenPostPro prend aussi en charge des scripts Python au niveau de la CAO. Les scripts peuvent créer ou modifier la géométrie directement dans l'application, ce qui permet d'automatiser un travail répétitif ou de générer des formes complexes de façon paramétrique au lieu de dessiner chaque élément à la main. Ils reçoivent la sélection courante, la position de la souris et l'unité du document, peuvent afficher une boîte de propriétés, et chaque exécution s'annule en une seule étape.
 
@@ -45,7 +48,7 @@ Les scripts livrés sont en lecture seule : utilisez **Cloner** pour en faire vo
 
 Guide : [Écrire un script CAO](docs/CAD-SCRIPTS.fr.md) · [Writing a CAD script](docs/CAD-SCRIPTS.en.md)
 
-## ⚙️ Opérations d'usinage
+## Opérations d'usinage
 
 Créez des parcours d'outil à partir de votre dessin, organisés en **opérations** (un outil avec sa profondeur, sa profondeur de passe et ses avances, et les parcours usinés avec lui) :
 
@@ -65,7 +68,15 @@ Guide : [Outils, torches et machines](docs/TOOLS-MACHINES.fr.md) · [Tools, torc
 
 Les opérations d'usinage ont des paramètres configurables. Le projet étant encore jeune, les résultats, en particulier les calculs de contours, de décalages et de poches, peuvent ne pas être fiables pour toutes les formes ou situations d'usinage.
 
-## 🎞️ Simulation
+## Imbrication automatique
+
+Place des copies de pièces sur un panneau (**Dessin → Imbrication...**) : chaque pièce est un groupe, avec ses trous, et une pièce peut aller dans le trou d'une autre. Trois algorithmes au choix : **rapide** (quelques secondes), **recherche** (de nombreux ordres de pièces) et **minimisation du chevauchement** (le panneau est raccourci, puis les pièces qui se chevauchent sont déplacées et tournées jusqu'à ne plus rien chevaucher ; une disposition n'est gardée que si un test exact la confirme). Les deux derniers utilisent tous les cœurs du processeur pendant la durée donnée et tournent en arrière-plan, avec une fenêtre qui montre la progression et un bouton pour arrêter en gardant la meilleure disposition. Rotations tous les 90, 15, 5 ou 1 degré, distance entre pièces, marge, quantités par pièce. Le résultat est mis dans de nouveaux calques, le panneau dans un calque verrouillé.
+
+![Imbrication de six types de pièces sur une tôle](docs/img/nesting-result.fr.png)
+
+Guide : chapitre 12 du [manuel d'utilisation](docs/MANUAL.fr.md) · [User manual](docs/MANUAL.en.md)
+
+## Simulation
 
 L'onglet **Simulation** exécute un programme G-code sur un bloc de matière, en 3D, avant son envoi à une machine. Il charge la sortie du post-processeur courant (ou n'importe quel fichier G-code, qui peut aussi être déposé sur la fenêtre), affiche les parcours (avances et rapides), l'outil et la matière qu'il enlève (fraise plate, sphérique, torique, en V ou torche plasma), et mesure la durée de l'usinage à partir des avances.
 
@@ -73,9 +84,11 @@ L'onglet **Simulation** exécute un programme G-code sur un bloc de matière, en
 - Le programme est traduit par un **traducteur Python** (`simulator/gcode.py` pour le G-code générique : déplacements, arcs, hélices, cycles fixes, unités, plans, broche, arrosage, outils) en quelques commandes simples que le simulateur joue. Un traducteur pour un autre contrôleur ou un autre format n'a besoin que des trois méthodes `start`, `next` et `close` (voir le guide ci-dessous).
 - C'est une vérification du programme, pas un modèle de la machine : la compensation de rayon de la fraise (G41 / G42) n'est pas appliquée, et les axes A, B, C sont ignorés.
 
+![Simulation d’une plaque découpée au plasma](docs/img/sim-result.fr.png)
+
 Guide : [Simulateur et traducteurs](docs/SIMULATOR.fr.md) · [Simulator and translators](docs/SIMULATOR.en.md)
 
-## 🧩 Post-processeurs Python
+## Post-processeurs Python
 
 Les post-processeurs sont écrits en Python, ce qui rend la personnalisation de la sortie machine accessible sans modifier l'application C++. Ils peuvent être clonés et modifiés depuis l'application.
 
@@ -92,7 +105,7 @@ Les réglages des post-processeurs comprennent l'extension du fichier de sortie,
 
 Ce sont des points de départ génériques, pas des profils garantis pour tous les contrôleurs. Relisez et adaptez la sortie à votre machine et à votre contrôleur avant de l'utiliser.
 
-## 🌍 Interface et technologie
+## Interface et technologie
 
 La langue de l'interface est gérée par des fichiers clé/valeur dans `openpostpro/lang`. L'anglais (UK et US), le français, l'espagnol, l'allemand, l'italien, le néerlandais et le portugais du Brésil sont inclus, et la langue et l'unité se choisissent au premier démarrage. Le journal peut être ancré en bas de la fenêtre, et **Aide → À propos** affiche la version et la date de compilation.
 
@@ -103,9 +116,9 @@ OpenPostPro est écrit en **C++20** et utilise :
 - **GLFW** pour la fenêtre et les entrées
 - **GLM** pour les mathématiques
 - **FreeType** pour le rendu des polices
-- **Python 3.12 ou plus récent**, embarqué, pour les post-processeurs et les scripts (ABI stable, aucune recompilation nécessaire quand Python est mis à jour)
+- **Python 3.12 ou plus récent**, embarqué, pour les post-processeurs et les scripts
 
-## 🖥️ Utilisation sous Windows
+## Utilisation sous Windows
 
 Les fichiers de projet actuels et les bibliothèques d'exécution fournies visent Windows. Une archive prête à l'emploi (`OpenPostPro-v<version>-win64.zip`) est publiée dans la section **Releases** du dépôt : décompressez-la où vous voulez et lancez `openpostpro.exe`.
 
@@ -115,45 +128,45 @@ Il vous faut :
 
 Vous pouvez aussi compiler l'application vous-même. Le projet contient une solution Visual Studio dans `openpostpro/openpostpro.sln`.
 
-## 🛠️ Compiler depuis les sources
+## Compiler depuis les sources
 
 1. Installez Visual Studio avec les outils de développement C++ pour le bureau, et Python 3.12 ou plus récent (avec « Add Python to PATH »). Les en-têtes Python et `python3.lib` viennent du dépôt (`src/third/python`, `lib/python`).
 2. Ouvrez `openpostpro/openpostpro.sln`.
 3. Compilez la solution pour la configuration x64 voulue (Debug ajoute un menu **Débogage** avec des fonctions de développement ; Release non).
 4. Le script `copy_libs_output.bat`, lancé par la solution après la compilation, copie les ressources d'exécution nécessaires à côté de l'exécutable : polices, fichiers de langue, post-processeurs, scripts, textures, shaders et `freetype.dll`.
 
-Le numéro de version, le numéro de build et la date de compilation affichés dans la fenêtre À propos sont dans `openpostpro/src/common/version.h` (la date est celle de la compilation).
+>>>
 
 La compilation Linux est décrite dans [docs/BUILD-LINUX.md](docs/BUILD-LINUX.md) (CMake). macOS **n'a pas encore été testé**.
 
-## ✅ Tests
+## Tests
 
-Les tests vérifient les parties les plus délicates : la géométrie utilisée par les décalages, les poches et les outils couper et prolonger, et les scripts CAO.
+Les tests couvrent les parties les plus délicates : la géométrie des décalages, des poches, des outils couper et prolonger, et les scripts CAO.
 
 - **Python** (scripts CAO et leur bibliothèque de géométrie) : `python tests/run_tests.py`
-- **C++** (géométrie, poches, prolonger et couper), compilés avec le compilateur de Visual Studio et lancés sans aucune fenêtre : voir l'en-tête de chaque fichier de `tests/cpp` pour ce qu'il vérifie, compilez-le avec le `build_*.bat` correspondant, puis lancez le `.exe`. Le code de sortie est 0 quand tout passe.
+- **C++** (géométrie, poches, prolonger et couper, imbrication), sans fenêtre : compilez chaque fichier de `tests/cpp` avec le `build_*.bat` correspondant, puis lancez le `.exe` (code de sortie 0 si tout passe).
 
-Lancez-les après toute modification du code de géométrie (`curve.cpp`, `geometry.cpp`, `pocket.cpp`, les fichiers de coupe et de prolongement).
+Lancez les tests après toute modification du code de géométrie.
 
-## 🐧 Linux et macOS
+## Linux et macOS
 
 OpenPostPro se compile et fonctionne sous **Linux** avec CMake et GCC (testé sur Zorin OS et Linux Mint 22.3, toutes deux basées sur Ubuntu 24.04) : voir [docs/BUILD-LINUX.md](docs/BUILD-LINUX.md). Les dialogues de fichiers demandent `zenity` ou `kdialog`. macOS devrait aussi être une cible possible, mais n'a pas encore été testé ; les contributions pour le valider sont les bienvenues.
 
-## 🚧 État du projet
+## État du projet
 
-OpenPostPro est en version 1.0, un projet open source indépendant. La priorité principale pour les améliorations à venir reste la robustesse et la précision des calculs de géométrie et de contours (décalages et poches sur des formes difficiles) ; certains algorithmes utilisent encore la précision des nombres à virgule flottante et demandent encore du travail.
+OpenPostPro est un projet open source indépendant, en version 1.0. La priorité pour la suite est la robustesse des calculs de géométrie et de contours (décalages et poches sur des formes difficiles).
 
-Merci de considérer les parcours d'outil et le code machine générés comme une sortie qui demande une vérification. Simulez ou inspectez le programme, et contrôlez les réglages de la machine, les définitions d'outils, les dégagements, les avances et les vitesses avant de l'exécuter sur un équipement réel.
+Vérifiez toujours le programme généré : simulez-le, contrôlez les réglages de la machine, les outils, les dégagements, les avances et les vitesses avant de l'exécuter sur une vraie machine.
 
 Les rapports de bogues, les retours et les contributions sont les bienvenus.
 
-## 📜 Licence
+## Licence
 
 OpenPostPro est publié sous la licence **GNU Affero General Public License v3.0 ou ultérieure (AGPL-3.0-or-later)**. Voir [`LICENSE`](LICENSE) pour le texte complet de la licence.
 
 Les composants tiers gardent leurs propres licences, toutes compatibles avec l'AGPL ; voir [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
 
-## 🔗 Liens
+## Liens
 
 - **Dépôt :** https://github.com/rebisway/openpostpro
 - **Contact :** contact@rebisway.com

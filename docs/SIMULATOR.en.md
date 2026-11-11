@@ -4,8 +4,6 @@
 
 The **Simulation** tab plays a machine program on a block of material, in 3D, before it is sent to a machine. This is the reference for the tab and for anyone who writes a **translator**, the Python module which turns a program (G-code, or another format) into the few simple commands that the simulator plays. The reference implementation is `simulator/gcode.py`; copy it when you start. CAD scripts are in [CAD-SCRIPTS.en.md](CAD-SCRIPTS.en.md), post-processors in [POSTPROCESSOR.en.md](POSTPROCESSOR.en.md).
 
-Covered here: installation of a translator, the Simulation tab, the life cycle of a translation, the three methods of the `Translator` class, every command of the simulator, errors and warnings, the generic G-code translator, and a complete minimal example.
-
 ## 0. Conventions
 
 ### Files and loading
@@ -30,9 +28,9 @@ OpenPostPro (C++)  ->  Translator (your file)  ->  commands (dictionaries)  ->  
 
 The application reads the text of the program and gives **one line at a time** to your `next()`. Your class returns the commands of that line, and it keeps its own state (position, feed rate, units, modes): the simulator has no memory of the language of the program.
 
-**The translator only translates.** Play, pause, step, going back, going to a line, the speed and the final result belong to the simulator: its buttons work whatever the program says, and a stop or a dwell of the program is a command like the others (section 4).
+The translator only translates. Play, pause, step, going back, going to a line, the speed and the final result belong to the simulator: its buttons work whatever the program says, and a stop or a dwell of the program is a command like the others (section 4).
 
-Choosing the translator in the list of the Simulation tab: *Auto* takes the one which announces the extension of the file, otherwise `gcode`; a translator chosen in the list is forced.
+>>>
 
 ```mermaid
 flowchart TB
@@ -65,11 +63,11 @@ flowchart TB
 | Start over | back to the start, the material is whole again |
 | Step | plays up to the end of the next move, then pauses |
 | Line | plays the commands of the next line of the program, then pauses |
-| Result | goes straight to the end of the program, computing by slices so the window stays alive |
+| Result | goes straight to the end of the program, computing by slices so the window stays responsive |
 | Speed | x1 is the real speed of the machine (from the feed rates); x2 to x500 are faster. *Full speed* plays as fast as possible |
 | A click on a line of the program | goes to that line (the program is played from the start up to it, quickly) and pauses |
 
-The commands of the program are executed as a machine does when the speed is a multiple: a **dwell** (`G4`) waits its time, a **stop** (`M0`, and `M1` if *Optional stop* is on) pauses the player until Play is pressed, `M2` and `M30` end the program. When the simulator goes fast (*Full speed*, *Result*, a click on a line, *Step*) the dwells and the stops are skipped. The time shown is always the time of the machine, computed from the feed rates, and does not depend on the speed of the player. Rapid moves are computed at 5000 mm/min.
+At speeds x1 to x500, the commands of the program are executed as on a machine: a **dwell** (`G4`) waits its time, a **stop** (`M0`, and `M1` if *Optional stop* is on) pauses the player until Play is pressed, `M2` and `M30` end the program. When the simulator goes fast (*Full speed*, *Result*, a click on a line, *Step*) the dwells and the stops are skipped. The time shown is always the time of the machine, computed from the feed rates, and does not depend on the speed of the player. Rapid moves are computed at 5000 mm/min.
 
 **The scene.** Left button turns the view, right button moves it, wheel zooms. *Top*, *Front* and *Iso* are standard views. The boxes show or hide the material, the feed moves (orange), the rapid moves (blue), the tool, and the axes (the origin of the program). The panel on the right is the program, with the line which is played in color (red for a line with an error, yellow for a warning).
 
@@ -87,7 +85,7 @@ The commands of the program are executed as a machine does when the speed is a m
 
 The block is made around the moves which cut, with a margin of twice the radius of the tool plus 2 mm. Changing a setting makes the block again and plays the program again up to where it was.
 
-**Messages.** Errors and warnings of the translator are written in the log with the line of the program, counted next to the name of the program, and the lines are colored in the program panel.
+**Messages.** Errors and warnings of the translator appear in the log with the line number, their count is shown next to the name of the program, and the lines concerned are colored in the program panel.
 
 ## 2. Life cycle of a translation
 
@@ -99,7 +97,7 @@ close()               once, at the end or when the translation is cancelled
 
 The translation is done by slices of 10 ms for each frame of the window, with a progress bar and a Cancel button: a program of 100 000 lines is translated in about 2 seconds of Python while the window stays smooth. Your methods must therefore be quick and must not wait for anything. They are all called from one thread, in order.
 
-The contract of a translator: `start`, `next` for each line, `close`, and the optional `extensions` method. It returns the commands of section 4.
+>>>
 
 ```mermaid
 flowchart TB

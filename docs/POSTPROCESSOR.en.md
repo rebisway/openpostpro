@@ -4,8 +4,6 @@
 
 This is the reference for anyone who writes a post-processor. It lists every method, grouped by what it is for, with its arguments, when it is called, what it must return and an example. The reference implementation is `postpro/generic_mill.py`; copy it when you start. CAD scripts are in [CAD-SCRIPTS.en.md](CAD-SCRIPTS.en.md).
 
-Covered here: installation, the life cycle of a run, every method of the `Postpro` class, the properties dialog, and a complete minimal example.
-
 ## 0. Conventions
 
 ### Files and loading

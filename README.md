@@ -12,7 +12,7 @@ Version française : [README.fr.md](README.fr.md)
 
 ![OpenPostPro](https://github.com/user-attachments/assets/fc224d77-bbef-4d37-98aa-c54a5e4b89e1)
 
-## ✏️ Draw and prepare geometry
+## Draw and prepare geometry
 
 OpenPostPro includes tools to create and edit 2D geometry directly:
 
@@ -29,8 +29,11 @@ OpenPostPro includes tools to create and edit 2D geometry directly:
 - SVG import and export, Gerber (RS-274X) and Excellon import: CAD scripts of the **Import** and **Export** menus
 - Document unit (millimetres or inches), with the conversion of an imported DXF or of the whole drawing
 - Layers (a layer can be locked: its shapes can not be moved, edited, deleted, cut or extended, but the magnet still snaps to them), undo and redo, and a magnet to snap to the points of the drawing
+- **Groups**: shapes gathered under a name, selected, hovered, moved, turned and mirrored as one (the **Group** / **Ungroup** icon and the Drawing menu); the shapes of a hidden or locked layer are not picked by the mouse or by *Select all*
 
-## 🐍 Python scripting for CAD
+![Text following a contour (medal)](docs/img/ex-medal-view.en.png)
+
+## Python scripting for CAD
 OpenPostPro also supports Python scripts at the CAD level. Scripts can create or modify geometry directly inside the application, making it possible to automate repetitive work or generate complex shapes parametrically instead of drawing every element by hand. They receive the current selection, the position of the mouse and the unit of the document, can show a properties dialog, and each run is undone in a single step.
 
 The application ships with a library of scripts, grouped by category in the **Scripts** menu:
@@ -44,16 +47,17 @@ The delivered scripts are read-only: use **Clone** to make your own editable cop
 
 Guide: [Writing a CAD script](docs/CAD-SCRIPTS.en.md) · [Écrire un script CAO](docs/CAD-SCRIPTS.fr.md)
 
-## ⚙️ CAM operations
+## CAM operations
 
 Create toolpaths from your drawing, organized in **operations** (a tool with its depth, pass depth and feeds, and the toolpaths machined with it):
 
-- **Follow** — follow selected geometry, with an optional entry and exit (a line or a quarter of circle) and the **radius compensation** of the tool, or the kerf of a plasma torch (G41 / G42): the tool is centered on the line, outside or inside of the shape, and the side is deduced from the direction of the path
-- **Offset** — create interior or exterior offsets
-- **Pocket** — generate pocketing toolpaths, with three strategies: zigzag (scan lines at any angle, adjustable stepover, with or without the contour), concentric offsets, and spiral (inward or outward). Finishing passes are machined last, and islands are respected
-- **Drilling** — configure drilling cycles, including peck drilling, tapping, and boring options
-- **Spiral** — create spiral toolpaths
-- **Move to** — add a positioning move
+- **Follow**: follow selected geometry, with an optional entry and exit (a line or a quarter of circle) and the **radius compensation** of the tool, or the kerf of a plasma torch (G41 / G42): the tool is centered on the line, outside or inside of the shape, and the side is deduced from the direction of the path
+- **Offset**: create interior or exterior offsets
+- **Automatic radius compensation** and **Organize the operations** (Machining menu): the tool outside of the outlines and inside of the holes of a part, at any depth, and the inner contours machined before the outer ones. The post-processor never cuts a contour before the contours it contains
+- **Pocket**: generate pocketing toolpaths, with three strategies: zigzag (scan lines at any angle, adjustable stepover, with or without the contour), concentric offsets, and spiral (inward or outward). Finishing passes are machined last, and islands are respected
+- **Drilling**: configure drilling cycles, including peck drilling, tapping, and boring options
+- **Spiral**: create spiral toolpaths
+- **Move to**: add a positioning move
 - **Tabs** (holding bridges) on closed follow and offset paths, with independent positions that can be moved with a slider, and a choice of the start point of the path
 
 A button of the Operations tab computes the toolpaths again from their shapes (the selected ones, or all of them) after the drawing has been modified.
@@ -64,7 +68,15 @@ Guide: [Tools, torches and machines](docs/TOOLS-MACHINES.en.md) · [Outils, torc
 
 CAM operations have configurable parameters. Because the project is still young, the results, especially outline, offset, and pocket calculations, may not be reliable for every shape or machining situation.
 
-## 🎞️ Simulation
+## Automatic nesting
+
+Place copies of parts on a sheet (**Drawing → Nesting...**): each part is a group, with its holes, and a part can go in the hole of another one. Three algorithms can be chosen: **fast** (a few seconds), **search** (many orders of the parts) and **overlap minimization** (the sheet is made shorter, then the parts which overlap are moved and turned until nothing overlaps; a layout is kept only if an exact test confirms it). The last two use all the cores of the processor for the time given and run in the background, with a window which shows the progress and a button to stop and keep the best layout. Rotations every 90, 15, 5 or 1 degree, distance between parts, margin, quantities per part. The result is put in new layers, with the sheet in a locked layer.
+
+![Nesting of six types of parts on a sheet](docs/img/nesting-result.en.png)
+
+Guide: chapter 12 of the [user manual](docs/MANUAL.en.md) · [Manuel d'utilisation](docs/MANUAL.fr.md)
+
+## Simulation
 
 The **Simulation** tab plays a G-code program on a block of material, in 3D, before it is sent to a machine. It loads the output of the current post-processor (or any G-code file, which can also be dropped on the window), shows the toolpaths (feed and rapid moves), the tool and the material taken away by it (flat, ball, bull nose, V cutter or plasma torch), and measures the time of the machining from the feed rates.
 
@@ -72,9 +84,11 @@ The **Simulation** tab plays a G-code program on a block of material, in 3D, bef
 - The program is translated by a **Python translator** (`simulator/gcode.py` for generic G-code: moves, arcs, helices, canned cycles, units, planes, spindle, coolant, tools) into a few simple commands which the simulator plays. A translator for another controller or format only needs the three methods `start`, `next` and `close` (see the guide below).
 - It is a check of the program, not a model of the machine: the cutter radius compensation (G41 / G42) is not applied, and the axes A, B, C are ignored.
 
+![Simulation of a plasma-cut plate](docs/img/sim-result.en.png)
+
 Guide: [Simulator and translators](docs/SIMULATOR.en.md) · [Simulateur et traducteurs](docs/SIMULATOR.fr.md)
 
-## 🧩 Python post-processors
+## Python post-processors
 
 Post-processors are written in Python, making machine-output customization accessible without changing the C++ application. They can be cloned and edited from the application.
 
@@ -91,7 +105,7 @@ Post-processor settings include output file extension, decimal precision, line n
 
 These are generic starting points, not guaranteed profiles for every controller. Review and adapt the output to your machine and controller before use.
 
-## 🌍 Interface and technology
+## Interface and technology
 
 The interface language is managed through key/value files in `openpostpro/lang`. English (UK and US), French, Spanish, German, Italian, Dutch, and Brazilian Portuguese are included, and the language and unit are chosen at the first start. The log can be docked at the bottom of the window, and **Help → About** shows the version and the build date.
 
@@ -102,57 +116,55 @@ OpenPostPro is written in **C++20** and uses:
 - **GLFW** for window and input handling
 - **GLM** for mathematics
 - **FreeType** for font rendering
-- **Python 3.12 or later** embedded for post-processors and scripts (stable ABI, no recompilation needed when Python is updated)
+- **Python 3.12 or later** embedded for post-processors and scripts
 
-## 🖥️ Running on Windows
+## Running on Windows
 
 The current project files and bundled runtime libraries target Windows. A ready-to-use archive (`OpenPostPro-v<version>-win64.zip`) is published in the **Releases** section of the repository: unzip it anywhere and run `openpostpro.exe`.
 
 You need:
-- **Python 3.12 or later**, installed with **"Add Python to PATH"** checked. OpenPostPro does not ship Python: `python3.dll` is found through the PATH, and without it Windows reports "python3.dll was not found" at startup. The same installation provides the standard library and tkinter (used by some CAD scripts).
+- **Python 3.12 or later**: installed with **"Add Python to PATH"** checked. OpenPostPro does not ship Python: `python3.dll` is found through the PATH, and without it Windows reports "python3.dll was not found" at startup. The same installation provides the standard library and tkinter (used by some CAD scripts).
 - The **Microsoft Visual C++ x64 Redistributable**
 
 You can also build the application yourself. The project includes a Visual Studio solution at `openpostpro/openpostpro.sln`.
 
-## 🛠️ Building from source
+## Building from source
 
 1. Install Visual Studio with C++ desktop development tools, and Python 3.12 or later (with "Add Python to PATH"). The Python headers and `python3.lib` are taken from the repository (`src/third/python`, `lib/python`).
 2. Open `openpostpro/openpostpro.sln`.
 3. Build the solution for the appropriate x64 configuration (Debug adds a **Debug** menu with development functions; Release does not).
 4. The `copy_libs_output.bat` script, run by the solution after the build, copies the required runtime resources beside the executable: fonts, language files, post-processors, scripts, textures, shaders, and `freetype.dll`.
 
-The version number, the build number, and the build date shown in the About window are in `openpostpro/src/common/version.h` (the date is the compilation date).
-
 The Linux build is described in [docs/BUILD-LINUX.md](docs/BUILD-LINUX.md) (CMake). macOS has **not been tested yet**.
 
-## ✅ Tests
+## Tests
 
-The tests check the parts that are the most delicate: the geometry used by the offsets, the pockets, and the cut and extend tools, and the CAD scripts.
+The tests cover the most delicate parts: the geometry of the offsets, the pockets and the cut and extend tools, and the CAD scripts.
 
 - **Python** (CAD scripts and their geometry library): `python tests/run_tests.py`
-- **C++** (geometry, pockets, extend and cut), built with Visual Studio's compiler and run without any window: see the header of each file in `tests/cpp` for what it checks, build it with the matching `build_*.bat`, then run the `.exe`. The exit code is 0 when everything passes.
+- **C++** (geometry, pockets, extend and cut, nesting), built with Visual Studio's compiler and run without any window: see the header of each file in `tests/cpp` for what it checks, build it with the matching `build_*.bat`, then run the `.exe`. The exit code is 0 when everything passes.
 
-Run them after any change to the geometry code (`curve.cpp`, `geometry.cpp`, `pocket.cpp`, the cut and extend files).
+Run the tests after any change to the geometry code.
 
-## 🐧 Linux and macOS
+## Linux and macOS
 
 OpenPostPro builds and runs on **Linux** with CMake and GCC (tested on Zorin OS and Linux Mint 22.3, both Ubuntu 24.04 based): see [docs/BUILD-LINUX.md](docs/BUILD-LINUX.md). The file dialogs need `zenity` or `kdialog`. macOS should also be a possible target, but has not yet been tested; contributions to validate it are welcome.
 
-## 🚧 Project status
+## Project status
 
-OpenPostPro is version 1.0, an independent open-source project. The main priority for future improvement remains the robustness and precision of geometry and outline calculations (offsets and pockets on difficult shapes); some algorithms still use floating-point precision and need further work.
+OpenPostPro is an independent open-source project, at version 1.0. The priority for what comes next is the robustness of the geometry and outline calculations (offsets and pockets on difficult shapes).
 
-Please treat generated toolpaths and machine code as output that requires verification. Simulate or inspect the program and check machine settings, tool definitions, clearances, feeds, and speeds before running it on physical equipment.
+Always check the generated program: simulate it, and check the machine settings, tools, clearances, feeds and speeds before running it on a real machine.
 
 Bug reports, feedback, and contributions are welcome.
 
-## 📜 License
+## License
 
 OpenPostPro is released under the **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**. See [`LICENSE`](LICENSE) for the full license text.
 
 Third-party components keep their own licenses, all compatible with the AGPL; see [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md).
 
-## 🔗 Links
+## Links
 
 - **Repository:** https://github.com/rebisway/openpostpro
 - **Contact:** contact@rebisway.com

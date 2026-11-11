@@ -2,9 +2,7 @@
 
 *English version: [MANUAL.en.md](MANUAL.en.md).*
 
-OpenPostPro est un logiciel de CAO/FAO : on y dessine une pièce (ou on importe un dessin), on prépare les opérations d'usinage, on génère le programme de la machine avec un post-processeur, puis on le vérifie en 3D avant de l'envoyer. Ce manuel suit ce chemin, avec un projet d'exemple du début à la fin. Les références détaillées pour programmer en Python sont les guides listés au chapitre 12.
-
-Les captures viennent de la version 0.6, avec le projet d'exemple `examples/plaque.fr.opp` (ouvrez-le avec **Fichier / Ouvrir** pour suivre en même temps).
+OpenPostPro est un logiciel de CAO/FAO. Dessinez une pièce (ou importez un dessin), préparez les opérations d'usinage, générez le programme de la machine avec un post-processeur, puis vérifiez-le en 3D avant de l'envoyer. Pour programmer en Python, reportez-vous aux guides cités au chapitre 13.
 
 ## Sommaire
 
@@ -19,18 +17,19 @@ Les captures viennent de la version 0.6, avec le projet d'exemple `examples/plaq
 9. [Les scripts](#9-les-scripts)
 10. [Le simulateur](#10-le-simulateur)
 11. [Exemples pas à pas](#11-exemples-pas-à-pas)
-12. [Pour aller plus loin](#12-pour-aller-plus-loin)
+12. [L'imbrication automatique](#12-limbrication-automatique)
+13. [Pour aller plus loin](#13-pour-aller-plus-loin)
 
 ## 1. Le chemin du dessin à la machine
 
 1. **Dessiner** : tracer les formes, ou importer un fichier DXF, SVG, Gerber ou Excellon, ou lancer un script CAO.
 2. **Préparer la machine et les outils** : choisir la machine (table, zéro, sens des axes) et les outils (diamètre, avances).
-3. **Créer les opérations** : une opération est un outil avec sa profondeur, sa hauteur de passe et ses avances ; on lui ajoute des usinages (suivre un trait, poche, perçage...).
+3. **Créer les opérations** : une opération est un outil avec sa profondeur, sa hauteur de passe et ses avances, auquel s'ajoutent des usinages (suivre un trait, poche, perçage...).
 4. **Générer** le fichier de sortie avec le post-processeur de votre commande numérique.
-5. **Simuler** le fichier sur un bloc de matière en 3D, et corriger ce que l'on voit.
+5. **Simuler** le fichier sur un bloc de matière en 3D, et corriger ce qui doit l'être.
 6. **Envoyer** le fichier à la machine.
 
-Le schéma montre qui fait quoi : les boîtes vertes sont du Python que vous pouvez écrire, les violettes du Python fourni (les moteurs), les grises le programme lui-même.
+Le schéma montre qui fait quoi : les boîtes vertes sont du code Python que vous écrivez, les violettes du code Python fourni (les moteurs), les grises l'application elle-même.
 
 ```mermaid
 flowchart TB
@@ -56,7 +55,7 @@ flowchart TB
   classDef app fill:#d9dde2,stroke:#5b6670,color:#1f2933
 ```
 
-Le fichier de sortie est la frontière entre la machine (le post-processeur) et la vérification (le simulateur).
+Le fichier de sortie fait la jonction entre la génération du programme (le post-processeur) et sa vérification (le simulateur).
 
 ### Le projet d'exemple
 
@@ -72,16 +71,16 @@ Tout le manuel utilise une plaque de 400 × 200 mm, usinée avec une fraiseuse d
 
 ## 2. Premier démarrage et organisation de l'interface
 
-Au tout premier démarrage, une fenêtre **Bienvenue** demande la **langue** de l'interface et l'**unité** par défaut des nouveaux documents (millimètre ou pouce). L'interface change de langue dès que l'on choisit, le bouton **Ok** valide. Les deux choix se modifient plus tard dans **Outils / Préférences**.
+Au tout premier démarrage, une fenêtre **Bienvenue** demande la **langue** de l'interface et l'**unité** par défaut des nouveaux documents (millimètre ou pouce). La langue de l'interface change dès que vous la choisissez ; le bouton **Ok** valide. Ces deux choix pourront être modifiés plus tard dans **Outils / Préférences**.
 
 ![L'écran d'OpenPostPro avec le projet d'exemple](img/ui-overview.fr.png)
 
 L'écran est composé de :
 
 - **La barre de menus** en haut (chapitre 3).
-- **Les onglets de module**, sous la barre de menus : **Dessin** (la CAO et la FAO), **Sortie** (le texte du programme généré), **Simulation** (la simulation 3D) et **Journal** (messages et erreurs). Le journal peut aussi être affiché en bas de l'écran (**Affichage / Journal**).
+- **Les onglets de module**, sous la barre de menus : **Dessin** (la CAO et la FAO), **Sortie** (le programme généré), **Simulation** (la simulation 3D) et **Journal** (les événements, les avertissements et les erreurs, par exemple celles d'un script ou d'un post-processeur). Le journal peut aussi s'afficher en bas de l'écran (**Affichage / Journal**).
 - **La fenêtre Projet**, en haut à gauche, avec deux onglets : **Calque** (les calques et leurs formes) et **Opération** (les opérations et leurs usinages).
-- **La fenêtre des propriétés**, juste dessous : elle montre les réglages de ce qui est sélectionné dans le projet ou dans le dessin. Son titre est le nom de l'élément.
+- **La fenêtre des propriétés**, juste dessous : elle montre les réglages de ce qui est sélectionné dans le projet ou dans le dessin.
 - **La zone de dessin**, au centre. Bouton gauche : sélectionner et dessiner ; bouton droit : déplacer la vue ; molette : zoom. Le rectangle jaune est la table de la machine choisie, le repère en bas à gauche est le zéro de la machine.
 - **Les barres d'icônes** : en haut au centre (affichage) et à droite (dessin, modification, usinage), voir ci-dessous.
 - **La barre d'état**, en bas : position de la souris dans le dessin (dans l'unité du document) et niveau de zoom.
@@ -90,7 +89,7 @@ L'écran est composé de :
 
 ![Le projet : calques et formes](img/ui-layers.fr.png)
 
-L'onglet **Calque** liste les calques (le triangle replie ou déplie) et leurs formes. Un clic sélectionne une forme et ses propriétés apparaissent en dessous ; **Ctrl-clic** ajoute une forme à la sélection et **Maj-clic** en retire une. Les quatre boutons au-dessus de la liste sont **+** (ajouter), **−** (supprimer), **▲** et **▼** (monter et descendre dans la liste). Un calque a un nom, une couleur, un état visible ou non, et un état verrouillé : les formes d'un calque verrouillé ne peuvent plus être déplacées, modifiées, supprimées, coupées ni prolongées, mais l'aimant s'accroche encore à elles.
+L'onglet **Calque** liste les calques (le triangle replie ou déplie) et leurs formes. Un clic sélectionne une forme et ses propriétés apparaissent en dessous ; **Ctrl-clic** ajoute une forme à la sélection et **Maj-clic** en retire une. Les boutons **+**, **−**, **▲** et **▼** ajoutent, suppriment et déplacent les calques. Un calque a un nom et une couleur ; il peut être visible ou caché, verrouillé ou non. Les formes d'un calque verrouillé ne peuvent plus être déplacées, modifiées, supprimées, coupées ni prolongées, mais l'aimant s'accroche encore à elles. Les formes d'un calque caché ou verrouillé ne se sélectionnent plus à la souris (voir « Les groupes », chapitre 4).
 
 ![Les opérations et leurs usinages](img/ui-operations.fr.png)
 
@@ -98,11 +97,11 @@ L'onglet **Opération** liste les opérations et, en dessous de chacune, ses usi
 
 ### Les barres d'icônes
 
-![Barre d'affichage](img/ui-toolbar-top.fr.png)
+<img src="img/ui-toolbar-top.fr.png" alt="Barre d'affichage" width="240">
 
-La barre du haut agit sur l'affichage : **cadrer le dessin** dans la fenêtre (touche Début), **afficher ou cacher tous les usinages**, afficher le **sens** des usinages, afficher leur **départ**, et **mettre à jour** les textes liés à une courbe puis les usinages d'après leurs formes (utile après une modification du dessin).
+La barre du haut agit sur l'affichage : **cadrer le dessin** dans la fenêtre (touche Début), **afficher ou cacher tous les usinages**, afficher le **sens** des usinages, afficher leur **départ**, et **mettre à jour** : recalculer les textes liés à une courbe, puis les usinages à partir de leurs formes (utile après une modification du dessin). Une icône **Grouper** les suit : elle rassemble la sélection en un groupe, puis devient **Dégrouper** (cochée) quand la sélection est un groupe (voir « Les groupes », chapitre 4).
 
-![Barre des outils de dessin](img/ui-toolbar-right.fr.png)
+<img src="img/ui-toolbar-right.fr.png" alt="Barre des outils de dessin" width="70">
 
 La colonne de droite regroupe trois séries d'icônes, séparées par un trait :
 
@@ -124,19 +123,19 @@ Une icône grisée n'est pas disponible : par exemple, l'opération courante uti
 
 ![Menu Édition](img/menu-edit.fr.png)
 
-**Annuler / Refaire** (Ctrl+Z, Ctrl+Y), **Couper / Copier / Coller / Supprimer**. Le sous-menu **Sélection** contient : *Tout* (Ctrl+A), *Les objets du calque courant*, *Le calque* (choisit un calque par son nom), *Contour* (sélectionne toutes les formes reliées à la sélection) et *Inverser la sélection*. Ces menus évitent de dessiner un rectangle de sélection au milieu d'un dessin chargé.
+**Annuler / Refaire** (Ctrl+Z, Ctrl+Y), **Couper / Copier / Coller / Supprimer**. Le sous-menu **Sélection** contient : *Tout* (Ctrl+A), *Les objets du calque courant*, *Le calque* (choisit un calque par son nom), *Contour* (sélectionne toutes les formes reliées à la sélection) et *Inverser la sélection*.
 
 ### Dessin
 
 ![Menu Dessin](img/menu-drawing.fr.png)
 
-Ajouter, supprimer et renommer un calque ; **Vérifier le dessin** (voir le chapitre 4) ; inverser le sens des objets sélectionnés ; convertir tout le dessin en pouces (ou en millimètres). Avec une sélection, le menu propose aussi de couper aux intersections, les opérations booléennes (fusion, intersection, soustraction), la conversion en spline, et le lien d'un texte à une courbe.
+Ajouter, supprimer et renommer un calque ; **Vérifier le dessin** (voir le chapitre 4) ; inverser le sens des objets sélectionnés ; convertir tout le dessin en pouces (ou en millimètres). Avec une sélection, le menu propose aussi de couper aux intersections, les opérations booléennes (fusion, intersection, soustraction), la conversion en spline, et le lien d'un texte à une courbe. Il propose aussi **Grouper / Dégrouper** (voir « Les groupes », chapitre 4) et **Imbrication...** (chapitre 12).
 
 ### Usinage
 
 ![Menu Usinage](img/menu-machining.fr.png)
 
-Ajouter, supprimer et renommer une **opération** ; ouvrir la table des **machines** et la table des **outils** (chapitre 5) ; supprimer l'usinage sélectionné.
+Ajouter, supprimer et renommer une **opération** ; ouvrir la table des **machines** et la table des **outils** (chapitre 5) ; supprimer l'usinage sélectionné ; **Compensation de rayon automatique** et **Organiser les opérations** (chapitre 7).
 
 ### Post-processeur
 
@@ -164,7 +163,7 @@ Dans les préférences : ouvrir le dernier fichier au démarrage, axe réduit, g
 
 ### Choisir et saisir
 
-Cliquez une icône de la colonne de droite, puis cliquez dans le dessin. La barre d'état donne la position de la souris. Un **aimant** accroche la souris aux points remarquables du dessin (extrémités, centres, intersections) : un petit carré indique le point visé. Les valeurs numériques se tapent dans la fenêtre des propriétés, qui montre la forme dès qu'elle existe. **Échap** annule la création en cours.
+Cliquez une icône de la colonne de droite, puis cliquez dans le dessin. Un **aimant** accroche la souris aux points remarquables du dessin (extrémités, centres, intersections) : un petit carré indique le point visé. Les valeurs numériques se tapent dans la fenêtre des propriétés, qui montre la forme dès qu'elle existe. **Échap** annule la création en cours.
 
 ### Les formes
 
@@ -184,11 +183,10 @@ Un texte a une police, une hauteur, gras et italique, une position par rapport �
 
 ![Propriétés d'un arc](img/ui-prop-arc.fr.png)
 
-Chaque forme montre ses grandeurs en champs numériques que l'on peut modifier : une **ligne** a ses deux points P1, P2 et sa longueur ; un **cercle** son centre, son rayon et son diamètre ; un **arc** son début, sa fin, son centre, son rayon, son angle, son sens, sa longueur et sa corde. Les points s'écrivent `x;y`. Quand on change le rayon d'un cercle, ou le diamètre, l'autre valeur suit.
+Chaque forme affiche ses grandeurs dans des champs numériques modifiables : une **ligne** a ses deux points P1, P2 et sa longueur ; un **cercle** son centre, son rayon et son diamètre ; un **arc** son début, sa fin, son centre, son rayon, son angle, son sens, sa longueur et sa corde. Les points s'écrivent `x;y`.
 
 ![Propriétés d'un cercle](img/ui-prop-circle.fr.png)
 
-Une sélection de plusieurs formes montre les propriétés de chacune, l'une sous l'autre.
 
 ### Modifier
 
@@ -196,16 +194,28 @@ Les icônes de la deuxième série agissent sur la sélection :
 
 - **Déplacer l'origine** : choisit le point qui devient le zéro du dessin.
 - **Décaler** : copie la sélection à une distance donnée (de chaque côté).
-- **Symétrie** : miroir par rapport à un axe que l'on désigne.
+- **Symétrie** : miroir par rapport à un axe à désigner.
 - **Échelle** : agrandit ou réduit d'un facteur.
 - **Rotation** : tourne de l'angle saisi autour d'un point.
 - **Congé / chanfrein** : arrondit ou coupe un angle entre deux lignes (le rayon se règle dans la fenêtre qui s'ouvre).
 - **Prolonger** : allonge une ligne ou un arc, depuis l'extrémité la plus proche de la souris, jusqu'à la forme la plus proche ; le résultat s'affiche sous la souris avant le clic.
 - **Couper** : coupe une ligne, un arc, un cercle, une polyligne ou une ellipse au point cliqué (l'aimant reste actif) ou à l'intersection des formes sous le clic.
 
+### Les groupes
+
+Un **groupe** rassemble des formes sous un nom : cliquer sur une forme d'un groupe, la survoler, la déplacer, la tourner ou la mettre en symétrie agit sur tout le groupe. Un groupe sert à déclarer qu'un ensemble de formes constitue **une pièce** (un contour et ses trous, par exemple) : l'imbrication (chapitre 12) travaille sur des groupes.
+
+- **Grouper** : sélectionnez au moins deux formes, puis cliquez l'icône **Grouper** de la barre du haut, ou **Dessin / Grouper**. Le groupe s'appelle *Bloc_1*, *Bloc_2*... ; **F2** sur un groupe de la liste du projet le renomme.
+- **Dégrouper** : quand la sélection est un groupe, la même icône (cochée) et la même entrée du menu libèrent ses formes.
+- Dans la fenêtre **Projet**, les formes d'un groupe ne sont plus listées une à une : c'est le groupe qui apparaît, avec son nombre de formes (`[Plaque] (9)`), sous le calque de sa première forme. Chaque forme reste dans son calque.
+- Un groupe se copie et se colle comme un tout.
+- Les groupes sont enregistrés dans le fichier `.opp`.
+
+Les formes d'un calque **caché** ou **verrouillé** ne sont sélectionnées ni par un rectangle de sélection, ni par un clic, ni par *Tout sélectionner* ou *Inverser la sélection*. Le sous-menu **Édition / Sélection / Le calque** n'est pas concerné : il permet de choisir les formes d'un calque verrouillé pour les usiner.
+
 ### Vérifier le dessin
 
-**Dessin / Vérifier le dessin** cherche les problèmes qui gênent l'usinage et les marque sur le dessin : formes de **longueur nulle**, formes **en double** et **extrémités libres** (contour ouvert). Un usinage « suivre le trait » ou « poche » attend des contours fermés. Le message du journal dit « le dessin est prêt pour l'usinage » quand rien n'est trouvé ; *Effacer les marqueurs* les retire.
+**Dessin / Vérifier le dessin** cherche les problèmes qui gênent l'usinage et les marque sur le dessin : formes de **longueur nulle**, formes **en double** et **extrémités libres** (contour ouvert). Un usinage « suivre le trait » ou « poche » attend des contours fermés. Le journal affiche « le dessin est prêt pour l'usinage » quand rien n'est trouvé ; *Effacer les marqueurs* les retire.
 
 ### Import et export
 
@@ -221,9 +231,9 @@ Les icônes de la deuxième série agissent sur la sélection :
 
 - la **course** en X, Y et Z : la surface de la table s'affiche sous le dessin (rectangle jaune), et un usinage qui en sort est signalé par « Hors de la zone de la machine » ;
 - l'**origine** (le zéro de la machine) : en bas à gauche, en bas à droite, en haut à gauche, en haut à droite ou au centre ;
-- le **sens des axes** : « X croît de droite à gauche », « Y croît de haut en bas », « Z croît vers le bas ». Les sens sont ceux de l'opérateur devant le dessin. Un axe inversé change le signe des valeurs du programme ; un seul axe inversé fait tourner les arcs dans l'autre sens, et le post-processeur et le simulateur en tiennent compte.
+- le **sens des axes** : « X croît de droite à gauche », « Y croît de haut en bas », « Z croît vers le bas ». Les sens sont ceux de l'opérateur devant le dessin. Un axe inversé change le signe des valeurs du programme ; un seul axe inversé change le sens de rotation des arcs. Le post-processeur et le simulateur en tiennent compte.
 
-**Appliquer** utilise la machine pour le document ; **Aucune machine** retire la machine du document. La machine est enregistrée dans le document.
+**Appliquer** associe la machine au document ; **Aucune machine** retire la machine du document.
 
 ### Les outils
 
@@ -240,7 +250,7 @@ Les icônes de la deuxième série agissent sur la sélection :
 | Avance, Descente | avance de coupe et avance de plongée (mm/min) |
 | Hauteur de passe | profondeur retirée à chaque passe |
 | Rotation, Sens horaire, Refroidissement | broche et arrosage (fraise seulement) |
-| Nombre de dents, Matériau usiné | pour **Calculer depuis l'abaque** : le logiciel propose rotation et avance d'après le diamètre, le nombre de dents et le matériau (valeurs indicatives pour fraises carbure, à ajuster) |
+| Nombre de dents, Matériau usiné | pour **Calculer depuis l'abaque** : le logiciel propose la vitesse de rotation et l'avance selon le diamètre, le nombre de dents et le matériau (valeurs indicatives pour des fraises en carbure, à ajuster) |
 
 Les changements sont enregistrés tout de suite. Les détails (torches, descente oblique, abaque) sont dans [TOOLS-MACHINES.fr.md](TOOLS-MACHINES.fr.md).
 
@@ -253,10 +263,10 @@ Une **opération** rassemble les réglages d'un outil et les usinages qui l'util
 | Réglage | Effet |
 |---|---|
 | Visible | montre ou cache les usinages de l'opération dans le dessin |
-| Générer | si coché, l'opération est écrite dans le programme ; décochée, elle est sautée |
+| Générer | si coché, l'opération est écrite dans le programme ; décochée, elle est ignorée |
 | Couleur | couleur des usinages dans le dessin |
 | Contour horaire | sens de parcours des contours fermés (horaire ou anti-horaire) |
-| Outil | l'outil de la table ; ses réglages sont copiés dans l'opération, que l'on peut ensuite modifier |
+| Outil | l'outil de la table ; ses réglages sont copiés dans l'opération, où ils restent modifiables |
 | Rayon | rayon de l'outil (sert aux décalages, aux poches et à la compensation) |
 | Rotation, Sens horaire | vitesse et sens de la broche |
 | Refroidissement | aucun, arrosage ou brouillard |
@@ -276,7 +286,7 @@ Les usinages d'une opération sont faits dans l'ordre de la liste. **Usinage / S
 2. Sélectionnez les formes (un clic, un rectangle, ou **Édition / Sélection / Le calque**).
 3. Cliquez l'icône de l'usinage dans la colonne de droite.
 
-L'usinage apparaît sous l'opération, avec son propre jeu de propriétés. Les formes du dessin peuvent être modifiées ensuite : le bouton *mettre à jour les usinages* de la barre du haut les recalcule.
+L'usinage apparaît sous l'opération, avec son propre jeu de propriétés. Si vous modifiez ensuite les formes du dessin, le bouton *mettre à jour* de la barre du haut recalcule les usinages.
 
 ## 7. Les types d'usinage
 
@@ -284,16 +294,27 @@ L'usinage apparaît sous l'opération, avec son propre jeu de propriétés. Les 
 
 ![Propriétés de « suivre le trait »](img/ui-follow.fr.png)
 
-Fait suivre à l'outil les formes sélectionnées. Une opération « suivre le trait » est créée **par forme ou chaîne de formes reliées** : les deux anneaux de l'exemple donnent deux usinages. Réglages :
+Fait suivre à l'outil les formes sélectionnées. Un usinage « suivre le trait » est créé **pour chaque forme ou chaîne de formes reliées** : les deux anneaux de l'exemple donnent deux usinages. Réglages :
 
 - **Déplacement horaire** : sens de parcours.
 - **Compensation rayon** : *Centré* (l'axe de l'outil est sur le trait, par exemple pour graver), *Extérieur* ou *Intérieur* (l'outil reste à l'extérieur ou à l'intérieur de la forme : c'est la coupe d'un contour). Le côté est déduit du sens de parcours. Le post-processeur écrit G41 / G42, et pour une torche la largeur de coupe est compensée de la même façon.
 - **Position de départ** : où le parcours commence sur la forme.
-- **Entrée et sortie** : une ligne ou un quart de cercle, pour entrer et sortir de la matière sans marquer la pièce.
+- **Entrée et sortie** : une ligne ou un quart de cercle, pour entrer dans la matière et en sortir sans marquer la pièce.
+
+Sur une sélection qui a des **trous** (des contours à l'intérieur d'un autre, à n'importe quelle profondeur : un trou, un îlot dans le trou, un trou dans l'îlot...) ou sur un groupe, l'entrée et la sortie sont **à l'intérieur des trous** et à l'extérieur des contours extérieurs et des îlots : la case **Intérieur** est cochée pour les trous, décochée pour les autres. Elle n'apparaît que si le **Départ** de l'opération est *Ligne* ou *Arc* (chapitre 6). La compensation de rayon reste *Centré* : elle se règle à part, un usinage après l'autre ou avec le menu ci-dessous.
+
+#### Compensation de rayon automatique et ordre d'usinage
+
+Deux entrées du menu **Usinage** règlent un ensemble d'usinages d'un coup. Elles agissent sur les usinages sélectionnés, sinon sur ceux des opérations sélectionnées, sinon sur tous.
+
+- **Compensation de rayon automatique** : pour chaque *suivre le trait* et *contourner le trait* dont le contour est fermé, l'outil est placé **à l'extérieur** d'un contour extérieur ou d'un îlot et **à l'intérieur** d'un trou. Le niveau d'un contour est le nombre de contours qui l'entourent dans son opération. Cette entrée remplace le choix fait à la création de l'usinage. Un Ctrl+Z la défait en une fois.
+- **Organiser les opérations** : range les usinages de chaque opération dans l'ordre d'usinage d'une pièce : chaque contour passe après ceux qu'il contient, à n'importe quelle profondeur (les îlots, puis les trous, puis le contour extérieur). Seuls les contours qui se suivent sont triés : les perçages, les poches et les déplacements gardent leur place, et les contours de même profondeur gardent leur ordre. Cette entrée ne se défait pas par Ctrl+Z.
+
+Le journal indique le nombre d'usinages modifiés.
 
 ![Les attaches d'une découpe](img/ui-follow-tabs.fr.png)
 
-Sur un contour fermé, les **attaches** (ponts) retiennent la pièce pour qu'elle ne bouge pas à la fin de la découpe : *Nombre d'attaches*, *Longueur*, *Hauteur*, puis *Attache sélectionnée* et sa *position*, que l'on déplace avec un curseur. L'outil remonte à la hauteur de l'attache et la redescend ensuite. Dans le programme, la découpe de la plaque se lit :
+Sur un contour fermé, les **attaches** (ponts) retiennent la pièce pour qu'elle ne bouge pas à la fin de la découpe : *Nombre d'attaches*, *Longueur*, *Hauteur*, puis *Attache sélectionnée* et sa *position*, réglable avec un curseur. L'outil remonte à la hauteur de l'attache et la redescend ensuite. Dans le programme, la découpe de la plaque se lit :
 
 ```
 (TOOLPATH [Suivre le trait_1])
@@ -322,7 +343,7 @@ Vide l'intérieur d'une forme fermée, **îlots** respectés (le disque central 
 | **Décalage** (offset) | contours concentriques qui rétrécissent vers le centre |
 | **Spirale** | une spirale vers l'intérieur ou vers l'extérieur |
 
-*Finition* ajoute une dernière passe de finition le long du contour, usinée en dernier. Un usinage de poche utilise les réglages de l'opération (rayon, profondeur, hauteur de passe) : une poche de 3 mm de profondeur avec 1,5 mm de hauteur de passe est faite en deux passes. L'icône est grisée avec une torche.
+*Finition* ajoute une dernière passe de finition le long du contour, usinée en dernier. Un usinage de poche utilise les réglages de l'opération (rayon, profondeur, hauteur de passe) : une poche de 3 mm de profondeur avec 1,5 mm de hauteur de passe est faite en deux passes. L'icône est grisée quand l'opération utilise une torche.
 
 ### Perçage
 
@@ -340,11 +361,11 @@ Appuyez sur **Échap** après le dernier point pour quitter la création de per�
 
 ### Déplacer à
 
-Ajoute à l'opération un déplacement de positionnement vers un point que l'on clique.
+Ajoute à l'opération un déplacement de positionnement vers un point cliqué dans le dessin.
 
 ### Contourner le trait et spirale
 
-*Contourner le trait* crée des décalages intérieurs ou extérieurs de la forme choisie ; *spirale* crée des parcours en spirale. Ces deux usinages ne sont pas illustrés ici : essayez-les sur le projet d'exemple et regardez leurs propriétés.
+*Contourner le trait* crée des décalages intérieurs ou extérieurs de la forme choisie ; *spirale* crée des parcours en spirale.
 
 ## 8. Le post-processeur
 
@@ -373,9 +394,13 @@ Le **post-processeur** transforme les usinages en programme pour votre commande 
 
 Les post-processeurs de plasma ajoutent des réglages de torche (commandes d'allumage, temps de perçage, référence, gestion de l'axe Z). Les réglages sont conservés d'une session à l'autre.
 
+### L'ordre des contours
+
+Pour qu'une pièce découpée ne bouge pas avant la fin de la découpe, le post-processeur usine **les contours qui sont à l'intérieur d'un autre avant lui**, à n'importe quelle profondeur : les îlots, puis les trous, puis le contour extérieur de la pièce. Les *suivre le trait*, *contourner le trait* et perçages qui se suivent sont toujours triés pour raccourcir les déplacements rapides, mais un contour n'est jamais usiné avant ceux qu'il contient. Avec plusieurs passes en profondeur, la règle est respectée à chaque passe. Le menu **Usinage / Organiser les opérations** (chapitre 7) range la liste de l'opération dans le même ordre, pour le voir dans la fenêtre Projet.
+
 ### Générer
 
-**Post-processeur / Générer** écrit le fichier à l'emplacement de sortie du document (son nom et son extension viennent du réglage *Extension du fichier*), et l'onglet **Sortie** en montre le texte :
+**Post-processeur / Générer** écrit le fichier à l'emplacement de sortie du document (son nom et son extension viennent du réglage *Extension du fichier*), et l'onglet **Sortie** en affiche le contenu :
 
 ![L'onglet Sortie](img/ui-output.fr.png)
 
@@ -398,7 +423,7 @@ F1100
 G3I-17
 ```
 
-On y lit les trois niveaux : l'opération (`M6T2` : l'outil 2 ; `S20000` : la broche), l'usinage (le commentaire), puis les déplacements. Les opérations sont écrites dans l'ordre de la liste de l'onglet **Opération**, et l'outil est changé à chaque opération.
+Le programme montre trois niveaux : l'opération (`M6T2` : l'outil 2 ; `S20000` : la broche), l'usinage (le commentaire), puis les déplacements. Les opérations sont écrites dans l'ordre de la liste de l'onglet **Opération**, et l'outil est changé à chaque opération.
 
 Le menu **Post-processeur / Cloner** copie un post-processeur livré (en lecture seule) sous un nouveau nom pour l'adapter à votre commande, avec l'éditeur intégré (**Compiler** vérifie la syntaxe).
 
@@ -418,7 +443,7 @@ Les scripts livrés sont en lecture seule : **Scripts / Cloner un script** en fa
 
 ## 10. Le simulateur
 
-Le **simulateur** joue le programme sur un bloc de matière en 3D, avant de l'envoyer à la machine. **Post-processeur / Lancer et simuler** génère le programme du document et l'ouvre dans l'onglet **Simulation** ; **Programme actuel** recharge la sortie du document, **Ouvrir...** charge un fichier de G-code quelconque (qu'on peut aussi déposer sur la fenêtre).
+Le **simulateur** joue le programme sur un bloc de matière en 3D, avant de l'envoyer à la machine. **Post-processeur / Lancer et simuler** génère le programme du document et l'ouvre dans l'onglet **Simulation** ; **Programme actuel** recharge la sortie du document, **Ouvrir...** charge un fichier de G-code quelconque (un fichier peut aussi être glissé sur la fenêtre).
 
 ![La simulation de l'exemple, résultat](img/sim-result.fr.png)
 
@@ -438,11 +463,11 @@ Les icônes de la barre du dessus montrent ou cachent la **matière**, les dépl
 
 Le dernier groupe d'icônes ouvre les **réglages** : la forme de l'outil (fraise plate, hémisphérique, torique, conique, torche plasma), son diamètre, le rayon du coin d'une fraise torique ou l'angle d'une fraise conique, le dessus de la matière (Z), l'épaisseur (0 = automatique), la précision en pourcentage du rayon de l'outil, et l'arrêt facultatif `M1`. Changer un réglage refait le bloc et rejoue le programme.
 
-Ce que le simulateur vérifie et ne vérifie pas : il joue le chemin programmé (le chemin tel que la commande le fera), il détecte les erreurs et avertissements du programme et calcule la durée d'usinage d'après les avances. Ce n'est pas un modèle complet de la machine : la compensation de rayon (G41 / G42) n'est pas appliquée, et les axes A, B, C sont ignorés. Le traducteur (Python) qui lit le programme est choisi d'après l'extension du fichier, ou forcé dans la liste ; voir [SIMULATOR.fr.md](SIMULATOR.fr.md) pour écrire le vôtre.
+Ce que le simulateur vérifie et ne vérifie pas : il joue le trajet programmé, tel que la commande le suivra, signale les erreurs et les avertissements du programme et calcule la durée d'usinage à partir des avances. Ce n'est pas un modèle complet de la machine : la compensation de rayon (G41 / G42) n'est pas appliquée, et les axes A, B, C sont ignorés. Le traducteur (Python) qui lit le programme est choisi d'après l'extension du fichier, ou forcé dans la liste ; voir [SIMULATOR.fr.md](SIMULATOR.fr.md) pour écrire le vôtre.
 
 ## 11. Exemples pas à pas
 
-Trois projets d'exemple complètent la plaque : `examples/medaillon.fr.opp`, `examples/enseigne.fr.opp` et `examples/bac.fr.opp` (ouvrez-les avec **Fichier / Ouvrir**). Ils servent à voir ensemble **les poches de texte**, **le texte autour d'un cercle**, **les attaches**, **les départs décalés** et **les poches avec îlots**. Ils utilisent la même table routeur et les mêmes outils que la plaque.
+Trois projets d'exemple complètent la plaque : `examples/medaillon.fr.opp`, `examples/enseigne.fr.opp` et `examples/bac.fr.opp` (ouvrez-les avec **Fichier / Ouvrir**). Ils illustrent **les poches de texte**, **le texte autour d'un cercle**, **les attaches**, **les départs décalés** et **les poches avec îlots**. Ils utilisent la même table routeur et les mêmes outils que la plaque.
 
 ### Exemple A : un médaillon, texte autour d'un cercle
 
@@ -455,13 +480,13 @@ Le dessin tient en quatre calques : **Bord** (le cercle extérieur, qui sera dé
 1. Créez le cercle guide, puis un texte avec l'outil **T** (police Arial, gras, hauteur 16 mm).
 2. Sélectionnez le texte, choisissez **Dessin / Lier le texte à l'objet** (ou le bouton de ses propriétés) et cliquez le cercle guide. Le texte épouse la courbe ; ses lettres gardent leur taille.
 3. Dans les propriétés du texte, **Position** choisit le côté : *Au-dessus* place les lettres à l'extérieur du cercle, *En dessous* à l'intérieur. **Début** décale le départ du texte le long de la courbe, **Inter-espace** écarte les lettres. Sur une courbe fermée, le texte fait le tour ; sur une courbe ouverte, il continue en ligne droite après le bout.
-4. Le texte suit sa courbe quand on la déplace à la souris ou quand on change l'origine ou l'unité ; dans les autres cas, le bouton *mettre à jour* de la barre du haut relit la courbe. Un texte plus court que le cercle laisse un vide : l'exemple répète son motif pour faire le tour complet.
+4. Le texte suit sa courbe quand elle est déplacée à la souris ou quand l'origine ou l'unité change ; dans les autres cas, le bouton *mettre à jour* de la barre du haut relit la courbe. Un texte plus court que le cercle laisse un vide : l'exemple répète son motif pour faire le tour complet.
 
 **2. La poche des textes.** Créez l'opération *Poche des textes* (outil T1, fraise de 1 mm, profondeur −0,8 mm). Sélectionnez les deux textes (**Édition / Sélection / Le calque / Texte**), puis l'icône de poche, mode **Zigzag**.
 
 ![Poche des textes du médaillon](img/ex-medal-textpocket.fr.png)
 
-Les lettres sont creusées en gardant leurs contours : l'outil doit être **plus petit que le trait des lettres**, sinon les lettres ne sont pas vidées. Avec une fraise de 1 mm, un texte de 16 mm de haut se vide sans problème.
+Les lettres sont creusées en gardant leurs contours : l'outil doit être **plus petit que le trait des lettres**, sinon elles ne sont pas vidées. Avec une fraise de 1 mm, un texte de 16 mm de haut se vide sans problème.
 
 **3. Un départ décalé.** L'opération *Gravure de l'anneau* suit le cercle central (*suivre le trait*, *Centré*). Un cercle n'a pas de début naturel : le **départ** est l'endroit où l'outil descend. La *Position de départ* le déplace le long du contour avec un curseur ; ici il est décalé, ce qui se voit à la flèche de sens et au repère de départ sur le dessin.
 
@@ -492,7 +517,7 @@ Quatre calques : **Contour**, **Texte** (« ATELIER »), **Cadre** et **Trous**.
 
 ![Gravure du cadre](img/ex-sign-frame.fr.png)
 
-**Trous en poche spirale.** Les quatre trous de fixation sont de petits cercles que l'on vide par une poche en **spirale** (*Mode : Spirale*, vers l'intérieur ou vers l'extérieur) : la fraise de 3 mm décrit une spirale dans un trou de 8 mm.
+**Trous en poche spirale.** Les quatre trous de fixation sont de petits cercles vidés par une poche en **spirale** (*Mode : Spirale*, vers l'intérieur ou vers l'extérieur) : la fraise de 3 mm décrit une spirale dans un trou de 8 mm.
 
 ![Trous en spirale](img/ex-sign-holes.fr.png)
 
@@ -525,7 +550,7 @@ Le projet `examples/bac.fr.opp` est un bac de 340 × 220 mm. Le calque **Poche**
 
 ![La poche en décalages autour des îlots](img/ex-tray-pocket.fr.png)
 
-La fraise vide la poche par **contours concentriques** : elle suit le contour vers l'intérieur, contourne chaque îlot à distance du rayon de l'outil, et les parcours se rejoignent entre les îlots. Les îlots restent intacts, y compris les angles du triangle et du rectangle arrondi, que l'on vérifie ensuite dans le simulateur. Comparez avec le mode *Zigzag*, qui hachure la surface par lignes parallèles : essayez-le sur le même projet en changeant le *Mode* de l'usinage.
+La fraise vide la poche par **contours concentriques** : elle suit le contour vers l'intérieur, contourne chaque îlot à distance du rayon de l'outil, et les parcours se rejoignent entre les îlots. Les îlots restent intacts, y compris les angles du triangle et du rectangle arrondi, à vérifier ensuite dans le simulateur.
 
 Réglages utiles : *Finition* ajoute une dernière passe le long des parois et des îlots ; le **rayon de l'outil** doit être plus petit que la plus petite largeur à vider (entre deux îlots, ou entre un îlot et la paroi), sinon l'espace n'est pas usiné.
 
@@ -533,7 +558,72 @@ L'opération *Découpe* (outil T3, fraise de 6 mm, profondeur −8 mm) suit le c
 
 ![Découpe du bac](img/ex-tray-cut.fr.png)
 
-## 12. Pour aller plus loin
+## 12. L'imbrication automatique
+
+L'**imbrication** (*nesting*) place des copies de pièces sur un panneau pour en perdre le moins possible. Elle se lance depuis **Dessin / Imbrication...** et crée de nouveaux calques : le dessin d'origine n'est pas modifié.
+
+L'exemple `docs/examples/imbrication.fr.opp` contient six types de pièces (un groupe chacun) pour essayer l'imbrication.
+
+### Préparer les pièces
+
+1. Dessinez ou importez chaque pièce, avec ses trous.
+2. **Groupez** les formes de chaque pièce (voir « Les groupes », chapitre 4). Une pièce est un groupe.
+3. Sélectionnez les groupes à imbriquer (un rectangle autour du dessin, ou **Édition / Sélection / Tout**) puis choisissez **Dessin / Imbrication...**. S'il n'y a aucun groupe dans la sélection, un message vous le signale.
+
+Pour chaque groupe, le **plus grand contour fermé** est le contour de la pièce, et les contours fermés qui sont à l'intérieur sont ses trous, ses îlots dans les trous, et ainsi de suite : une pièce peut être placée dans le trou d'une autre. Les formes ouvertes d'un groupe sont copiées avec lui mais ne comptent pas pour le placement.
+
+### La fenêtre
+
+![La fenêtre d’imbrication](img/nesting-window.fr.png)
+
+Laissez la souris sur le **(?)** à côté d'un réglage pour lire son explication.
+
+| Réglage | Rôle |
+|---|---|
+| Largeur, Hauteur | Dimensions du panneau, dans l'unité du dessin. Son coin bas gauche est en (0, 0). |
+| Marge au bord | Distance minimale entre les pièces et le bord du panneau. |
+| Distance entre pièces | Distance minimale entre deux pièces : au moins la largeur de coupe de l'outil. |
+| Algorithme | *Rapide (glouton)*, *Recherche* ou *Minimisation du chevauchement* (voir plus bas). |
+| Durée de la recherche (s) | Pour les deux derniers algorithmes : le temps donné au calcul, que vous pouvez interrompre avant. |
+| Rotations | Les angles essayés pour chaque pièce : aucune, 0 et 180 degrés, tous les 90, 15, 5 ou 1 degré. Plus il y en a, meilleur peut être le résultat, mais plus le calcul est long : 90 degrés suffit pour des pièces rectangulaires ; 15, 5 ou 1 degré pour des pièces en biais. 1 degré est très lent. |
+| Utiliser les trous des pièces | Autorise une pièce à être placée dans les trous des autres. |
+| Pas de recherche | Distance entre deux positions essayées quand le programme parcourt le panneau pour placer une pièce. Plus elle est petite, plus il trouve de petits emplacements (dans un trou, entre deux pièces), mais plus c'est lent. La position trouvée est ensuite affinée par pas de plus en plus petits, jusqu'à 0,1. |
+| Pièces | Une ligne par groupe : son nom, les dimensions de son contour et la **quantité** à placer. |
+
+Les réglages ne sont pas enregistrés dans le document : le fichier `.opp` ne garde que le dessin.
+
+### Les algorithmes
+
+- **Rapide (glouton)** : place les pièces une par une, de la plus grande à la plus petite, chacune à sa meilleure place, les rotations étant essayées en parallèle. Quelques secondes. Le résultat est toujours le même pour les mêmes données.
+- **Recherche** : part du résultat rapide, puis essaie de nombreux autres ordres de pièces pendant la durée choisie, sur tous les cœurs du processeur, et garde la disposition qui utilise le moins de longueur de panneau.
+- **Minimisation du chevauchement** : part du résultat rapide, raccourcit le panneau, ce qui fait se chevaucher des pièces, puis déplace et tourne celles qui se chevauchent vers les endroits où elles chevauchent le moins, jusqu'à ne plus rien chevaucher. Une disposition n'est gardée que si un test exact des contours la confirme, et si elle est plus courte. C'est le plus efficace, aussi sur tous les cœurs, et il essaie au plus 36 angles.
+
+Pour donner un ordre de grandeur, sur un jeu de 85 pièces mélangées, la recherche a raccourci le panneau d'environ 2,6 % par rapport au résultat rapide, et la minimisation d'environ 5 % en une à deux minutes. Le résultat dépend des pièces : des cercles emboîtés se placent moins bien que des rectangles. Les deux algorithmes de recherche utilisent le hasard : deux calculs ne donnent pas exactement le même résultat.
+
+### Pendant le calcul
+
+![La fenêtre d’attente](img/nesting-wait.fr.png)
+
+Le calcul se fait en arrière-plan : une fenêtre s'affiche avec un cercle qui tourne, la progression, la **longueur de panneau utilisée** par la meilleure disposition trouvée et le nombre d'essais. Le dessin ne peut pas être modifié pendant ce temps. Deux boutons :
+
+- **Arrêter et garder le résultat** : le calcul s'arrête et la meilleure disposition trouvée est mise dans le dessin (pour l'algorithme rapide, les pièces qui ne sont pas encore placées restent non placées).
+- **Annuler** : le calcul s'arrête et rien n'est ajouté.
+
+### Le résultat
+
+![Un résultat d’imbrication](img/nesting-result.fr.png)
+
+- Un calque **Panneau_LxH** (par exemple `Panneau_1000x500`) est créé une fois : il porte le rectangle du panneau, de (0, 0) à (largeur, hauteur). Il est visible et **verrouillé**. Un panneau de la même taille réutilise ce calque.
+- Les copies des pièces sont dans un nouveau calque **Imbrication_1**, puis *Imbrication_2*... Chaque copie est un groupe, nommé comme la pièce suivi d'un numéro.
+- Tous les autres calques sont **cachés** pour voir le résultat seul : cochez leur case *Visible* pour les revoir. Les formes d'origine ne sont pas modifiées.
+- Un seul Ctrl+Z retire les copies et les nouveaux calques ; il ne remet pas la visibilité des calques cachés.
+- Le journal donne le nombre de pièces placées et non placées, le taux d'utilisation du panneau, la longueur utilisée et la durée du calcul. Une forme qui ne peut pas être copiée est signalée.
+
+### Après l'imbrication
+
+Pour usiner le résultat : créez les usinages sur le calque *Imbrication_n* (*suivre le trait* sur la sélection des groupes), puis réglez-les avec **Usinage / Compensation de rayon automatique** et **Usinage / Organiser les opérations** (chapitre 7). Le post-processeur usine les trous de chaque pièce avant son contour extérieur (chapitre 8).
+
+## 13. Pour aller plus loin
 
 - [CAD-SCRIPTS.fr.md](CAD-SCRIPTS.fr.md) : écrire un script CAO en Python.
 - [POSTPROCESSOR.fr.md](POSTPROCESSOR.fr.md) : écrire ou adapter un post-processeur.

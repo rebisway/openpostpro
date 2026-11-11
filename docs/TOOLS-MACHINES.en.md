@@ -4,8 +4,6 @@
 
 This page describes how a **tool** and a **machine** are defined, and what they change in the operations, the post-processor and the simulator. CAD scripts are in [CAD-SCRIPTS.en.md](CAD-SCRIPTS.en.md), post-processors in [POSTPROCESSOR.en.md](POSTPROCESSOR.en.md), the simulator in [SIMULATOR.en.md](SIMULATOR.en.md).
 
-Covered here: the table of tools, the tool of an operation, torches (plasma, water jet, wire EDM), the oblique plunge, the table of cutting data, the machines, and the tests.
-
 ```mermaid
 flowchart LR
   T["Table of tools<br/>(tools.txt)"]:::data -->|"values copied"| G["Operation<br/>(saved in the document)"]:::app
@@ -32,7 +30,7 @@ flowchart LR
 | Plunge, Pass depth, Rotation, Clockwise, Cooling | for a cutter only |
 | Teeth | number of teeth (see section 5) |
 
-The file has one line per tool, `number;name;type;diameter;feed;plunge;pass;spindle;cw;cooling;teeth`. A line which lacks the last fields (a file written by an older version) is read with the default values, and a damaged line is ignored.
+>>>
 
 ## 2. The tool of an operation
 
@@ -42,14 +40,14 @@ In the properties of an operation, the field **Tool** works as an editable list:
 - A click on the field lets you type a number (Enter validates, Escape cancels). The arrow at the right opens the list of the tools.
 - Choosing a tool **copies its values into the operation**: radius (diameter / 2), feed, finishing feed, plunge feed, pass depth, spindle speed and direction, cooling, and its type. They stay editable in the operation. Changing the tool in the table later does not change the operations which already used it: the operation is self-contained, and a document opened on another computer keeps its values.
 
-The operation saves the new values in the document (tool type, pass depth, spindle speed and direction, cooling, oblique plunge). A document written before these fields exist is read with the default values.
+The operation saves the new values in the document (tool type, pass depth, spindle speed and direction, cooling, oblique plunge). A document saved before these fields were added is read with the default values.
 
 ## 3. Torches
 
 A tool whose type is not *End mill* is a **torch**. An operation which uses it:
 
 - hides what a torch does not have: spindle speed and direction, cooling, plunge, pass depth, oblique plunge;
-- is post-processed in **one pass** at the depth of the operation (the cutting height), with no steps;
+- is written in the program in **one pass** at the depth of the operation (the cutting height), with no steps;
 - disables the **Pocket** and **Drilling** buttons of the drawing toolbar while it is the current operation.
 
 In the simulator, when the first operation of the document uses a torch, the tool is a plasma torch: it cuts **through** the block along its cutting moves (G1, G2, G3), whatever its height (a torch stays above the sheet, at 0.5 mm for instance). When the program lights the torch (M3 or the torch command), it cuts only while it is lit; if the program never lights it, every cutting move cuts.
@@ -62,8 +60,6 @@ At the start of a path with an **entry** (a line or an arc, setting *Start* of t
 - The first pass starts from the origin (the surface); the next ones from the depth of the previous pass.
 - Without an entry (start *Normal*), or when the tool is already at the depth, the plunge stays vertical.
 
-The sequence of the moves is in `postpro/cut_path.h`, shared with the post-processor, and tested without a window.
-
 ## 5. The table of cutting data
 
 In the window of the tools, for a cutter, the fields **Teeth**, **Material** and **Maximum spindle speed**, and the button **Compute from the table** (top right) fill the spindle speed, the feed, the plunge feed, the pass depth and the cooling of the tool.
@@ -74,7 +70,7 @@ In the window of the tools, for a cutter, the fields **Teeth**, **Material** and
 
 Materials: aluminium, brass and copper, mild steel, stainless steel, hardwood, softwood, MDF and plywood, plastic.
 
-**These are indicative values** for carbide end mills (slot, roughing), in millimeters. They depend on the machine, its rigidity and the tool: adjust them in the table and check the catalogue of the maker of your tools. The table is in `src/cam/feeds.cpp`.
+These are indicative values for carbide end mills (slot, roughing), in millimeters. They depend on the machine, its rigidity and the tool: adjust them in the table and check the catalogue of the maker of your tools. The table is in `src/cam/feeds.cpp`.
 
 ## 6. Machines
 
@@ -87,31 +83,17 @@ Materials: aluminium, brass and copper, mild steel, stainless steel, hardwood, s
 | Origin | the zero of the machine on the table: bottom left, bottom right, top left, top right, center. The **origin of the drawing is the zero of the machine**: the area is around it |
 | X, Y, Z reversed | the axis counts the other way than the operator sees it (X which grows from the right to the left, for instance) |
 
-The buttons **Apply** and **No machine** set the machine of the document. The document keeps a **copy** (a line `0;machine;...`), so that it is complete on another computer; a document without machine opens as before.
+The buttons **Apply** and **No machine** set the machine of the document. The document keeps a copy of the machine, so that it stays complete on another computer.
 
-**In the drawing**, the area of the table is drawn under the shapes, with the zero of the machine and two arrows X and Y which point in the direction in which the machine counts (a reversed axis points the other way). When a shape of a visible layer goes out of the area, the outline of the table becomes red with a message. **Fit the drawing** (the button at the top center of the drawing, or the key Home) shows the table when the drawing is empty.
+In the drawing, the area of the table is drawn under the shapes, with the zero of the machine and two arrows X and Y which point in the direction in which the machine counts (a reversed axis points the other way). When a shape of a visible layer goes out of the area, the outline of the table becomes red with a message. **Fit the drawing** (the button at the top center of the drawing, or the key Home) shows the table when the drawing is empty.
 
-**In the post-processor**, a reversed axis changes the sign of the values of the program (the drawing has the values the operator sees):
+In the post-processor, a reversed axis changes the sign of the values of the program (the drawing has the values the operator sees):
 
 - X, Y, Z of the moves and of the drilling cycles, and the retract height;
 - the center of an arc (I, J, relative or absolute);
-- the direction of an arc: **one** reversed axis among X and Y turns the arcs the other way (G2 becomes G3), **both** reversed is a half turn and keeps it;
+- the direction of an arc: if only one of the axes X and Y is reversed, the arcs turn the other way (G2 becomes G3); if both are, the direction is kept;
 - the safe height, including the one of the start of the program.
 
 A path out of the area is written anyway, with a `WARNING` comment in the program and a line in the log. The profiles do not change.
 
-**In the simulator**, the program of the document is read back through the machine: the part appears as in the drawing, as the operator sees it. The position cards show these values. The block of material is at least the table of the machine.
-
-## 7. Tests
-
-Without a window (see the header of each file for what it checks):
-
-| Test | Checks |
-|---|---|
-| `test_tools` | the table of tools (numbers, text and file, old lines), the values given to an operation, the operation saved and read again (old operation), the oblique plunge (line, arc, next passes, no room), the table of cutting data, the machines (area, axes, arcs, table) |
-| `test_postpro_machine` | the real post-processor with the python of the system on a machine without reversed axis, and with X, Y, X and Y, Z reversed, lines and arcs, and the warning of a path out of the area |
-| `test_sim_core` | among others, the reversed axes of the simulator (`SimProgram::mirror`) |
-| `test_sim_torch` | the cut through of a torch above the top of the block |
-| `test_parallel` | the regions of a pocket computed on several threads give the same toolpath as the sequential computation |
-
-Build each one with its `build_*.bat` in `tests/cpp`, then run the `.exe`; the exit code is 0 when everything passes. Set `OPP_PROFILE` to a temporary folder if you run the application or the tests and do not want them to touch your settings.
+In the simulator, the program of the document is read back through the machine: the part appears as in the drawing, as the operator sees it. The position cards show these values. The block of material is at least the table of the machine.
