@@ -99,7 +99,7 @@ The **Operation** tab lists the operations and, under each, its machining (pocke
 
 <img src="img/ui-toolbar-top.en.png" alt="Display bar" width="240">
 
-The top bar acts on the display: **fit the drawing** in the window (Home key), **show or hide all the toolpaths**, show the machining **direction**, show their **start**, and **update**: recompute the texts linked to a curve, then the toolpaths from their shapes (useful after a change in the drawing). A **Group** icon follows them: it gathers the selection into a group, then becomes **Ungroup** (checked) when the selection is a group (see "Groups", chapter 4).
+The top bar acts on the display: **fit the drawing** in the window (Home key), **show or hide all the toolpaths**, show the machining **direction**, show their **start**, and **update**: recompute the texts linked to a curve, then the toolpaths from their shapes (useful after a change in the drawing). A **Group** icon follows them: it gathers the selection into a group, then becomes **Ungroup** (checked) when the selection is a group (see "Groups", chapter 4). When a text is selected, a **Link** icon appears after it: it links the text to a curve and stays checked while it is linked; a click unchecks it and removes the link.
 
 <img src="img/ui-toolbar-right.en.png" alt="Drawing tools bar" width="70">
 
@@ -271,7 +271,7 @@ An **operation** gathers the settings of one tool and the machining which uses i
 | Speed, Clockwise | spindle speed and direction |
 | Cooling | none, flood or mist |
 | Feed, Plunge | cutting feed, plunge feed |
-| Length compensation | number of the length offset (leave empty otherwise) |
+| Length comp. | number of the length offset (leave empty otherwise) |
 | Origin | Z height of the surface of the material |
 | Depth | final depth (negative, under the origin) |
 | Pass depth | depth removed at each pass: the depth is reached in several passes |
@@ -478,7 +478,7 @@ The drawing has four layers: **Edge** (the outer circle, which will be cut out),
 **1. The text around the circle.**
 
 1. Create the guide circle, then a text with the **T** tool (Arial, bold, height 16 mm).
-2. Select the text, choose **Drawing / Link the text to the object** (or the button of its properties) and click the guide circle. The text follows the curve; its letters keep their size.
+2. Select the text, choose **Drawing / Link the text to the object** (or the icon of the top bar) and click the guide circle. The text follows the curve; its letters keep their size.
 3. In the properties of the text, **Position** chooses the side: *Above* puts the letters outside the circle, *Below* inside. **Start** moves the start of the text along the curve, **Spacing** spreads the letters. On a closed curve the text goes round; on an open curve it goes on in a straight line past the end.
 4. The text follows its curve when the curve is moved with the mouse or when the origin or the unit is changed; in the other cases, the *update* button of the top bar reads the curve again. A text shorter than the circle leaves a gap: the example repeats its pattern to go all the way round.
 

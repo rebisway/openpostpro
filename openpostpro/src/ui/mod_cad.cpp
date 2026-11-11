@@ -115,7 +115,7 @@ ModCad::ModCad(Window* window) : Module(window)
 	_textures["BTN_DOWN"] = _render->load_texture("down.png");
 	_textures["TEXT_LINK_PICK"] = _render->load_texture("link.png");
 	_textures["TEXT_REFRESH"] = _render->load_texture("refresh.png");
-	_textures["DRAWING_REMOVE_REFERENCE_TO_TEXT"] = _render->load_texture("unlink.png");
+	_textures["DRAWING_REMOVE_REFERENCE_TO_TEXT"] = _render->load_texture("link.png");
 }
 
 ModCad::~ModCad()
@@ -197,6 +197,52 @@ void ModCad::select(std::vector<int> ids)
 				_document->select(s);
 		}
 	}
+}
+
+// the kind of an item of the project tree: a selection mixes only items of the same kind
+static int tree_kind(Graphic* g)
+{
+	return g->type() == GraphicType::Layer ? 0 : g->type() == GraphicType::Group ? 1 : g->toolpath() ? 2 : 3;
+}
+
+// a click on an item of the project tree: Ctrl adds it to the selection (or removes it), Shift selects the items between the last
+// click and this one (done by tree_range, once the list is complete)
+void ModCad::tree_select(Graphic* g)
+{
+	const ImGuiIO& io = ImGui::GetIO();
+	bool same = !_document->selected().empty() && tree_kind(_document->selected()[0]) == tree_kind(g);
+	if (io.KeyCtrl && same)
+	{
+		if (g->selected())
+			_document->unselect(g);
+		else
+			_document->select(g);
+		_tree_anchor = g;
+	}
+	else if (io.KeyShift && same && _tree_anchor != nullptr)
+		_tree_target = g;
+	else
+	{
+		select(g);
+		_tree_anchor = g;
+	}
+}
+
+void ModCad::tree_range()
+{
+	Graphic* target = _tree_target;
+	_tree_target = nullptr;
+	if (target == nullptr || _tree_anchor == nullptr)
+		return;
+	auto a = std::find(_tree_order.begin(), _tree_order.end(), _tree_anchor);
+	auto b = std::find(_tree_order.begin(), _tree_order.end(), target);
+	if (a == _tree_order.end() || b == _tree_order.end())
+		return;
+	if (a > b)
+		std::swap(a, b);
+	_document->unselect_all();
+	for (auto it = a; it <= b; ++it)
+		_document->select(*it);
 }
 
 void ModCad::selecting(Shape* shape)
@@ -1340,6 +1386,7 @@ void ModCad::render_GUI()
 					_document->down(_document->selected()[0]);
 			}
 
+			_tree_order.clear();
 			for (Layer* l : _document->layers())
 			{
 				// Layer name is displayed if not in edition mode (F2 pressed)
@@ -1356,10 +1403,14 @@ void ModCad::render_GUI()
 				if (l->locked() && !(l->selected() && _f2))
 					name = l->name() + " (" + Lang::t("LOCKED") + ")###" + l->name();
 
-				if (ImGui::TreeNodeEx(name.c_str(), hflags))
+				if (_collapse_layers)
+					ImGui::SetNextItemOpen(false, ImGuiCond_Always);
+				bool layer_open = ImGui::TreeNodeEx(name.c_str(), hflags);
+				_tree_order.push_back(l);
+				if (layer_open)
 				{
 					if (ImGui::IsItemClicked())
-						select(l);
+						tree_select(l);
 
 					// if F2 key pressed, display InputText instead
 					if (_f2 && l->selected())
@@ -1402,8 +1453,9 @@ void ModCad::render_GUI()
 							}
 							if (ImGui::TreeNodeEx(shown.c_str(), bflags))
 							{
+								_tree_order.push_back(s);
 								if (ImGui::IsItemClicked())
-									select(s);
+									tree_select(s);
 								if (_f2 && s->selected())
 								{
 									ImGui::SameLine();
@@ -1443,8 +1495,9 @@ void ModCad::render_GUI()
 						}
 						if (ImGui::TreeNodeEx(name.c_str(), nflags))
 						{
+							_tree_order.push_back(s);
 							if (ImGui::IsItemClicked())
-								select(s);
+								tree_select(s);
 
 							// if F2 key pressed, display InputText instead
 							if (_f2 && s->selected())
@@ -1463,6 +1516,8 @@ void ModCad::render_GUI()
 					}
 				}
 			}
+			_collapse_layers = false;
+			tree_range();
 			ImGui::EndTabItem();
 		}
 		if (ImGui::BeginTabItem(Lang::l("GROUP"), 0, _tab_flags))
@@ -1492,6 +1547,7 @@ void ModCad::render_GUI()
 			}
 
 			_tab_flags = 0;
+			_tree_order.clear();
 			for (Group* g : _document->groups())
 			{
 				// Group name is displayed if not in edition mode (F2 pressed)
@@ -1506,10 +1562,12 @@ void ModCad::render_GUI()
 
 				}
 	
-				if (ImGui::TreeNodeEx(name.c_str(), hflags))
+				bool group_open = ImGui::TreeNodeEx(name.c_str(), hflags);
+				_tree_order.push_back(g);
+				if (group_open)
 				{
 					if (ImGui::IsItemClicked())
-						select(g);
+						tree_select(g);
 
 					// if F2 key pressed, display InputText instead
 					if (_f2 && g->selected())
@@ -1541,8 +1599,9 @@ void ModCad::render_GUI()
 						}
 						if (ImGui::TreeNodeEx(name.c_str(), nflags))
 						{
+							_tree_order.push_back(t);
 							if (ImGui::IsItemClicked())
-								select(t);
+								tree_select(t);
 
 							// if F2 key pressed, display InputText instead
 							if (_f2 && t->selected())
@@ -1561,6 +1620,7 @@ void ModCad::render_GUI()
 					}
 				}
 			}
+			tree_range();
 			ImGui::EndTabItem();
 		}
 		ImGui::EndTabBar();
@@ -1580,7 +1640,10 @@ void ModCad::render_GUI()
 		// a button is the icon and its frame (1 pixel on each side); the window adds its padding
 		const float size = 20.0f, space = ImGui::GetStyle().ItemSpacing.x;
 		const ImVec2 pad = ImGui::GetStyle().WindowPadding;
-		const float box_w = 6 * (size + 2) + 5 * space + 2 * pad.x, box_h = size + 2 + 2 * pad.y;
+		// the link of a text to a curve: one more icon when a single text is selected, checked when the text is linked
+		Text* linkable = _document->selected().size() == 1 && _document->selected()[0]->type() == GraphicType::Text ? (Text*)_document->selected()[0] : nullptr;
+		const int icons = linkable != nullptr ? 7 : 6;
+		const float box_w = icons * (size + 2) + (icons - 1) * space + 2 * pad.x, box_h = size + 2 + 2 * pad.y;
 		ImGui::SetNextWindowPos(ImVec2((_width - box_w) / 2, 60.0f));
 		ImGui::SetNextWindowSize(ImVec2(box_w, box_h));
 		ImGui::Begin("###CAM_DISPLAY", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoResize);
@@ -1618,6 +1681,23 @@ void ModCad::render_GUI()
 				cad_block_explode();
 			else
 				cad_block_create();
+		}
+		if (linkable != nullptr)
+		{
+			ImGui::SameLine();
+			bool linked = linkable->reference() != -1;
+			if (set_shortcut(linked ? "DRAWING_REMOVE_REFERENCE_TO_TEXT" : "TEXT_LINK_PICK", ImVec2(size, size), linked))
+			{
+				if (linked)
+				{
+					auto before = linkable->write();
+					linkable->reference(-1);
+					linkable->compute();
+					History::undo(HistoryActionType::Modify, before);
+				}
+				else
+					_link_text = linkable;
+			}
 		}
 		ImGui::End();
 	}
@@ -1998,17 +2078,27 @@ void ModCad::render_GUI()
 		{
 			_display_delete_layer = false;
 
-			auto layer = (Layer*)_document->selected()[0];
-
-			std::string undo = "";
-			// History management
-			for (Shape* s : layer->shapes())
-				undo += s->write() + '\n';
-			History::undo(HistoryActionType::Delete, undo + layer->write());
-
-			_document->remove_layer(layer);
-			// the deleted one must not stay selected: the layer which takes its place is selected
-			select(_document->current_layer());
+			std::vector<Graphic*> selection(_document->selected());
+			if (!selection.empty() && selection[0]->type() == GraphicType::Layer)
+			{
+				History::begin_undo_record();
+				for (Graphic* g : selection)
+				{
+					Layer* layer = (Layer*)g;
+					std::string undo = "";
+					// History management
+					for (Shape* s : layer->shapes())
+						undo += s->write() + '\n';
+					History::undo(HistoryActionType::Delete, undo + layer->write());
+					_document->remove_layer(layer);
+				}
+				History::end_undo_record();
+				// the deleted ones must not stay selected: the layer which takes their place is selected
+				_document->selected().clear();
+				select(_document->current_layer());
+			}
+			else
+				remove();
 		}
 		else if (result == MessageBoxStatus::No)
 			_display_delete_layer = false;
@@ -2023,16 +2113,26 @@ void ModCad::render_GUI()
 		{
 			_display_delete_group = false;
 
-			auto group = (Group*)_document->selected()[0];
-
-			std::string undo = "";
-			// History management
-			for (Toolpath* t : group->toolpaths())
-				undo += t->write() + '\n';
-			History::undo(HistoryActionType::Delete, undo + group->write());
-
-			_document->remove_group(group);
-			select(_document->current_group());
+			std::vector<Graphic*> selection(_document->selected());
+			if (!selection.empty() && selection[0]->type() == GraphicType::Group)
+			{
+				History::begin_undo_record();
+				for (Graphic* g : selection)
+				{
+					Group* group = (Group*)g;
+					std::string undo = "";
+					// History management
+					for (Toolpath* t : group->toolpaths())
+						undo += t->write() + '\n';
+					History::undo(HistoryActionType::Delete, undo + group->write());
+					_document->remove_group(group);
+				}
+				History::end_undo_record();
+				_document->selected().clear();
+				select(_document->current_group());
+			}
+			else
+				remove();
 		}
 		else if (result == MessageBoxStatus::No)
 			_display_delete_group = false;
@@ -2756,10 +2856,9 @@ void ModCad::add_layer()
 
 void ModCad::delete_layer()
 {
-	if (_document->selected().size() == 1 && _document->selected()[0]->type() == GraphicType::Layer)
-	{
+	// the selected layers, or the selected shapes: after a confirmation
+	if (!_document->selected().empty() && (_document->selected()[0]->type() == GraphicType::Layer || _document->selected()[0]->shape()))
 		_display_delete_layer = true;
-	}
 }
 
 void ModCad::add_group()
@@ -2775,10 +2874,9 @@ void ModCad::add_group()
 
 void ModCad::delete_group()
 {
-	if (_document->selected().size() == 1 && _document->selected()[0]->type() == GraphicType::Group)
-	{
+	// the selected operations, or the selected machinings: after a confirmation
+	if (!_document->selected().empty() && (_document->selected()[0]->type() == GraphicType::Group || _document->selected()[0]->toolpath()))
 		_display_delete_group = true;
-	}
 }
 
 std::vector<Shape*> ModCad::get_selection()
@@ -4835,18 +4933,17 @@ static void nest_help(const char* key)
 	}
 }
 
-// a turning arc: something is going on
-static void nest_spinner(float radius)
+// two buttons at the bottom of a window: centered, below a separator and a margin
+static void nest_buttons(const char* first, const char* second, bool& first_clicked, bool& second_clicked)
 {
-	ImDrawList* list = ImGui::GetWindowDrawList();
-	ImVec2 position = ImGui::GetCursorScreenPos();
-	ImVec2 center(position.x + radius, position.y + radius);
-	const float pi = 3.14159265f;
-	float start = (float)ImGui::GetTime() * 6.0f;
-	for (int i = 0; i <= 24; i++)
-		list->PathLineTo(ImVec2(center.x + std::cos(start + 1.5f * pi * i / 24) * radius, center.y + std::sin(start + 1.5f * pi * i / 24) * radius));
-	list->PathStroke(ImGui::GetColorU32(ImGuiCol_PlotHistogram), 0, radius * 0.3f);
-	ImGui::Dummy(ImVec2(radius * 2, radius * 2));
+	ImGui::Spacing();
+	ImGui::Separator();
+	ImGui::Spacing();
+	float width = ImGui::CalcTextSize(first).x + ImGui::CalcTextSize(second).x + ImGui::GetStyle().FramePadding.x * 4 + ImGui::GetStyle().ItemSpacing.x;
+	ImGui::SetCursorPosX(std::max(ImGui::GetStyle().WindowPadding.x, (ImGui::GetWindowWidth() - width) / 2));
+	first_clicked = ImGui::Button(first);
+	ImGui::SameLine();
+	second_clicked = ImGui::Button(second);
 }
 
 // the calculation of the nesting: a window which blocks the others, the time it takes, and the way to stop it
@@ -4868,9 +4965,6 @@ void ModCad::draw_nesting_wait()
 	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 	if (ImGui::BeginPopupModal((std::string(Lang::l("NESTING_WAIT_TITLE")) + popup).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove))
 	{
-		nest_spinner(14);
-		ImGui::SameLine();
-		ImGui::AlignTextToFramePadding();
 		ImGui::TextUnformatted(Lang::l("NESTING_WAIT"));
 		ImGui::ProgressBar(_nest_progress.done, ImVec2(320, 0));
 		float length = _nest_progress.length;
@@ -4878,10 +4972,11 @@ void ModCad::draw_nesting_wait()
 			ImGui::Text("%s : %.1f", Lang::l("NESTING_BEST"), length);
 		if (_nest_job_options.algorithm != nesting::Algorithm::Greedy)
 			ImGui::Text("%s : %d", Lang::l("NESTING_TRIES"), _nest_progress.tries.load());
-		if (ImGui::Button(Lang::l("NESTING_STOP")))
+		bool stop, cancel;
+		nest_buttons(Lang::l("NESTING_STOP"), Lang::l("BTN_CANCEL"), stop, cancel);
+		if (stop)
 			_nest_progress.stop = true;
-		ImGui::SameLine();
-		if (ImGui::Button(Lang::l("BTN_CANCEL")))
+		if (cancel)
 		{
 			_nest_discard = true;
 			_nest_progress.stop = true;
@@ -4896,7 +4991,7 @@ void ModCad::draw_nesting()
 	if (!_display_nesting || _nest_thread.joinable())
 		return;
 
-	ImGui::SetNextWindowSize(ImVec2(520, 0), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
 	if (!ImGui::Begin((std::string(Lang::l("NESTING")) + "###NESTING_WINDOW").c_str(), &_display_nesting, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		ImGui::End();
@@ -4954,13 +5049,14 @@ void ModCad::draw_nesting()
 		ImGui::EndTable();
 	}
 
-	if (ImGui::Button(Lang::l("NESTING_RUN")))
+	bool run, cancel;
+	nest_buttons(Lang::l("NESTING_RUN"), Lang::l("BTN_CANCEL"), run, cancel);
+	if (run)
 	{
 		cad_nesting_run();
 		_display_nesting = false;
 	}
-	ImGui::SameLine();
-	if (ImGui::Button(Lang::l("BTN_CANCEL")))
+	if (cancel)
 		_display_nesting = false;
 	ImGui::End();
 }
@@ -5122,6 +5218,8 @@ void ModCad::cad_nesting_end()
 	}
 	_document->unselect_all();
 	_document->select(created);
+	// the layers are folded in the project tree: the result is in the drawing
+	_collapse_layers = true;
 
 	// a shape which can not be copied is missing in the parts: it is said, not hidden
 	if (not_copied > 0)
@@ -5243,6 +5341,9 @@ void ModCad::cam_follow()
 					_document->select(f);
 					_tab_flags = ImGuiTabItemFlags_SetSelected;
 				}
+				// several machinings at once: the operation is selected, to set them all
+				if (curves.size() > 1)
+					select(_document->current_group());
 			}
 	}
 }
@@ -5500,6 +5601,9 @@ void ModCad::cam_offset(bool interior)
 					_document->select(o);
 					_tab_flags = ImGuiTabItemFlags_SetSelected;
 				}
+				// several machinings at once: the operation is selected, to set them all
+				if (curves.size() > 1)
+					select(_document->current_group());
 			}
 		}
 		Logger::log("cad_offset process time (ms): " + std::to_string(std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(std::chrono::high_resolution_clock::now() - t).count()));

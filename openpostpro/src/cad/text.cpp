@@ -597,24 +597,14 @@ void Text::draw_anchors()
 		_a1->draw();
 }
 
-// the actions on the link with a curve: icons above the table of the properties (a tooltip tells what each one does)
+// the update of a text linked to a curve: an icon above the table of the properties
 void Text::properties_toolbar()
 {
 	if (!on_button)
 		return;
-	if (_reference == -1)
-	{
-		if (on_button("TEXT_LINK_PICK") && on_link_request)
-			on_link_request(this);
-	}
-	else
-	{
-		if (on_button("TEXT_REFRESH") && on_refresh_request)
-			on_refresh_request(this);
-		ImGui::SameLine();
-		if (on_button("DRAWING_REMOVE_REFERENCE_TO_TEXT"))
-			modify([&] { _reference = -1; compute(); });
-	}
+	// the link itself is set or removed with the icon of the top toolbar
+	if (_reference != -1 && on_button("TEXT_REFRESH") && on_refresh_request)
+		on_refresh_request(this);
 }
 
 void Text::properties()

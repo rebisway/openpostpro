@@ -99,7 +99,7 @@ L'onglet **Opération** liste les opérations et, en dessous de chacune, ses usi
 
 <img src="img/ui-toolbar-top.fr.png" alt="Barre d'affichage" width="240">
 
-La barre du haut agit sur l'affichage : **cadrer le dessin** dans la fenêtre (touche Début), **afficher ou cacher tous les usinages**, afficher le **sens** des usinages, afficher leur **départ**, et **mettre à jour** : recalculer les textes liés à une courbe, puis les usinages à partir de leurs formes (utile après une modification du dessin). Une icône **Grouper** les suit : elle rassemble la sélection en un groupe, puis devient **Dégrouper** (cochée) quand la sélection est un groupe (voir « Les groupes », chapitre 4).
+La barre du haut agit sur l'affichage : **cadrer le dessin** dans la fenêtre (touche Début), **afficher ou cacher tous les usinages**, afficher le **sens** des usinages, afficher leur **départ**, et **mettre à jour** : recalculer les textes liés à une courbe, puis les usinages à partir de leurs formes (utile après une modification du dessin). Une icône **Grouper** les suit : elle rassemble la sélection en un groupe, puis devient **Dégrouper** (cochée) quand la sélection est un groupe (voir « Les groupes », chapitre 4). Quand un texte est sélectionné, une icône **Lier** apparaît à la suite : elle lie le texte à une courbe et reste cochée tant qu'il l'est ; un clic la décoche et supprime le lien.
 
 <img src="img/ui-toolbar-right.fr.png" alt="Barre des outils de dessin" width="70">
 
@@ -271,7 +271,7 @@ Une **opération** rassemble les réglages d'un outil et les usinages qui l'util
 | Rotation, Sens horaire | vitesse et sens de la broche |
 | Refroidissement | aucun, arrosage ou brouillard |
 | Avance, Descente | avance de coupe, avance de plongée |
-| Compensation longueur | numéro de correcteur de longueur (laisser vide sinon) |
+| Corr. longueur | numéro de correcteur de longueur (laisser vide sinon) |
 | Origine | hauteur Z de la surface de la matière |
 | Profondeur | profondeur finale (négative, sous l'origine) |
 | Hauteur de passe | profondeur retirée à chaque passe : la profondeur est atteinte en plusieurs passes |
@@ -478,7 +478,7 @@ Le dessin tient en quatre calques : **Bord** (le cercle extérieur, qui sera dé
 **1. Le texte autour du cercle.**
 
 1. Créez le cercle guide, puis un texte avec l'outil **T** (police Arial, gras, hauteur 16 mm).
-2. Sélectionnez le texte, choisissez **Dessin / Lier le texte à l'objet** (ou le bouton de ses propriétés) et cliquez le cercle guide. Le texte épouse la courbe ; ses lettres gardent leur taille.
+2. Sélectionnez le texte, choisissez **Dessin / Lier le texte à l'objet** (ou l'icône de la barre du haut) et cliquez le cercle guide. Le texte épouse la courbe ; ses lettres gardent leur taille.
 3. Dans les propriétés du texte, **Position** choisit le côté : *Au-dessus* place les lettres à l'extérieur du cercle, *En dessous* à l'intérieur. **Début** décale le départ du texte le long de la courbe, **Inter-espace** écarte les lettres. Sur une courbe fermée, le texte fait le tour ; sur une courbe ouverte, il continue en ligne droite après le bout.
 4. Le texte suit sa courbe quand elle est déplacée à la souris ou quand l'origine ou l'unité change ; dans les autres cas, le bouton *mettre à jour* de la barre du haut relit la courbe. Un texte plus court que le cercle laisse un vide : l'exemple répète son motif pour faire le tour complet.
 

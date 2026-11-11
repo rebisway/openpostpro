@@ -170,6 +170,13 @@ private:
 	void select(std::vector<Shape*> shapes);
 	void select(std::vector<int> ids);
 	void selecting(Shape* shape);
+	// project tree: selection of several items, and the layers folded after a nesting
+	void tree_select(Graphic* g);
+	void tree_range();
+	Graphic* _tree_anchor = nullptr;
+	Graphic* _tree_target = nullptr;
+	std::vector<Graphic*> _tree_order;
+	bool _collapse_layers = false;
 	void construct_shape();
 	void remove(std::vector<Shape*> shapes);
 	void add(std::vector<Shape*> shapes);
