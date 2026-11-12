@@ -60,6 +60,9 @@ list(REMOVE_ITEM SOURCES ${SRC}/common/pch.cpp)		# only creates the precompiled 
 
 add_executable(openpostpro ${SOURCES})
 
+# the program and its resources end in bin/ (like x64/Release on Windows); the build tree stays apart
+set_target_properties(openpostpro PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+
 foreach(module ${MODULES})
 	target_include_directories(openpostpro PRIVATE ${SRC}/${module})
 endforeach()
@@ -107,3 +110,56 @@ foreach(resource ${RESOURCES})
 			${CMAKE_CURRENT_SOURCE_DIR}/${from} $<TARGET_FILE_DIR:openpostpro>/${to}
 		VERBATIM)
 endforeach()
+
+# ---------------------------------------------------------------------------------------------
+# Installation and Debian package: cmake --build ../build-linux && (cd ../build-linux && cpack -G DEB)
+# The program finds its resources beside the executable (through /proc/self/exe, which follows
+# the link of /usr/bin), so everything goes in /usr/lib/openpostpro.
+# ---------------------------------------------------------------------------------------------
+set(OPP_LIB lib/openpostpro)
+
+install(TARGETS openpostpro RUNTIME DESTINATION ${OPP_LIB})
+foreach(resource ${RESOURCES})
+	string(REPLACE ":" ";" pair ${resource})
+	list(GET pair 0 from)
+	list(GET pair 1 to)
+	install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/${from}/ DESTINATION ${OPP_LIB}/${to}
+		PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
+endforeach()
+
+install(CODE "
+	file(MAKE_DIRECTORY \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin\")
+	execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink ../${OPP_LIB}/openpostpro \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/openpostpro\")
+")
+
+install(FILES linux/openpostpro.desktop DESTINATION share/applications)
+foreach(size 16 32 64 128 256)
+	install(FILES textures/icon_${size}.png DESTINATION share/icons/hicolor/${size}x${size}/apps RENAME openpostpro.png)
+endforeach()
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../LICENSE DESTINATION share/doc/openpostpro RENAME copyright)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../THIRD_PARTY_LICENSES.md DESTINATION share/doc/openpostpro)
+
+# the version comes from src/common/version.h
+file(STRINGS ${SRC}/common/version.h version_lines REGEX "^#define APP_VERSION_(MAJOR|MINOR|PATCH) ")
+foreach(line ${version_lines})
+	string(REGEX REPLACE "^#define (APP_VERSION_[A-Z]+) +([0-9]+).*" "\\1;\\2" pair "${line}")
+	list(GET pair 0 key)
+	list(GET pair 1 value)
+	set(${key} ${value})
+endforeach()
+
+set(CPACK_PACKAGE_NAME "openpostpro")
+set(CPACK_PACKAGE_VERSION "${APP_VERSION_MAJOR}.${APP_VERSION_MINOR}.${APP_VERSION_PATCH}")
+set(CPACK_PACKAGE_CONTACT "Thomas Gourgnier <contact@rebisway.com>")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "2D CAD/CAM with Python post-processors for CNC machines")
+set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/rebisway/openpostpro")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
+set(CPACK_STRIP_FILES ON)
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+# Python 3.12 or later: the program uses its stable ABI and needs the standard library
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "python3 (>= 3.12)")
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "python3-tk, zenity | kdialog")
+include(CPack)

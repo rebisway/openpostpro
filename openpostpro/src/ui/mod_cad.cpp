@@ -1266,7 +1266,7 @@ void ModCad::key_pressed(int key, int scancode, int action, int mods)
 void ModCad::render_frame()
 {
 	// clear opengl window
-	_render->clear(config.background2DColor.r, config.background2DColor.g, config.background2DColor.b, config.background2DColor.a);
+	_render->clear(config.background2DColor.r, config.background2DColor.g, config.background2DColor.b, 1.0f);
 
 	// set the projecton/modelview matrix computed by camera
 	_render->use_program("vertices");

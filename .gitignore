@@ -24,4 +24,5 @@ simulator-notes.md
 
 # Linux build output
 build-linux/
+openpostpro/bin/
 *.aps

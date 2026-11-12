@@ -64,6 +64,8 @@ void OpenGlRenderer::initialize_GLFW()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To keep macOS happy; should not be necessary
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We do not want the legacy OpenGL
+	// no alpha in the framebuffer: the background is cleared with an alpha of 0, which a compositor (Wayland) would blend with the desktop
+	glfwWindowHint(GLFW_ALPHA_BITS, 0);
 }
 
 bool OpenGlRenderer::load_functions()

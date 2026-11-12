@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=OpenPostPro
+GenericName=CAD/CAM and post-processor
+GenericName[fr]=FAO et post-processeur
+Comment=Draw, prepare machining operations and generate the program of a CNC machine
+Comment[fr]=Dessiner, préparer les usinages et générer le programme d'une machine CNC
+Exec=openpostpro
+Icon=openpostpro
+Terminal=false
+Categories=Graphics;Engineering;
+Keywords=CNC;CAM;CAD;G-code;DXF;plasma;milling;
