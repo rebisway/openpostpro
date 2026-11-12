@@ -1,0 +1,20 @@
+#!/bin/sh
+# Links libpython3.so (which the program asks for) to the shared library of the newest Python of the system, from 3.12.
+set -e
+
+if [ "$1" = "configure" ]; then
+	dir=/usr/lib/openpostpro
+	for version in 3.15 3.14 3.13 3.12; do
+		for folder in /usr/lib/*-linux-gnu /usr/lib64 /usr/lib /usr/local/lib; do
+			library="$folder/libpython$version.so.1.0"
+			if [ -e "$library" ]; then
+				ln -sf "$library" "$dir/libpython3.so"
+				exit 0
+			fi
+		done
+	done
+	echo "openpostpro: no libpython3.12 or later found, install the package of the shared library of Python (libpython3.12 or later)" >&2
+	exit 1
+fi
+
+exit 0

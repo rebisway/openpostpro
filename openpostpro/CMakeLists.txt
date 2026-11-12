@@ -162,4 +162,10 @@ set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 # Python 3.12 or later: the program uses its stable ABI and needs the standard library
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "python3 (>= 3.12)")
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "python3-tk, zenity | kdialog")
+# After the package is made, a script makes it independent of the version of Python of the build system (needs patchelf):
+# see linux/portable-python.sh
+if(NOT CMAKE_VERSION VERSION_LESS 3.19)
+	set(CPACK_OPP_LINUX_DIR ${CMAKE_CURRENT_SOURCE_DIR}/linux)
+	set(CPACK_POST_BUILD_SCRIPTS ${CMAKE_CURRENT_SOURCE_DIR}/linux/portable_python.cmake)
+endif()
 include(CPack)

@@ -40,7 +40,7 @@ cpack -G DEB
 sudo apt install ./openpostpro_*.deb
 ```
 
-The package installs the program and its resources in `/usr/lib/openpostpro` (a link in `/usr/bin`), the menu entry (Graphics) and the icons. The dependencies are computed from the libraries of the build (`dpkg-shlibdeps`), plus `python3 (>= 3.12)`; `python3-tk` and `zenity` or `kdialog` are recommended. Build it on the oldest system you want to support: the package needs the libraries of the system where it is built, so a package made on Ubuntu 24.04 or Linux Mint 22 installs on those and on the newer ones.
+The package installs the program and its resources in `/usr/lib/openpostpro` (a link in `/usr/bin`), the menu entry (Graphics) and the icons. The dependencies are computed from the libraries of the build (`dpkg-shlibdeps`), plus `python3 (>= 3.12)`; `python3-tk` and `zenity` or `kdialog` are recommended. Build it on the oldest system you want to support (Ubuntu 24.04 or Linux Mint 22), with `patchelf` installed (`sudo apt install patchelf`): the package needs the libraries of the system where it is built. After `cpack`, the script `linux/portable-python.sh` makes the package independent of the version of Python: the program asks for `libpython3.so` instead of `libpython3.X.so`, and the script `postinst` links it to the newest `libpython3.X.so.1.0` of the system (3.12 to 3.15) at the installation. Without `patchelf` the package is made anyway, but it is tied to the Python of the build system.
 
 Debian 12 has Python 3.11 only: the package does not install there. Python 3.12 or later can be built by hand (`./configure --enable-shared --prefix=/usr/local && make && sudo make install && sudo ldconfig`), then OpenPostPro built from the sources on that system.
 
