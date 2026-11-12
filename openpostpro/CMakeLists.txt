@@ -160,7 +160,8 @@ set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_SECTION "graphics")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
 # Python 3.12 or later: the program uses its stable ABI and needs the standard library
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "python3 (>= 3.12)")
+# libgl1: the program loads libGL.so.1 at the start (dlopen), which the computed dependencies do not show
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "python3 (>= 3.12), libgl1")
 set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "python3-tk, zenity | kdialog")
 # After the package is made, a script makes it independent of the version of Python of the build system (needs patchelf):
 # see linux/portable-python.sh
