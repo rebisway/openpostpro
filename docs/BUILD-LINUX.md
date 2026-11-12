@@ -34,6 +34,14 @@ User data (settings, cloned scripts and post-processors, log) are in `~/.openpos
 
 ## Debian package
 
+One command does everything (installs the packages of the build, compiles, makes the package) on Ubuntu 24.04, Linux Mint 22 or a derivative:
+
+```bash
+sh openpostpro/linux/build-deb.sh
+```
+
+The package is then in `openpostpro/build-linux`. The steps by hand:
+
 ```bash
 cd build-linux
 cpack -G DEB
