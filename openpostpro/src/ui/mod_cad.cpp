@@ -320,6 +320,7 @@ void ModCad::construct_shape()
 	case GraphicType::Text:
 		_construction_shape = nullptr;
 		_cad_creation = GraphicType::None;
+		_creation_done = true;
 		break;
 	}
 }
@@ -727,12 +728,15 @@ void ModCad::left_button_up() {
 	// the click which chose the curve of a text: the text, selected by the link, stays selected
 	bool link_done = _link_done;
 	_link_done = false;
+	// the click which placed a text ended the creation: releasing the button must not select again (it would unselect the new text)
+	bool creation_done = _creation_done;
+	_creation_done = false;
 
 	// the shapes have been moved or modified: the texts follow their curves
 	if (moved)
 		refresh_texts();
 
-	if (!link_done && (_cad_creation == GraphicType::None || _cad_creation == GraphicType::CadSymmetry))
+	if (!link_done && !creation_done && (_cad_creation == GraphicType::None || _cad_creation == GraphicType::CadSymmetry))
 	{
 		std::vector<Shape*> selection;
 		// cursor is not over a shape, so we are looking for every shapes inside the region

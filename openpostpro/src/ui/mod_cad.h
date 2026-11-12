@@ -295,6 +295,7 @@ public:
 	Text* _link_text = nullptr;
 	// the click which chose the curve is not a selection: the text stays selected when the button is released
 	bool _link_done = false;
+	bool _creation_done = false;		// the click which placed a text: the text stays selected when the button is released
 	void draw_link_hint();
 	std::vector<Shape*> look_for_siblings(Shape* s);
 	void connect_shapes();
