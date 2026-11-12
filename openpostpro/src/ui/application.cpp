@@ -410,13 +410,26 @@ void Application::initialize()
 		}
 		if (_postpros.size() > 0)
 		{
-			if (config.postpro == "")
-				config.postpro = _postpros[0]->module();
+			// the default post-processor is the generic mill (the files come in the order of the system, not a stable one)
+			const std::string default_postpro = "generic_mill";
 
 			for (auto p : _postpros)
 			{
 				if (config.postpro == p->module())
 					_current_postpro = p;
+			}
+
+			// none chosen yet, or the chosen one does not exist any more
+			if (_current_postpro == nullptr)
+			{
+				for (auto p : _postpros)
+				{
+					if (p->module() == default_postpro)
+						_current_postpro = p;
+				}
+				if (_current_postpro == nullptr)
+					_current_postpro = _postpros[0];
+				config.postpro = _current_postpro->module();
 			}
 		}
 	}
