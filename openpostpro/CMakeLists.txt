@@ -135,7 +135,8 @@ install(CODE "
 	execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink ../${OPP_LIB}/openpostpro \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/openpostpro\")
 ")
 
-install(FILES linux/openpostpro.desktop DESTINATION share/applications)
+# the desktop file has the same name as the AppStream id, so the software centers link the two
+install(FILES linux/openpostpro.desktop DESTINATION share/applications RENAME com.rebisway.openpostpro.desktop)
 # the data read by the software centers (GNOME Software, Discover): publisher, icon, description
 install(FILES linux/openpostpro.metainfo.xml DESTINATION share/metainfo RENAME com.rebisway.openpostpro.metainfo.xml)
 foreach(size 16 32 64 128 256)

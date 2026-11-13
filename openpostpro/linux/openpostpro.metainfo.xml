@@ -13,7 +13,7 @@
   <description>
     <p>Draw, prepare machining operations and generate the program of a CNC machine. Import DXF files, define the toolpaths and write the G-code with a post-processor in Python.</p>
   </description>
-  <launchable type="desktop-id">openpostpro.desktop</launchable>
+  <launchable type="desktop-id">com.rebisway.openpostpro.desktop</launchable>
   <icon type="stock">openpostpro</icon>
   <provides>
     <binary>openpostpro</binary>
