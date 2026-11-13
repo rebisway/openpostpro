@@ -127,6 +127,9 @@ foreach(resource ${RESOURCES})
 		PATTERN "__pycache__" EXCLUDE PATTERN "*.pyc" EXCLUDE)
 endforeach()
 
+# the example projects: the program looks for docs/examples beside itself (as in the release of Windows)
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../docs/examples/ DESTINATION ${OPP_LIB}/docs/examples FILES_MATCHING PATTERN "*.opp")
+
 install(CODE "
 	file(MAKE_DIRECTORY \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin\")
 	execute_process(COMMAND \${CMAKE_COMMAND} -E create_symlink ../${OPP_LIB}/openpostpro \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/bin/openpostpro\")
