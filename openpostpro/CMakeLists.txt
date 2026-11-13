@@ -136,6 +136,8 @@ install(CODE "
 ")
 
 install(FILES linux/openpostpro.desktop DESTINATION share/applications)
+# the data read by the software centers (GNOME Software, Discover): publisher, icon, description
+install(FILES linux/openpostpro.metainfo.xml DESTINATION share/metainfo RENAME com.rebisway.openpostpro.metainfo.xml)
 foreach(size 16 32 64 128 256)
 	install(FILES textures/icon_${size}.png DESTINATION share/icons/hicolor/${size}x${size}/apps RENAME openpostpro.png)
 endforeach()
@@ -154,6 +156,7 @@ endforeach()
 set(CPACK_PACKAGE_NAME "openpostpro")
 set(CPACK_PACKAGE_VERSION "${APP_VERSION_MAJOR}.${APP_VERSION_MINOR}.${APP_VERSION_PATCH}")
 set(CPACK_PACKAGE_CONTACT "Thomas Gourgnier <contact@rebisway.com>")
+set(CPACK_PACKAGE_VENDOR "Rebisway")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "2D CAD/CAM with Python post-processors for CNC machines")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/rebisway/openpostpro")
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
