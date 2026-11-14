@@ -72,7 +72,7 @@ Les opérations d'usinage ont des paramètres configurables. Le projet étant en
 
 Place des copies de pièces sur un panneau (**Dessin → Imbrication...**) : chaque pièce est un groupe, avec ses trous, et une pièce peut aller dans le trou d'une autre. Trois algorithmes au choix : **rapide** (quelques secondes), **recherche** (de nombreux ordres de pièces) et **minimisation du chevauchement** (le panneau est raccourci, puis les pièces qui se chevauchent sont déplacées et tournées jusqu'à ne plus rien chevaucher ; une disposition n'est gardée que si un test exact la confirme). Les deux derniers utilisent tous les cœurs du processeur pendant la durée donnée et tournent en arrière-plan, avec une fenêtre qui montre la progression et un bouton pour arrêter en gardant la meilleure disposition. Rotations tous les 90, 15, 5 ou 1 degré, distance entre pièces, marge, quantités par pièce. Le résultat est mis dans de nouveaux calques, le panneau dans un calque verrouillé.
 
-![Imbrication de six types de pièces sur une tôle](docs/img/nesting-result.fr.png)
+![Imbrication automatique de dizaines de pièces de plusieurs types sur une tôle](docs/img/nesting-result.fr.png)
 
 Guide : chapitre 12 du [manuel d'utilisation](docs/MANUAL.fr.md) · [User manual](docs/MANUAL.en.md)
 

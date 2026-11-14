@@ -72,7 +72,7 @@ CAM operations have configurable parameters. Because the project is still young,
 
 Place copies of parts on a sheet (**Drawing → Nesting...**): each part is a group, with its holes, and a part can go in the hole of another one. Three algorithms can be chosen: **fast** (a few seconds), **search** (many orders of the parts) and **overlap minimization** (the sheet is made shorter, then the parts which overlap are moved and turned until nothing overlaps; a layout is kept only if an exact test confirms it). The last two use all the cores of the processor for the time given and run in the background, with a window which shows the progress and a button to stop and keep the best layout. Rotations every 90, 15, 5 or 1 degree, distance between parts, margin, quantities per part. The result is put in new layers, with the sheet in a locked layer.
 
-![Nesting of six types of parts on a sheet](docs/img/nesting-result.en.png)
+![Automatic nesting of dozens of parts of several types on a sheet](docs/img/nesting-result.en.png)
 
 Guide: chapter 12 of the [user manual](docs/MANUAL.en.md) · [Manuel d'utilisation](docs/MANUAL.fr.md)
 
