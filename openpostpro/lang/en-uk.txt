@@ -375,7 +375,6 @@ PREF_COLOR_BACKGROUND=Background
 PREF_COLOR_LAYER=Default layer
 PREF_COLOR_OPERATION=Default operation
 PREF_COLOR_SELECTED=Selected
-PYTHON_PATH=Python folder (PYTHON_PATH)
 WORKSHOP_TOOLS=Tools...
 WORKSHOP_COMPENSATION=Automatic radius compensation
 WORKSHOP_ORGANIZE=Organize the toolpaths

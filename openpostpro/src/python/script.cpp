@@ -33,14 +33,7 @@ void Script::initialize_python()
 	Py_Initialize();
 	if (Py_IsInitialized())
 	{
-		std::string code = "import sys";
-		if (!config.python_path.empty())
-		{
-			auto p = stringex::replace(config.python_path, "\\", "/");
-			code += "\nsys.path.append('" + p + "')";
-		}
-
-		py_run_string(code.c_str());
+		py_run_string("import sys");
 	}
 	else
 	{

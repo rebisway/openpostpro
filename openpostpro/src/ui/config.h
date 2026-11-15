@@ -62,7 +62,6 @@ public:
 	int log_height = 200;				// height of this panel
 	bool display_output = false;
 
-	std::string python_path = "";
 
 	// language code (name of a file of the lang folder), empty keeps the default one
 	std::string language = "";

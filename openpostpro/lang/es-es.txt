@@ -375,7 +375,6 @@ PREF_COLOR_BACKGROUND=Fondo
 PREF_COLOR_LAYER=Capa por defecto
 PREF_COLOR_OPERATION=Operación por defecto
 PREF_COLOR_SELECTED=Seleccionado
-PYTHON_PATH=Carpeta de Python (PYTHON_PATH)
 WORKSHOP_TOOLS=Herramientas...
 WORKSHOP_COMPENSATION=Compensación de radio automática
 WORKSHOP_ORGANIZE=Organizar las operaciones

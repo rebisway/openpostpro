@@ -379,7 +379,6 @@ PREF_COLOR_BACKGROUND=Fond
 PREF_COLOR_LAYER=Calque par défaut
 PREF_COLOR_OPERATION=Opération par défaut
 PREF_COLOR_SELECTED=Sélection
-PYTHON_PATH=Dossier de Python (PYTHON_PATH)
 WORKSHOP_TOOLS=Outils...
 WORKSHOP_COMPENSATION=Compensation de rayon automatique
 WORKSHOP_ORGANIZE=Organiser les usinages

@@ -157,7 +157,7 @@ The delivered scripts are sorted by category: *Import*, *Modify*, *Generation*, 
 
 ![The preferences](img/win-preferences.en.png)
 
-In the preferences: open the last file at start, small axes, grid, construction lines, crosses instead of points, display of the machining direction and start, folder of Python (`PYTHON_PATH`, if Python is not in the PATH), language and default unit; the **Colour** tab sets the colours of the drawing, the toolpaths and the simulation.
+In the preferences: open the last file at start, small axes, grid, construction lines, crosses instead of points, display of the machining direction and start, language and default unit; the **Colour** tab sets the colours of the drawing, the toolpaths and the simulation.
 
 ## 4. Drawing
 
@@ -550,7 +550,7 @@ The project `examples/tray.en.opp` is a 340 × 220 mm tray. The layer **Pocket**
 
 ![The offset pocket around the islands](img/ex-tray-pocket.en.png)
 
-The cutter clears the pocket by **concentric contours**: it follows the outline inward, goes around each island at the distance of the tool radius, and the paths join between the islands. The islands stay untouched, including the corners of the triangle and of the rounded rectangle, which you can check afterwards in the simulator. 
+The cutter clears the pocket by **concentric contours**: it follows the outline inward, goes around each island at the distance of the tool radius, and the paths join between the islands. The islands stay untouched, including the corners of the triangle and of the rounded rectangle. 
 
 Useful settings: *Finishing* adds a last pass along the walls and the islands; the **radius of the tool** must be smaller than the narrowest width to clear (between two islands, or between an island and the wall), otherwise that space is not machined.
 
@@ -630,4 +630,4 @@ To machine the result: create the machinings on the *Nesting_n* layer (*follow t
 - [SIMULATOR.en.md](SIMULATOR.en.md): the simulator and writing a translator.
 - [TOOLS-MACHINES.en.md](TOOLS-MACHINES.en.md): tools, torches, machines and the cutting table.
 
-Always read the output file and run the simulation before you start the machine. The generic post-processors are starting points, not guaranteed profiles for every controller, and the machining algorithms can fail on difficult shapes.
+The generic post-processors are starting points: clone one and adapt it to your controller. The simulator lets you play the output file before it goes to the machine.

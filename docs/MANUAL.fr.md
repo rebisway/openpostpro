@@ -157,7 +157,7 @@ Les scripts livrés sont rangés par catégorie : *Import*, *Modification*, *Gé
 
 ![Les préférences](img/win-preferences.fr.png)
 
-Dans les préférences : ouvrir le dernier fichier au démarrage, axe réduit, grille, traits de construction, croix à la place des points, affichage du sens et du départ des usinages, dossier de Python (`PYTHON_PATH`, si Python n'est pas dans le PATH), langue et unité par défaut ; l'onglet **Couleur** règle les couleurs du dessin, des usinages et de la simulation.
+Dans les préférences : ouvrir le dernier fichier au démarrage, axe réduit, grille, traits de construction, croix à la place des points, affichage du sens et du départ des usinages, langue et unité par défaut ; l'onglet **Couleur** règle les couleurs du dessin, des usinages et de la simulation.
 
 ## 4. Dessiner
 
@@ -550,7 +550,7 @@ Le projet `examples/bac.fr.opp` est un bac de 340 × 220 mm. Le calque **Poche**
 
 ![La poche en décalages autour des îlots](img/ex-tray-pocket.fr.png)
 
-La fraise vide la poche par **contours concentriques** : elle suit le contour vers l'intérieur, contourne chaque îlot à distance du rayon de l'outil, et les parcours se rejoignent entre les îlots. Les îlots restent intacts, y compris les angles du triangle et du rectangle arrondi, à vérifier ensuite dans le simulateur.
+La fraise vide la poche par **contours concentriques** : elle suit le contour vers l'intérieur, contourne chaque îlot à distance du rayon de l'outil, et les parcours se rejoignent entre les îlots. Les îlots restent intacts, y compris les angles du triangle et du rectangle arrondi.
 
 Réglages utiles : *Finition* ajoute une dernière passe le long des parois et des îlots ; le **rayon de l'outil** doit être plus petit que la plus petite largeur à vider (entre deux îlots, ou entre un îlot et la paroi), sinon l'espace n'est pas usiné.
 
@@ -630,4 +630,4 @@ Pour usiner le résultat : créez les usinages sur le calque *Imbrication_n* (*s
 - [SIMULATOR.fr.md](SIMULATOR.fr.md) : le simulateur et l'écriture d'un traducteur.
 - [TOOLS-MACHINES.fr.md](TOOLS-MACHINES.fr.md) : outils, torches, machines et abaque de coupe.
 
-Relisez toujours le fichier de sortie et lancez la simulation avant de lancer la machine. Les post-processeurs génériques sont des points de départ, pas des profils garantis pour toutes les commandes numériques, et les algorithmes d'usinage peuvent échouer sur des formes difficiles.
+Les post-processeurs génériques sont des points de départ : clonez-en un et adaptez-le à votre commande. Le simulateur permet de jouer le fichier de sortie avant de l'envoyer à la machine.

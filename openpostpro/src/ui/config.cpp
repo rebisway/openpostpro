@@ -59,7 +59,6 @@ void Config::read()
 	log_height = _ini.get_int(_section, "LogHeight", 200);
 	display_output = _ini.get_bool(_section, "DisplayOutput", false);
 
-	python_path = _ini.get_string(_section, "PythonPath", "");
 	language = _ini.get_string(_section, "Language", "");
 	simulation_translator = _ini.get_string("SIMULATION", "Translator", "gcode");
 	simulation_force = _ini.get_bool("SIMULATION", "Force", false);
@@ -109,7 +108,6 @@ void Config::write()
 	_ini.set(_section, "LogDocked", log_docked);
 	_ini.set(_section, "LogHeight", log_height);
 	_ini.set(_section, "DisplayOutput", display_output);
-	_ini.set(_section, "PythonPath", python_path);
 	_ini.set(_section, "Language", language);
 	_ini.set("SIMULATION", "Translator", simulation_translator);
 	_ini.set("SIMULATION", "Force", simulation_force);
@@ -200,13 +198,6 @@ MessageBoxResult Config::drawUI()
 			{
 				_ini_temp.set("GENERAL", "ShowCamStart", b);
 			}
-			char input[1024];
-			sprintf_s(input, "%s", _ini_temp.get_string("GENERAL", "PythonPath").c_str());
-			if (ImGui::InputText(Lang::l("PYTHON_PATH"), input, 20 * sizeof(char), ImGuiInputTextFlags_EnterReturnsTrue))
-			{
-				_ini_temp.set("GENERAL", "PythonPath", std::string(input));
-			}
-
 			// language: the code of a file of the lang folder
 			std::string current = _ini_temp.get_string("GENERAL", "Language");
 			if (current.empty())
@@ -318,7 +309,8 @@ MessageBoxResult Config::drawUI()
 	ImGui::NewLine();
 	ImGuiStyle& style = ImGui::GetStyle();
 	float windowWidth = ImGui::GetWindowSize().x;
-	float textWidth = std::max(ImGui::CalcTextSize(Lang::l("OK")).x, ImGui::CalcTextSize(Lang::l("CANCEL")).x);
+	// the button needs its frame padding on each side, otherwise the text of a long label is cut
+	float textWidth = std::max(ImGui::CalcTextSize(Lang::l("OK")).x, ImGui::CalcTextSize(Lang::l("CANCEL")).x) + 2 * style.FramePadding.x;
 	ImGui::SetCursorPosX((windowWidth - (2 * textWidth + style.ItemSpacing.x)) * 0.5f);
 	if (ImGui::Button(Lang::l("OK"), ImVec2(textWidth, 0.0f)))
 	{

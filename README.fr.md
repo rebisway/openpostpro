@@ -4,8 +4,7 @@
 
 OpenPostPro réunit un environnement de dessin 2D léger, des opérations d'usinage (FAO) et des post-processeurs Python configurables. Importez un dessin DXF ou créez la géométrie directement dans l'application, préparez des opérations d'usinage ou de découpe, puis générez une sortie adaptée à votre machine grâce à un post-processeur.
 
-La version actuelle est la **1.1**. Le projet est stable et utilisable, mais certains algorithmes de géométrie et de parcours d'outil peuvent encore échouer sur des formes difficiles : la sortie générée doit donc toujours être vérifiée avec soin avant d'être utilisée sur une vraie machine.
-
+La version actuelle est la **1.1**.
 Manuel d'utilisation : [Manuel d'utilisation](docs/MANUAL.fr.md) · [User manual](docs/MANUAL.en.md)
 
 English version: [README.md](README.md)
@@ -66,8 +65,7 @@ Un bouton de l'onglet Opérations recalcule les parcours à partir de leurs form
 
 Guide : [Outils, torches et machines](docs/TOOLS-MACHINES.fr.md) · [Tools, torches and machines](docs/TOOLS-MACHINES.en.md)
 
-Les opérations d'usinage ont des paramètres configurables. Le projet étant encore jeune, les résultats, en particulier les calculs de contours, de décalages et de poches, peuvent ne pas être fiables pour toutes les formes ou situations d'usinage.
-
+Les opérations d'usinage ont des paramètres configurables.
 ## Imbrication automatique
 
 Place des copies de pièces sur un panneau (**Dessin → Imbrication...**) : chaque pièce est un groupe, avec ses trous, et une pièce peut aller dans le trou d'une autre. Trois algorithmes au choix : **rapide** (quelques secondes), **recherche** (de nombreux ordres de pièces) et **minimisation du chevauchement** (le panneau est raccourci, puis les pièces qui se chevauchent sont déplacées et tournées jusqu'à ne plus rien chevaucher ; une disposition n'est gardée que si un test exact la confirme). Les deux derniers utilisent tous les cœurs du processeur pendant la durée donnée et tournent en arrière-plan, avec une fenêtre qui montre la progression et un bouton pour arrêter en gardant la meilleure disposition. Rotations tous les 90, 15, 5 ou 1 degré, distance entre pièces, marge, quantités par pièce. Le résultat est mis dans de nouveaux calques, le panneau dans un calque verrouillé.
@@ -103,7 +101,7 @@ et les variantes de quelques contrôleurs, chacune pour le fraisage et pour la d
 
 Les réglages des post-processeurs comprennent l'extension du fichier de sortie, la précision décimale, la numérotation des lignes, les commentaires, le début et la fin de fichier, les unités de coordonnées, et les coordonnées relatives ou absolues des centres d'arc. Le début et la fin de fichier et les commandes plasma s'écrivent sur plusieurs lignes, chacune numérotée quand la numérotation est active. Une option **Retour 0** ramène l'outil en X0 Y0 à la hauteur de sécurité à la fin du programme. Le post-processeur plasma propose aussi des réglages pour les commandes de la torche, la temporisation d'amorçage, la prise de référence et la gestion de l'axe Z.
 
-Ce sont des points de départ génériques, pas des profils garantis pour tous les contrôleurs. Relisez et adaptez la sortie à votre machine et à votre contrôleur avant de l'utiliser.
+Ce sont des points de départ génériques : clonez-en un et adaptez-le à votre machine et à votre contrôleur.
 
 ## Interface et technologie
 
@@ -155,9 +153,6 @@ OpenPostPro se compile et fonctionne sous **Linux** avec CMake et GCC (testé su
 ## État du projet
 
 OpenPostPro est un projet open source indépendant, en version 1.1. La priorité pour la suite est la robustesse des calculs de géométrie et de contours (décalages et poches sur des formes difficiles).
-
-Vérifiez toujours le programme généré : simulez-le, contrôlez les réglages de la machine, les outils, les dégagements, les avances et les vitesses avant de l'exécuter sur une vraie machine.
-
 Les rapports de bogues, les retours et les contributions sont les bienvenus.
 
 ## Licence

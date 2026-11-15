@@ -4,8 +4,7 @@
 
 OpenPostPro brings together a lightweight 2D drawing environment, CAM operations, and configurable Python post-processors. Import a DXF drawing or create geometry directly in the application, prepare machining or cutting operations, then generate output adapted to your machine through a post-processor.
 
-The current version is **1.1**. The project is stable and usable, but some geometry and toolpath algorithms can still fail on difficult shapes, so generated output must always be checked carefully before being used on a real machine.
-
+The current version is **1.1**.
 User manual: [MANUAL.en.md](docs/MANUAL.en.md) · [Manuel d'utilisation](docs/MANUAL.fr.md)
 
 Version française : [README.fr.md](README.fr.md)
@@ -66,8 +65,7 @@ A button of the Operations tab computes the toolpaths again from their shapes (t
 
 Guide: [Tools, torches and machines](docs/TOOLS-MACHINES.en.md) · [Outils, torches et machines](docs/TOOLS-MACHINES.fr.md)
 
-CAM operations have configurable parameters. Because the project is still young, the results, especially outline, offset, and pocket calculations, may not be reliable for every shape or machining situation.
-
+CAM operations have configurable parameters.
 ## Automatic nesting
 
 Place copies of parts on a sheet (**Drawing → Nesting...**): each part is a group, with its holes, and a part can go in the hole of another one. Three algorithms can be chosen: **fast** (a few seconds), **search** (many orders of the parts) and **overlap minimization** (the sheet is made shorter, then the parts which overlap are moved and turned until nothing overlaps; a layout is kept only if an exact test confirms it). The last two use all the cores of the processor for the time given and run in the background, with a window which shows the progress and a button to stop and keep the best layout. Rotations every 90, 15, 5 or 1 degree, distance between parts, margin, quantities per part. The result is put in new layers, with the sheet in a locked layer.
@@ -103,7 +101,7 @@ and the variants of some controllers, each for milling and for plasma cutting: *
 
 Post-processor settings include output file extension, decimal precision, line numbering, comments, header and footer, coordinate units, and relative or absolute arc-centre coordinates. The plasma post-processor also exposes settings for torch commands, start delay, reference setup, and Z-axis handling.
 
-These are generic starting points, not guaranteed profiles for every controller. Review and adapt the output to your machine and controller before use.
+These are generic starting points: clone one and adapt it to your machine and controller.
 
 ## Interface and technology
 
@@ -153,9 +151,6 @@ OpenPostPro builds and runs on **Linux** with CMake and GCC (tested on Zorin OS 
 ## Project status
 
 OpenPostPro is an independent open-source project, at version 1.1. The priority for what comes next is the robustness of the geometry and outline calculations (offsets and pockets on difficult shapes).
-
-Always check the generated program: simulate it, and check the machine settings, tools, clearances, feeds and speeds before running it on a real machine.
-
 Bug reports, feedback, and contributions are welcome.
 
 ## License
