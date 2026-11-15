@@ -268,6 +268,7 @@ public:
 	void cut() override;
 	void copy() override;
 	void paste() override;
+	std::string clipboard_header();	// first line of the clipboard: the unit of the document the shapes come from
 	void remove() override;
 
 	void add_layer();

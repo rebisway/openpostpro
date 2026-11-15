@@ -2745,7 +2745,7 @@ void ModCad::cut()
 	}
 	unselect();
 
-	Clipboard::text(clip);
+	Clipboard::text(clipboard_header() + clip);
 
 	History::undo(HistoryActionType::Delete, clip);
 
@@ -2763,7 +2763,14 @@ void ModCad::copy()
 	for (Graphic* g : _document->selected())
 		clip += g->write() + '\n';
 
-	Clipboard::text(clip);
+	Clipboard::text(clipboard_header() + clip);
+}
+
+// the first line of the clipboard gives the unit of the document the shapes come from: the clipboard is shared with the other instances of
+// the program, which can have a document in the other unit
+std::string ModCad::clipboard_header()
+{
+	return "UNIT;" + std::to_string((int)_document->unit()) + "\n";
 }
 
 void ModCad::paste()
@@ -2777,9 +2784,20 @@ void ModCad::paste()
 		std::vector<Graphic*> graphics;
 		std::map<std::string, std::string> block_names;
 
+		// the shapes are converted when the clipboard comes from a document in the other unit
+		float factor = 1.0f;
+
 		for (std::string v : list)
 		{
+			if (v.empty())
+				continue;
 			auto data = stringex::split(v, ';');
+			if (data[0] == "UNIT")
+			{
+				if (data.size() > 1 && std::atoi(data[1].c_str()) != (int)_document->unit())
+					factor = _document->unit() == Unit::Inch ? 1.0f / 25.4f : 25.4f;
+				continue;
+			}
 			GraphicType type = (GraphicType)std::stoi(data[0]);
 			Graphic* g = nullptr;
 			switch (type)
@@ -2811,6 +2829,9 @@ void ModCad::paste()
 			case GraphicType::Text:
 				g = new Text(_render);
 				break;
+			case GraphicType::Spline:
+				g = new Spline(_render);
+				break;
 			case GraphicType::CamMoveTo:
 				break;
 			case GraphicType::CamFollow:
@@ -2828,6 +2849,17 @@ void ModCad::paste()
 				auto id = g->id();
 				g->read(v);
 				g->id(id);
+				if (factor != 1.0f && g->shape())
+				{
+					// as when the unit of a document is changed
+					((Shape*)g)->transform(glm::scale(glm::mat4(1.0f), glm::vec3(factor, factor, 1.0f)));
+					if (type == GraphicType::Text)
+					{
+						auto text = (Text*)g;
+						text->height(text->height() * factor);
+						text->inter(text->inter() * factor);
+					}
+				}
 				if (g->shape())
 				{
 					x = glm::min(x, ((Shape*)g)->topLeft().x);
