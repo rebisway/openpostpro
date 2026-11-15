@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- the .opp files of OpenPostPro: the file managers open them with the program (dpkg updates the mime database) -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-openpostpro">
+    <comment>OpenPostPro drawing</comment>
+    <comment xml:lang="fr">Dessin OpenPostPro</comment>
+    <icon name="openpostpro"/>
+    <glob pattern="*.opp"/>
+  </mime-type>
+</mime-info>

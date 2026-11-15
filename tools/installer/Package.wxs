@@ -22,8 +22,25 @@
     </StandardDirectory>
 
     <ComponentGroup Id="Application" Directory="INSTALLFOLDER">
-      <Files Include="$(StageDir)\**" />
+      <Files Include="$(StageDir)\**">
+        <Exclude Files="$(StageDir)\openpostpro.exe" />
+      </Files>
+      <!-- the program has its own file entry: the association of the .opp files points to it -->
+      <Component Id="MainExecutable">
+        <File Id="OpenPostProExe" Source="$(StageDir)\openpostpro.exe" KeyPath="yes" />
+      </Component>
     </ComponentGroup>
+
+    <!-- The .opp files open with OpenPostPro (double click). It is done by default; msiexec /i OpenPostPro.msi ASSOCIATE_OPP=0 leaves the extension alone. -->
+    <Property Id="ASSOCIATE_OPP" Value="1" />
+    <Component Id="FileAssociation" Directory="INSTALLFOLDER" Condition="ASSOCIATE_OPP=1">
+      <RegistryValue Root="HKCU" Key="Software\OpenPostPro" Name="Association" Type="integer" Value="1" KeyPath="yes" />
+      <ProgId Id="OpenPostPro.Drawing" Description="OpenPostPro drawing" Icon="OpenPostProExe" IconIndex="0">
+        <Extension Id="opp" ContentType="application/x-openpostpro">
+          <Verb Id="open" Command="Open" TargetFile="OpenPostProExe" Argument="&quot;%1&quot;" />
+        </Extension>
+      </ProgId>
+    </Component>
 
     <!-- Start menu entry. The settings of the user stay in his own folder and are kept when the program is removed. -->
     <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder">
@@ -34,6 +51,7 @@
     <Feature Id="Main" Title="OpenPostPro" Level="1">
       <ComponentGroupRef Id="Application" />
       <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="FileAssociation" />
     </Feature>
   </Package>
 </Wix>

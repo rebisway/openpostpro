@@ -355,7 +355,9 @@ void Application::initialize()
 	// Default document
 	_document = new Document();
 	_document->unit(config.default_unit == 1 ? Unit::Inch : Unit::Millimeter);
-	if (config.open_last_file)
+	if (!_start_file.empty() && std::filesystem::exists(_start_file))
+		load_file(_start_file);
+	else if (config.open_last_file)
 		load_file(config.last_file_path);
 	else
 		new_document();

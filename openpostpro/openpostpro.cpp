@@ -23,6 +23,8 @@
 #include <environment.h>
 #include "src/ui/application.h"
 #include "stringex.h"
+#include <filesystem>
+#include <system_error>
 
 // Python requirement (Windows):
 // This executable is built against the Python stable ABI (Py_LIMITED_API, Python >= 3.12)
@@ -32,8 +34,19 @@
 // "python3.dll was not found" and the program cannot start; this cannot be checked from
 // the code (python3.dll cannot be delay loaded because of the data symbols imported by the
 // PyXxx_Check macros). The same Python installation provides the standard library and tkinter.
-int main()
+int main(int argc, char** argv)
 {
+	// a file given on the command line (a double click on a .opp file, or "openpostpro file.opp"): the first argument which is not an option
+	// (made absolute at once, in case the folder of the program is not the current folder)
+	std::string start_file;
+	for (int i = 1; i < argc && start_file.empty(); i++)
+		if (argv[i][0] != '-' && argv[i][0] != 0)
+		{
+			std::error_code error;
+			auto absolute = std::filesystem::absolute(argv[i], error);
+			start_file = error ? std::string(argv[i]) : absolute.string();
+		}
+
 	// needs to be initialized first
 	environment::init();
 	auto path = environment::application_data_path();
@@ -57,6 +70,7 @@ int main()
 
 	Application application("OpenPostpro");
 
+	application.start_file(start_file);
 	application.initialize();
 	application.run();
 	application.finalize();

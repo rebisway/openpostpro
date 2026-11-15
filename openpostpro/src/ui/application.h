@@ -57,6 +57,7 @@ private:
 	bool _splash_on = true;
 	Texture* _about_icon = nullptr;			// the icon shown in the About window, loaded when the window is first displayed
 	bool _display_preferences = false;
+	std::string _start_file;				// file given on the command line
 	bool _display_first_run = false;		// language and unit are asked at the very first start
 	std::string _first_language = "";
 	int _first_unit = 0;
@@ -85,6 +86,9 @@ public:
 	~Application();
 
 	void initialize() override;
+
+	// the file to open at the start, instead of the last one (the command line, a double click on a file); to call before initialize()
+	void start_file(std::string path) { _start_file = path; }
 
 	// draws one frame of the start screen with the message (the application is loading and does not run its loop yet). The events of the window
 	// are not read: the callbacks need the modules, which do not exist yet
