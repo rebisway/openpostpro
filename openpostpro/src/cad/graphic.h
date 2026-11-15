@@ -148,6 +148,9 @@ public:
 	// compute coordinates - must be called at end of overidden function
 	virtual void compute();
 
+	// writes in the log the time a toolpath took to be calculated ("name : calculation time 1.25 s")
+	void log_time(double seconds, const char* what = "TOOLPATH_TIME");
+
 	virtual void scaled();
 
 	// draw visual - must be called at begining of overidden function

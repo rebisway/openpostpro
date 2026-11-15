@@ -379,8 +379,11 @@ void ModCad::document_loaded()
 			{
 				select(t->references());
 				TreeCurve* tree = cad_tree();
+				// a pocket which was just calculated from the same curves is not calculated again (it is the longest toolpath)
+				const bool same = t->type() == GraphicType::CamPocket && ((Pocket*)t)->calculated() && t->same_geometry(tree);
 				t->tree(cad_tree());
-				t->compute();
+				if (!same)
+					t->compute();
 				delete tree;
 			}
 		}

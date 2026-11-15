@@ -474,3 +474,6 @@ KEY_SHIFT_CLICK=Shift + click
 KEY_WHEEL=Wheel
 KEY_RIGHT_BUTTON=Right button
 HELP_GITHUB=Project site (GitHub)
+
+TOOLPATH_TIME=calculation time
+TOOLPATH_BUILD_TIME=display preparation

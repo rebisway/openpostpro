@@ -478,3 +478,5 @@ KEY_SHIFT_CLICK=Maj + clic
 KEY_WHEEL=Molette
 KEY_RIGHT_BUTTON=Bouton droit
 HELP_GITHUB=Site du projet (GitHub)
+TOOLPATH_TIME=temps de calcul
+TOOLPATH_BUILD_TIME=préparation de l'affichage

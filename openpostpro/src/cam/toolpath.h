@@ -155,6 +155,9 @@ public:
 	void add(Curve value);
 	void tree(TreeCurve* value);
 
+	// true if the curves of this tree are the ones the toolpath was calculated from (same number of curves, same number of segments and same area for each)
+	bool same_geometry(TreeCurve* value);
+
 	// the shapes the toolpath was made from were modified: takes the new geometry (a tree built from the referenced shapes, which the
 	// toolpath owns) and computes the toolpath again, with its own settings
 	virtual void refresh(TreeCurve* value);

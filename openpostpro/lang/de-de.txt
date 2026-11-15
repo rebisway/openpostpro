@@ -474,3 +474,6 @@ KEY_SHIFT_CLICK=Umschalt + Klick
 KEY_WHEEL=Mausrad
 KEY_RIGHT_BUTTON=Rechte Taste
 HELP_GITHUB=Projektseite (GitHub)
+
+TOOLPATH_TIME=Berechnungszeit
+TOOLPATH_BUILD_TIME=Aufbau der Anzeige

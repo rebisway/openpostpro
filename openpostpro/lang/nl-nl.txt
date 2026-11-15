@@ -474,3 +474,6 @@ KEY_SHIFT_CLICK=Shift + klik
 KEY_WHEEL=Scrollwiel
 KEY_RIGHT_BUTTON=Rechtermuisknop
 HELP_GITHUB=Projectsite (GitHub)
+
+TOOLPATH_TIME=rekentijd
+TOOLPATH_BUILD_TIME=voorbereiding van de weergave

@@ -546,7 +546,7 @@ void Toolpath::generate_data(std::vector<Curve>& curves)
 	int count = 0;
 
 	// we compute coordinates for each curve
-	for (auto c : curves)
+	for (Curve& c : curves)
 	{
 		if (c.size() > 1)
 		{
@@ -608,7 +608,7 @@ void Toolpath::generate_deco(std::vector<Curve>& curves)
 		auto o = 10 / _render->camera()->scale();
 
 		// we add the arrow to display toolpath direction
-		for (auto c : curves)
+		for (Curve& c : curves)
 		{
 			// (the lengths of the segments are not computed for an open path)
 			c.length();
@@ -692,7 +692,7 @@ void Toolpath::generate_deco(std::vector<Curve>& curves)
 		if (config.show_cam_start)
 		{
 			auto o = 3.0f / _render->camera()->scale();
-			for (auto c : curves)
+			for (Curve& c : curves)
 			{
 				auto p = c.front().point;
 				vertices.push_back(glm::vec3(p.x - o, p.y - o, 0));
@@ -761,6 +761,27 @@ void Toolpath::draw_tabs(glm::vec4 color, glm::vec4 selected_color)
 void Toolpath::add(Curve value)
 {
 	_original.push_back(value);
+}
+
+bool Toolpath::same_geometry(TreeCurve* value)
+{
+	if (_tree == nullptr || value == nullptr)
+		return false;
+	auto signature = [](TreeCurve* tree)
+	{
+		std::vector<std::pair<size_t, long long>> result;
+		for (Curve& c : tree->curves())
+			result.push_back({ c.size(), (long long)std::llround(std::abs(c.area()) * 1000.0) });
+		std::sort(result.begin(), result.end());
+		return result;
+	};
+	auto a = signature(_tree), b = signature(value);
+	if (a.size() != b.size())
+		return false;
+	for (size_t i = 0; i < a.size(); i++)
+		if (a[i].first != b[i].first || std::abs(a[i].second - b[i].second) > 1 + a[i].second / 100000)
+			return false;
+	return true;
 }
 
 void Toolpath::tree(TreeCurve* value)

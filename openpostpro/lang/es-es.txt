@@ -474,3 +474,6 @@ KEY_SHIFT_CLICK=Mayús + clic
 KEY_WHEEL=Rueda
 KEY_RIGHT_BUTTON=Botón derecho
 HELP_GITHUB=Sitio del proyecto (GitHub)
+
+TOOLPATH_TIME=tiempo de cálculo
+TOOLPATH_BUILD_TIME=preparación de la visualización

@@ -22,6 +22,8 @@
 #include "graphic.h"
 #include <imgui.h>
 #include <logger.h>
+#include <chrono>
+#include <cstdio>
 #include <lang.h>
 #include "stringex.h"
 
@@ -49,6 +51,16 @@ void Graphic::compute()
 	_needs_update = true;
 }
 
+void Graphic::log_time(double seconds, const char* what)
+{
+	char duration[32];
+	if (seconds >= 1)
+		snprintf(duration, sizeof(duration), "%.2f s", seconds);
+	else
+		snprintf(duration, sizeof(duration), "%.0f ms", seconds * 1000);
+	Logger::log(name() + " : " + Lang::t(what) + " " + duration);
+}
+
 void Graphic::scaled()
 {
 
@@ -59,7 +71,11 @@ void Graphic::draw()
 	if (_needs_update)
 	{
 		_needs_update = false;
+		const auto started = std::chrono::steady_clock::now();
 		update();
+		// a pocket writes its own time (it can be calculated when the document is opened, apart from its drawing)
+		if (toolpath() && type() != GraphicType::CamPocket)
+			log_time(std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count());
 	}
 }
 

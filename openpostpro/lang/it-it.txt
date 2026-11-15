@@ -474,3 +474,6 @@ KEY_SHIFT_CLICK=Maiusc + clic
 KEY_WHEEL=Rotellina
 KEY_RIGHT_BUTTON=Tasto destro
 HELP_GITHUB=Sito del progetto (GitHub)
+
+TOOLPATH_TIME=tempo di calcolo
+TOOLPATH_BUILD_TIME=preparazione della visualizzazione

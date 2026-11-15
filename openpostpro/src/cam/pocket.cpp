@@ -993,6 +993,13 @@ void Pocket::update()
 
 void Pocket::generate()
 {
+	const auto started = std::chrono::steady_clock::now();
+	struct Timer
+	{
+		Pocket* pocket;
+		std::chrono::steady_clock::time_point started;
+		~Timer() { pocket->log_time(std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count(), "TOOLPATH_BUILD_TIME"); }
+	} timer{ this, started };
 	if (_tree != nullptr)
 	{
 		generate_data(_computed);
@@ -1002,6 +1009,17 @@ void Pocket::generate()
 
 void Pocket::calculate()
 {
+	// the time is written in the log when the function returns (it runs on a thread when a document is opened: the log is protected)
+	struct Timer
+	{
+		Pocket* pocket;
+		std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
+		~Timer() { pocket->log_time(std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count()); }
+	} timer{ this };
+
+	// the changes made before this calculation (the default values of the group applied when the pocket is added to it) are in it:
+	// without this, the pocket is calculated a second time at its first drawing
+	_needs_update = false;
 	_calculated = true;
 	if (_tree != nullptr)
 	{
@@ -1101,14 +1119,7 @@ void Pocket::scaled()
 
 std::vector<Curve> Pocket::coordinates()
 {
-	std::vector<Curve> result;
-
-	for (Curve c : _computed)
-	{
-		Curve n = c;
-		result.push_back(n);
-	}
-	return result;
+	return _computed;
 }
 
 void Pocket::properties()
