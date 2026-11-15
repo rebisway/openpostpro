@@ -489,6 +489,9 @@ std::vector<Curve> Pocket::offset(std::vector<Curve>& curves)
 
 			for (Curve& c : inter)
 			{
+				// the offset curves of the previous pass can have vertices which are almost on a line : they make the next offset fail
+				// (the inner contour of a letter came out empty), so they are removed first
+				c.simplify(radius() * 0.005f);
 				auto o = c.offset((c.cw() == cw ? -radius() : radius()));
 				smaller_level = glm::min(smaller_level, c.level());
 				if (o.size() > 0)
@@ -1053,7 +1056,9 @@ void Pocket::calculate()
 			// we first proceed to an offset with the radius
 			for (Curve& c : original)
 			{
-				c.reduce(0.25f);
+				// the vertices which do not move the outline by more than a small part of the radius are useless (a text offset by the
+				// radius has thousands of them): the tolerance follows the radius, so it does not depend on the unit of the document
+				c.simplify(radius() * 0.005f);
 				auto curves = c.offset((c.cw() == cw ? -radius() : radius()));
 				inner.insert(inner.end(), curves.begin(), curves.end());
 			}

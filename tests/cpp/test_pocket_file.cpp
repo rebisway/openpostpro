@@ -12,6 +12,8 @@
 #include <pocket.h>
 #include <travel_sort.h>
 #include <cstdio>
+#include <chrono>
+#include <algorithm>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -47,8 +49,23 @@ int main(int argc, char** argv)
 			continue;
 		Pocket pocket(&renderer);
 		pocket.read(line);
+		auto started = std::chrono::steady_clock::now();
 		pocket.update();
+		double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
 		auto curves = pocket.coordinates();
+		{
+			size_t total = 0, biggest = 0, tiny = 0, b02 = 0, b05 = 0, b1 = 0, lines = 0;
+			for (Curve& c : curves)
+			{
+				total += c.size();
+				biggest = (std::max)(biggest, c.size());
+				c.length();
+				for (Segment& s : c)
+					if (s.length >= 0 && s.length < 0.05f)
+						tiny++;
+			}
+			std::printf("  compute %.2f s, %zu curves, %zu segments (biggest curve %zu), %zu segments under 0.05\n", seconds, curves.size(), total, biggest, tiny);
+		}
 		int local = 0;
 		for (size_t i = 0; i < curves.size(); i++)
 			for (size_t j = i + 1; j < curves.size(); j++)
@@ -66,6 +83,22 @@ int main(int argc, char** argv)
 				out << "C " << c.level() << ' ' << c.cw() << ' ' << c.size() << "\n";
 				for (const glm::vec2& v : c.coordinates())
 					out << v.x << ' ' << v.y << "\n";
+			}
+		}
+		if (argc > 3)
+		{
+			// the segments themselves (lines and arcs), to offset a curve alone with test_curve_points
+			std::ofstream out(argv[3]);
+			for (Curve& c : curves)
+			{
+				out << "S " << c.level() << ' ' << c.cw() << ' ' << c.size() << "\n";
+				for (Segment& s : c)
+				{
+					if (s.type == SegmentType::Line)
+						out << "L " << s.point.x << ' ' << s.point.y << "\n";
+					else
+						out << "A " << s.point.x << ' ' << s.point.y << ' ' << s.center.x << ' ' << s.center.y << ' ' << s.radius << ' ' << (int)s.cw << "\n";
+				}
 			}
 		}
 		// the rapid moves between the curves: in the order of the pocket, and sorted (the finishing pass stays at the end)

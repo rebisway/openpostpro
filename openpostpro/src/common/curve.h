@@ -349,6 +349,10 @@ public:
 	/// <returns>new curve</returns>
 	std::vector<Curve> offset(float o, float max=0);
 
+	// removes the vertices of the runs of lines which are within `tolerance` of the line joining the two ends of what is kept (Douglas-Peucker).
+	// The arcs, the first and the last vertices stay as they are. Returns the number of vertices removed
+	int simplify(float tolerance);
+
 	/// <summary>
 	/// fill position with the middle coordinates of the curve, angle with the derivative angle at position
 	/// </summary>

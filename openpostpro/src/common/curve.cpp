@@ -22,6 +22,7 @@
 #include <set>
 #include <algorithm>
 #include <deque>
+#include <functional>
 #include <iostream>
 #include <logger.h>
 #include <ftree.h>
@@ -1158,6 +1159,81 @@ std::vector<Curve> Curve::offset(float o, float max)
 	//		c.scale(1 / factor);
 
 	return result;
+}
+
+int Curve::simplify(float tolerance)
+{
+	if (size() < 3 || tolerance <= 0)
+		return 0;
+	for (Segment& s : *this)
+		if (s.type == SegmentType::Circle)
+			return 0;
+
+	std::vector<char> remove(size(), 0);
+	int removed = 0;
+
+	// the run of lines between the vertices a and b: the vertices which are not needed to stay within the tolerance are marked
+	std::function<void(int, int)> reduce_run = [&](int a, int b)
+	{
+		if (b <= a + 1)
+			return;
+		const glm::vec2 pa = (*this)[a].point, pb = (*this)[b].point;
+		float worst = -1;
+		int at = -1;
+		for (int k = a + 1; k < b; k++)
+		{
+			const glm::vec2 p = (*this)[k].point;
+			glm::vec2 e = pb - pa;
+			float l2 = glm::dot(e, e);
+			float t = l2 < 1e-12f ? 0.0f : glm::clamp(glm::dot(p - pa, e) / l2, 0.0f, 1.0f);
+			float d = glm::distance(p, pa + e * t);
+			if (d > worst)
+			{
+				worst = d;
+				at = k;
+			}
+		}
+		if (worst <= tolerance)
+		{
+			for (int k = a + 1; k < b; k++)
+			{
+				remove[k] = 1;
+				removed++;
+			}
+			return;
+		}
+		reduce_run(a, at);
+		reduce_run(at, b);
+	};
+
+	int a = 0;
+	const int last = (int)size() - 1;
+	while (a < last)
+	{
+		if ((*this)[a].type != SegmentType::Line)
+		{
+			a++;
+			continue;
+		}
+		int b = a;
+		while (b < last && (*this)[b].type == SegmentType::Line)
+			b++;
+		reduce_run(a, b);
+		a = b;
+	}
+
+	if (removed > 0)
+	{
+		// only the segments change: the level, the direction and the other properties of the curve stay
+		std::vector<Segment> kept;
+		for (size_t i = 0; i < size(); i++)
+			if (!remove[i])
+				kept.push_back((*this)[i]);
+		static_cast<std::vector<Segment>&>(*this) = kept;
+		_area = -1;
+		reset_bounds();
+	}
+	return removed;
 }
 
 void Curve::middle(glm::vec2& position, float& angle)
