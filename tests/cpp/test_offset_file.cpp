@@ -205,7 +205,7 @@ int main(int argc, char** argv)
 	tree->cw_alter();
 	auto curves = tree->curves();
 	std::printf("  %zu curves given, %zu in the tree\n", all.size(), curves.size());
-	int toolpaths = 0, wrong = 0;
+	int toolpaths = 0, wrong = 0, incomplete = 0;
 	for (Curve& c : curves)
 	{
 		for (int interior = 0; interior < 2; interior++)
@@ -215,8 +215,23 @@ int main(int argc, char** argv)
 			o->cw(c.level() % 2 == 0 ? true : false);
 			o->interior(c.level() % 2 == 0 ? !interior : interior);
 			o->add(c);
-			o->compute();
+			o->compute(); o->update();
 			toolpaths++;
+
+			// completeness: a closed contour gives closed curves (an open one is a path which stops), and not nothing at all
+			{
+				auto got = o->coordinates();
+				int opened = 0;
+				for (Curve& r : got)
+					if (!r.closed())
+						opened++;
+				if (opened > 0 || got.empty())
+				{
+					incomplete++;
+					std::printf("  INCOMPLETE toolpath: contour level %d, %zu segments, length %g, first point %g,%g, interior %d: %zu curves, %d open\n",
+						c.level(), c.size(), c.length(), c.front().point.x, c.front().point.y, interior, got.size(), opened);
+				}
+			}
 
 			std::vector<glm::vec2> outline = c.coordinates();
 			float worst = 0;
@@ -241,7 +256,7 @@ int main(int argc, char** argv)
 			delete o;
 		}
 	}
-	std::printf("%d toolpaths, %d wrong\n", toolpaths, wrong);
-	bad += wrong;
+	std::printf("%d toolpaths, %d wrong, %d incomplete\n", toolpaths, wrong, incomplete);
+	bad += wrong + incomplete;
 	return bad == 0 ? 0 : 1;
 }

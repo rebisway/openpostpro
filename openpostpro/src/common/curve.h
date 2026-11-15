@@ -347,7 +347,11 @@ public:
 	/// </summary>
 	/// <param name="o">offset value</param>
 	/// <returns>new curve</returns>
-	std::vector<Curve> offset(float o, float max=0);
+	// `cut`: a result which comes too close to the curve (a neck narrower than the offset) is cut where it does, giving open curves (for a
+	// toolpath which can have them). Otherwise such a result is dropped, as the pockets and the drawing tools need closed curves.
+	// `close_pieces` (with `cut`): the pieces whose two ends are less than a neck apart are closed by a line (a region which a neck divides in two
+	// gives two closed curves, and the pocket goes on in both); the others are dropped
+	std::vector<Curve> offset(float o, float max=0, bool cut=false, bool close_pieces=false);
 
 	// removes the vertices of the runs of lines which are within `tolerance` of the line joining the two ends of what is kept (Douglas-Peucker).
 	// The arcs, the first and the last vertices stay as they are. Returns the number of vertices removed
@@ -398,6 +402,10 @@ public:
 	/// </summary>
 	void remove_spikes();
 
+	// removes the arcs whose two ends are the same point but which turn almost a whole circle (an arc reversed by a hair after a trim);
+	// `tolerance`: distance under which two points are the same. Returns the number of arcs removed
+	int remove_reversed_arcs(float tolerance);
+
 	/// <summary>
 	/// Split the curve into several parts following the self intersections points detected
 	/// </summary>
@@ -414,6 +422,9 @@ public:
 	bool too_small(float o);
 
 	bool too_close(Curve& test, float o);
+	// cuts the offset curve `piece` where it comes closer to this curve than the offset (a narrow neck, which a tool of this radius can not enter):
+	// the pieces which stay are returned (open curves, or the curve itself when nothing is cut), the ones shorter than the offset are dropped
+	std::vector<Curve> cut_close(Curve& piece, float o);
 	bool too_close2(Curve& test, float o);
 
 	bool curve_intersect(Curve& test);

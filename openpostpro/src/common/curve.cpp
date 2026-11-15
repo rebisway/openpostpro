@@ -1080,7 +1080,47 @@ static void connect_reversed_arcs(Curve& c)
 	}
 }
 
-std::vector<Curve> Curve::offset(float o, float max)
+// An arc whose two ends are the same point (to the precision of the calculation) is a tiny arc, or a whole circle when the order of the two points is the wrong one
+// by the width of a hair. After a trim, the second case is a ghost: it would draw the whole circle of the arc. Such an arc is removed.
+int Curve::remove_reversed_arcs(float tolerance)
+{
+	bool closed_curve = size() > 2 && front().point == back().point;
+	if (closed_curve)
+		pop_back();
+
+	int removed = 0;
+	bool changed = true;
+	while (changed && size() > 2)
+	{
+		changed = false;
+		for (size_t i = 0; i < size(); i++)
+		{
+			Segment& s = (*this)[i];
+			if (s.type != SegmentType::Arc)
+				continue;
+			const glm::vec2 stop = (*this)[(i + 1) % size()].point;
+			// (an arc of the offset which is shorter than the trim, the trim moves its two ends past each other: it comes back the long way round,
+			// as a circle nearly closed whose ends are close compared to its radius)
+			const float chord = geometry::distance(s.point, stop);
+			const float span = geometry::oriented_angle(s.point, stop, s.center, s.cw);
+			if (span > glm::pi<float>() && (chord < tolerance || (span > 1.5f * glm::pi<float>() && chord < 0.05f * s.radius)))
+			{
+				erase(begin() + i);
+				removed++;
+				changed = true;
+				break;
+			}
+		}
+	}
+
+	if (closed_curve)
+		push_back(Segment(front().point));
+	if (removed > 0)
+		reset_bounds();
+	return removed;
+}
+
+std::vector<Curve> Curve::offset(float o, float max, bool cut, bool close_pieces)
 {
 	bool outside = o > 0;
 	std::vector<Curve> result;
@@ -1101,6 +1141,7 @@ std::vector<Curve> Curve::offset(float o, float max)
 
 	auto trimmed = trim(segments, o);
 
+	trimmed.remove_reversed_arcs(glm::abs(o) * 0.01f);
 	trimmed.remove_spikes();
 
 	// the direction of the original curve tells which side of the raw offset curve is the valid one
@@ -1143,13 +1184,41 @@ std::vector<Curve> Curve::offset(float o, float max)
 		// which would grow outwards when it is offset again
 		if ((outside || c.cw() == cw()) && (cross_found && c.cw() == cw_found || !cross_found) && (o > 0 || (!outside && c.bounds().width() * c.bounds().height() < _bounds.width() * _bounds.height())))
 		{
-			if (!c.too_small(o) && !too_close(c, o))
+			if (!c.too_small(o))
 			{
-				c.level(_level);
-				c.tag_inside(outside ? Position::outside : Position::inside);
-				if (max > 0)
-					c.reduce(max);
-				result.push_back(c);
+				// a curve which comes too close to the original (a neck narrower than the tool) is not dropped: it is cut where the tool can not go
+				std::vector<Curve> parts;
+				if (!too_close(c, o))
+					parts.push_back(c);
+				else if (cut)
+				{
+					parts = cut_close(c, o);
+					if (close_pieces)
+					{
+						// the two ends of a piece which comes from one side of a neck to the other are at most the width of the neck apart
+						std::vector<Curve> closed_parts;
+						for (Curve& piece : parts)
+						{
+							if (!piece.closed())
+							{
+								if (geometry::distance(piece.front().point, piece.back().point) > 2.2f * glm::abs(o))
+									continue;
+								piece.close();
+								piece.reset_bounds();
+							}
+							closed_parts.push_back(piece);
+						}
+						parts = closed_parts;
+					}
+				}
+				for (Curve& part : parts)
+				{
+					part.level(_level);
+					part.tag_inside(outside ? Position::outside : Position::inside);
+					if (max > 0)
+						part.reduce(max);
+					result.push_back(part);
+				}
 			}
 		}
 	}
@@ -2660,7 +2729,9 @@ bool Curve::too_small(float o)
 bool Curve::too_close(Curve& test, float o)
 {
 	auto r = glm::abs(o);
-	auto hr = r * 0.98f;
+	// a result which comes closer than this part of the offset to the curve is wrong; a little less than the offset, as a point of the result can
+	// be a few percent nearer (the corners of the trim) without any consequence for the tool
+	auto hr = r * 0.9f;
 	auto hr2 = hr * hr;
 	for (int i = 0; i < test.size(); i++)
 	{
@@ -2890,6 +2961,221 @@ bool Curve::too_close(Curve& test, float o)
 	//}
 
 	return false;
+}
+
+// distance of a point to a line segment
+static float distance_to_line(glm::vec2 p, glm::vec2 a, glm::vec2 b)
+{
+	glm::vec2 e = b - a;
+	float l2 = glm::dot(e, e);
+	float t = l2 < 1e-12f ? 0.0f : glm::clamp(glm::dot(p - a, e) / l2, 0.0f, 1.0f);
+	return glm::distance(p, a + e * t);
+}
+
+// distance of a point to the arc which starts at `s` and ends at `end`
+static float distance_to_arc(glm::vec2 p, const Segment& s, glm::vec2 end)
+{
+	float span = geometry::oriented_angle(s.point, end, s.center, s.cw);
+	float at = geometry::oriented_angle(s.point, p, s.center, s.cw);
+	if (at <= span)
+		return glm::abs(glm::distance(p, s.center) - s.radius);
+	return (glm::min)(glm::distance(p, s.point), glm::distance(p, end));
+}
+
+std::vector<Curve> Curve::cut_close(Curve& piece, float o)
+{
+	const float r = glm::abs(o);
+	// a point which is closer than this to this curve is in the way of the tool (a little less than the offset, for the precision)
+	const float limit = r * 0.98f;
+	const float step = r * 0.2f;
+
+	std::vector<Curve> kept;
+
+	piece.reset_bounds();
+	std::vector<Segment> segments(piece.begin(), piece.end());
+	if (piece.closed() && segments.size() > 1)
+		segments.pop_back();
+	const int n = (int)segments.size();
+	for (Segment& s : segments)
+		if (s.type == SegmentType::Circle)
+		{
+			kept.push_back(piece);
+			return kept;
+		}
+
+	auto stop_of = [&](int i) { return i + 1 < n ? segments[i + 1].point : (piece.closed() ? segments[0].point : piece.last()); };
+
+	// the point of the segment i at the length t of its start
+	auto point_at = [&](int i, float t)
+	{
+		Segment& s = segments[i];
+		glm::vec2 stop = stop_of(i);
+		if (s.type == SegmentType::Line)
+		{
+			float l = geometry::distance(s.point, stop);
+			return l < 1e-9f ? s.point : s.point + (stop - s.point) * (t / l);
+		}
+		float a_s = geometry::oriented_angle(s.point, s.center);
+		float a_r = t / s.radius;
+		float a = geometry::oriented_angle(s.cw ? a_s - a_r : a_s + a_r);
+		return glm::vec2(glm::cos(a) * s.radius + s.center.x, glm::sin(a) * s.radius + s.center.y);
+	};
+
+	auto length_of = [&](int i)
+	{
+		Segment& s = segments[i];
+		glm::vec2 stop = stop_of(i);
+		if (s.type == SegmentType::Line)
+			return geometry::distance(s.point, stop);
+		return s.radius * geometry::oriented_angle(s.point, stop, s.center, s.cw);
+	};
+
+	// the stretch [t0, t1] of the segment i, added to a piece
+	auto add_stretch = [&](Curve& to, int i, float t0)
+	{
+		Segment& s = segments[i];
+		if (s.type == SegmentType::Line)
+			to.push_back(Segment(point_at(i, t0)));
+		else
+			to.push_back(Segment(point_at(i, t0), s.center, s.radius, s.cw, SegmentType::Arc));
+	};
+
+	// samples of each segment: true if the tool can not go there
+	std::vector<std::vector<char>> blocked(n);
+	std::vector<std::vector<Segment>> candidates(n);
+	std::vector<float> lengths(n, 0.0f);
+	bool any_blocked = false, any_free = false;
+	for (int i = 0; i < n; i++)
+	{
+		lengths[i] = length_of(i);
+		if (lengths[i] < 1e-6f)
+			continue;
+		candidates[i] = search(segments[i].bounds.offset(r));
+		int m = (int)glm::ceil(lengths[i] / step);
+		if (m < 1)
+			m = 1;
+		blocked[i].resize(m + 1);
+		for (int k = 0; k <= m; k++)
+		{
+			glm::vec2 p = point_at(i, lengths[i] * k / m);
+			float best = (std::numeric_limits<float>::max)();
+			for (Segment& c : candidates[i])
+			{
+				glm::vec2 e = (*this)[c.index + 1 < (int)size() ? c.index + 1 : 0].point;
+				best = (glm::min)(best, c.type == SegmentType::Line ? distance_to_line(p, c.point, e) : distance_to_arc(p, c, e));
+			}
+			blocked[i][k] = best < limit;
+			any_blocked = any_blocked || blocked[i][k];
+			any_free = any_free || !blocked[i][k];
+		}
+	}
+
+	if (!any_blocked)
+	{
+		kept.push_back(piece);
+		return kept;
+	}
+	if (!any_free)
+		return kept;
+
+	// the limit between a free sample and a blocked one
+	auto frontier = [&](int i, float t_free, float t_blocked)
+	{
+		for (int it = 0; it < 18; it++)
+		{
+			float t = (t_free + t_blocked) / 2;
+			glm::vec2 p = point_at(i, t);
+			float best = (std::numeric_limits<float>::max)();
+			for (Segment& c : candidates[i])
+			{
+				glm::vec2 e = (*this)[c.index + 1 < (int)size() ? c.index + 1 : 0].point;
+				best = (glm::min)(best, c.type == SegmentType::Line ? distance_to_line(p, c.point, e) : distance_to_arc(p, c, e));
+			}
+			if (best < limit)
+				t_blocked = t;
+			else
+				t_free = t;
+		}
+		return t_free;
+	};
+
+	// the walk starts on the first segment, the pieces which touch the start are joined at the end
+	std::vector<Curve> pieces;
+	Curve current;
+	bool active = false, started_free = false, first = true;
+	bool previous_free = false;
+	for (int i = 0; i < n; i++)
+	{
+		if (lengths[i] < 1e-6f)
+			continue;
+		const int m = (int)blocked[i].size() - 1;
+		float stretch = 0;
+		bool free_here = !blocked[i][0];
+		if (first)
+		{
+			started_free = free_here;
+			first = false;
+		}
+		else
+			free_here = previous_free;	// the same point as the end of the previous segment
+
+		if (free_here && !active)
+		{
+			current = Curve();
+			active = true;
+		}
+		stretch = 0;
+
+		for (int k = 0; k < m; k++)
+		{
+			bool next_free = !blocked[i][k + 1];
+			float t0 = lengths[i] * k / m, t1 = lengths[i] * (k + 1) / m;
+			if (free_here && !next_free)
+			{
+				// the tool gets blocked: the piece ends there
+				float t = frontier(i, t0, t1);
+				add_stretch(current, i, stretch);
+				current.push_back(Segment(point_at(i, t)));
+				pieces.push_back(current);
+				active = false;
+			}
+			else if (!free_here && next_free)
+			{
+				// the tool is free again: a new piece starts there
+				float t = frontier(i, t1, t0);
+				current = Curve();
+				active = true;
+				stretch = t;
+			}
+			free_here = next_free;
+		}
+		if (free_here && active)
+			add_stretch(current, i, stretch);
+		previous_free = free_here;
+	}
+
+	if (active)
+	{
+		current.push_back(Segment(stop_of(n - 1)));
+		if (started_free && !pieces.empty())
+		{
+			// the end of the walk continues the first piece
+			current.pop_back();
+			for (Segment& s : pieces.front())
+				current.push_back(s);
+			pieces.front() = current;
+		}
+		else
+			pieces.push_back(current);
+	}
+
+	for (Curve& c : pieces)
+	{
+		c.reset_bounds();
+		if (c.size() > 1 && c.length() >= r)
+			kept.push_back(c);
+	}
+	return kept;
 }
 
 bool Curve::too_close2(Curve& test, float o)

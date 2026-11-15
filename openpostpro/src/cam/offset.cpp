@@ -29,7 +29,7 @@ void Offset::update()
 	for (Curve& c : _original)
 	{
 		c.cw(_cw);
-		auto curves = c.offset(radius() * sign);
+		auto curves = c.offset(radius() * sign, 0, true);
 		_computed.insert(_computed.end(), curves.begin(), curves.end());
 	}
 	
