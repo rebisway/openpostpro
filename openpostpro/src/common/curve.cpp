@@ -2221,12 +2221,67 @@ namespace
 			_segments.push_back(w);
 		}
 
+		// bins along y: a ray only meets the segments of its bin (call after the last add, before at)
+		std::vector<int> _bin_start, _bin_items;
+		double _y0 = 0, _inv = 0;
+		int _bins = 0;
+
+		void finish()
+		{
+			_bins = (int)(std::min)((size_t)65536, (std::max)((size_t)1, _segments.size() / 2));
+			double y0 = 1e300, y1 = -1e300;
+			auto range = [](const WindingSegment& s, double& lo, double& hi)
+			{
+				if (s.arc) { lo = s.c.y - s.r; hi = s.c.y + s.r; }
+				else { lo = (std::min)(s.p.y, s.q.y); hi = (std::max)(s.p.y, s.q.y); }
+			};
+			for (const WindingSegment& s : _segments)
+			{
+				double lo, hi;
+				range(s, lo, hi);
+				y0 = (std::min)(y0, lo);
+				y1 = (std::max)(y1, hi);
+			}
+			_y0 = y0;
+			_inv = y1 > y0 ? _bins / (y1 - y0) : 0;
+			auto bin = [&](double y) { return (std::min)(_bins - 1, (std::max)(0, (int)((y - _y0) * _inv))); };
+			std::vector<int> cnt;
+			cnt.assign((size_t)_bins + 1, 0);
+			for (int pass = 0; pass < 2; pass++)
+			{
+				if (pass == 1)
+				{
+					for (int b = 0; b < _bins; b++)
+						cnt[b + 1] += cnt[b];
+					_bin_start = cnt;
+					_bin_items.assign(cnt[_bins], 0);
+					std::fill(cnt.begin(), cnt.end(), 0);
+				}
+				for (size_t i = 0; i < _segments.size(); i++)
+				{
+					double lo, hi;
+					range(_segments[i], lo, hi);
+					for (int b = bin(lo); b <= bin(hi); b++)
+					{
+						if (pass == 0)
+							cnt[b + 1]++;
+						else
+							_bin_items[_bin_start[b] + cnt[b]++] = (int)i;
+					}
+				}
+			}
+		}
+
 		int at(glm::dvec2 point) const
 		{
 			glm::dvec2 p = rotate(point);
 			int winding = 0;
-			for (const WindingSegment& s : _segments)
+			if (_bins == 0)
+				return 0;
+			int b = (std::min)(_bins - 1, (std::max)(0, (int)((p.y - _y0) * _inv)));
+			for (int k = _bin_start[b]; k < _bin_start[b + 1]; k++)
 			{
+				const WindingSegment& s = _segments[_bin_items[k]];
 				if (!s.arc)
 				{
 					if ((s.p.y <= p.y) != (s.q.y <= p.y))
@@ -2467,6 +2522,7 @@ std::vector<Curve> Curve::split_at_intersections(int orientation)
 	for (int i = 0; i < n; i++)
 		if (real(i))
 			winding.add(a[i], dst_of(i));
+	winding.finish();
 
 	const double delta = 2e-4;
 	auto inside = [&](int w) { return orientation * w > 0; };
@@ -3522,6 +3578,8 @@ bool Curve::robust_boolean(Curve& other, bool same_direction, bool outside, std:
 	for (int i = 0; i < nb; i++)
 		if (real_b(i))
 			winding_b.add(b[i], dst_b(i));
+	winding_a.finish();
+	winding_b.finish();
 
 	const double delta = 2e-4;
 	bool coincident = false;
