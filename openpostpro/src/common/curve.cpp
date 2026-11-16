@@ -2343,6 +2343,40 @@ namespace
 		}
 		return i;
 	}
+
+	// points closer than eps are the same node (union find, the root is the smallest index of the group). A grid of cells of
+	// size eps: a close point is in the same cell or in one of the 8 around, so the cost is linear and not quadratic.
+	void merge_close_points(const std::vector<glm::vec2>& points, std::vector<int>& parent, float eps)
+	{
+		const float eps2 = eps * eps;
+		std::map<std::pair<long long, long long>, std::vector<int>> cells;
+		auto cell = [&](glm::vec2 p) { return std::make_pair((long long)std::floor(p.x / eps), (long long)std::floor(p.y / eps)); };
+		for (size_t i = 0; i < points.size(); i++)
+			cells[cell(points[i])].push_back((int)i);
+		for (size_t i = 0; i < points.size(); i++)
+		{
+			auto c = cell(points[i]);
+			for (long long dx = -1; dx <= 1; dx++)
+				for (long long dy = -1; dy <= 1; dy++)
+				{
+					auto it = cells.find({ c.first + dx, c.second + dy });
+					if (it == cells.end())
+						continue;
+					for (int j : it->second)
+					{
+						if (j <= (int)i)
+							continue;
+						glm::vec2 d = points[i] - points[j];
+						if (d.x * d.x + d.y * d.y <= eps2)
+						{
+							int ri = find_root(parent, (int)i), rj = find_root(parent, j);
+							if (ri != rj)
+								parent[std::max(ri, rj)] = std::min(ri, rj);
+						}
+					}
+				}
+		}
+	}
 }
 
 std::vector<Curve> Curve::split_at_intersections(int orientation)
@@ -2441,21 +2475,10 @@ std::vector<Curve> Curve::split_at_intersections(int orientation)
 
 	// 2. nodes : points closer than the tolerance are the same node
 	const float eps = 2 * geometry::ERR_FLOAT3;
-	const float eps2 = eps * eps;
 	std::vector<int> parent(points.size());
 	for (size_t i = 0; i < parent.size(); i++)
 		parent[i] = (int)i;
-	for (size_t i = 0; i < points.size(); i++)
-		for (size_t j = i + 1; j < points.size(); j++)
-		{
-			glm::vec2 d = points[i] - points[j];
-			if (d.x * d.x + d.y * d.y <= eps2)
-			{
-				int ri = find_root(parent, (int)i), rj = find_root(parent, (int)j);
-				if (ri != rj)
-					parent[std::max(ri, rj)] = std::min(ri, rj);
-			}
-		}
+	merge_close_points(points, parent, eps);
 	// an intersection which is found a few microns before the start (or after the end) of a segment is the vertex itself : it is the same node.
 	// Taken as a stop of the segment, it would give a sub edge going backwards, which is a whole circle for an arc.
 	auto out_of_range = [&](int i, double key)
@@ -3425,13 +3448,17 @@ bool Curve::robust_boolean(Curve& other, bool same_direction, bool outside, std:
 
 	// the result has the direction of the first curve, the second one is turned to be in the right direction relatively to it
 	// the bounds of both curves have just been computed, they are copied with them : only a reversed curve needs them again
-	Curve a = *this, b = other;
+	// the curves are only read: a copy is made only for the second one when it has to be reversed
+	Curve& a = *this;
+	Curve reversed_b;
 	const bool a_cw = a.cw();
-	if (b.cw() != (same_direction ? a_cw : !a_cw))
+	if (other.cw() != (same_direction ? a_cw : !a_cw))
 	{
-		b.reverse();
-		b.reset_bounds();
+		reversed_b = other;
+		reversed_b.reverse();
+		reversed_b.reset_bounds();
 	}
+	Curve& b = reversed_b.empty() ? other : reversed_b;
 
 	const int orientation = a_cw ? -1 : 1;
 	const int na = (int)a.size(), nb = (int)b.size();
@@ -3508,21 +3535,10 @@ bool Curve::robust_boolean(Curve& other, bool same_direction, bool outside, std:
 
 	// 2. nodes
 	const float eps = 2 * geometry::ERR_FLOAT3;
-	const float eps2 = eps * eps;
 	std::vector<int> parent(points.size());
 	for (size_t i = 0; i < parent.size(); i++)
 		parent[i] = (int)i;
-	for (size_t i = 0; i < points.size(); i++)
-		for (size_t j = i + 1; j < points.size(); j++)
-		{
-			glm::vec2 d = points[i] - points[j];
-			if (d.x * d.x + d.y * d.y <= eps2)
-			{
-				int ri = find_root(parent, (int)i), rj = find_root(parent, (int)j);
-				if (ri != rj)
-					parent[std::max(ri, rj)] = std::min(ri, rj);
-			}
-		}
+	merge_close_points(points, parent, eps);
 	auto node_of = [&](int point_index) { return find_root(parent, point_index); };
 
 	// 3. sub edges of both curves
