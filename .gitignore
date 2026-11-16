@@ -8,6 +8,7 @@ __pycache__/
 
 # C++ test build output
 tests/cpp/obj/
+tests/cpp/obj_rel/
 tests/cpp/*.exe
 tests/cpp/*.dll
 

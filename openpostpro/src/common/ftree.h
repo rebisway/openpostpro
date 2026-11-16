@@ -56,6 +56,8 @@ public:
 	void reset();
 	void add(T data, geometry::rectangle& bounds) override;
 	std::vector<T> search(geometry::rectangle& bounds) override;
+	// same search, the result is put in a list which the caller keeps from one search to the next (no allocation)
+	void search(geometry::rectangle& bounds, std::vector<T>& result);
 };
 
 
@@ -167,6 +169,13 @@ inline std::vector<T> QuadNode<T>::search(geometry::rectangle& bounds)
 	std::vector<T> result;
 	collect(bounds, result);
 	return result;
+}
+
+template<class T>
+inline void QuadNode<T>::search(geometry::rectangle& bounds, std::vector<T>& result)
+{
+	result.clear();
+	collect(bounds, result);
 }
 
 #endif

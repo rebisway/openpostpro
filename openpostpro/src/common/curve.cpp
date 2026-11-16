@@ -49,9 +49,9 @@ Segment::Segment(glm::vec2 point, glm::vec2 center, float radius, bool cw, Segme
 #endif
 }
 
-int Segment::intersect(glm::vec2 dst1, Segment s2, glm::vec2 dst2, glm::vec2 result[2])
+int Segment::intersect(glm::vec2 dst1, const Segment& s2, glm::vec2 dst2, glm::vec2 result[2]) const
 {
-	Segment& s1 = *this;
+	const Segment& s1 = *this;
 
 	if (s1.type == SegmentType::Line && s2.type == SegmentType::Line)
 	{
@@ -561,36 +561,21 @@ float Curve::area()
 
 float Curve::limited_area()
 {
-	std::vector<glm::vec2> points;
-
 	if (size() == 1 && (*this)[0].type == SegmentType::Circle)
 		return _area = (*this)[0].radius * glm::two_pi<float>();
 
-	Segment from = front();
-	auto it = begin() + 1;
-
-	points.push_back(from.point);
-
-	while (it != end())
+	// shoelace in double and relative to the first point: in float, a small curve far from the origin loses its sign
+	const glm::dvec2 o = front().point;
+	double area = 0;
+	glm::dvec2 f(0, 0);
+	for (size_t i = 1; i < size(); i++)
 	{
-		points.push_back((*it).point);
-		from = (*it);
-		it++;
+		glm::dvec2 p = glm::dvec2((*this)[i].point) - o;
+		area += f.x * p.y - p.x * f.y;
+		f = p;
 	}
-
-	if (front().point != back().point)
-		points.push_back(front().point);
-
-	float area = 0;
-	glm::vec2 f = points.front();
-	auto pit = points.begin() + 1;
-	while (pit != points.end())
-	{
-		area += (f.x * (*pit).y) - ((*pit).x * f.y);
-		f = (*pit);
-		pit++;
-	}
-	return area;
+	// the closing edge goes back to the origin of this frame: its term is zero
+	return (float)area;
 }
 
 bool Curve::inside(glm::vec2 p)
@@ -694,28 +679,21 @@ bool Curve::inside(Curve& b)
 	if (b.inside((*this)[0].point))
 	{
 		// we test smaller against bigger
-		Curve& a = *this, c = b;
-
-		auto i1 = a.begin();
-		while (i1 != a.end())
+		std::vector<int> candidates;
+		for (size_t i1 = 0; i1 < size(); i1++)
 		{
-			auto s1 = *i1;
-			auto dst1 = (i1 == a.end() - 1) ? a.front().point : (*(i1+1)).point;
-			auto candidates = c.search(s1.bounds);
+			const Segment& s1 = (*this)[i1];
+			const glm::vec2 dst1 = (i1 == size() - 1) ? front().point : (*this)[i1 + 1].point;
+			b.search_indices(s1.bounds, candidates);
 
-			auto i2 = candidates.begin();
-			while (i2 != candidates.end())
+			for (int j : candidates)
 			{
-				auto s2 = *i2;
-				auto dst2 = ((*i2).index == c.size() - 1) ? c.front().point : c[(*i2).index+1].point;
+				const glm::vec2 dst2 = (j == (int)b.size() - 1) ? b.front().point : b[j + 1].point;
 
 				glm::vec2 result[2];
-				if (s1.intersect(dst1, s2, dst2, result) > 0)
+				if (s1.intersect(dst1, b[j], dst2, result) > 0)
 					return false;
-				i2 = i2 + 1;
 			}
-
-			i1 = i1 + 1;
 		}
 
 		return true;
@@ -733,28 +711,21 @@ bool Curve::outside(Curve& b)
 	if (!b.inside((*this)[0].point))
 	{
 		// we test smaller against bigger
-		Curve& a = *this, c = b;
-
-		auto i1 = a.begin();
-		while (i1 != a.end())
+		std::vector<int> candidates;
+		for (size_t i1 = 0; i1 < size(); i1++)
 		{
-			auto s1 = *i1;
-			auto dst1 = (i1 == a.end() - 1) ? a.front().point : (*(i1 + 1)).point;
-			auto candidates = c.search(s1.bounds);
+			const Segment& s1 = (*this)[i1];
+			const glm::vec2 dst1 = (i1 == size() - 1) ? front().point : (*this)[i1 + 1].point;
+			b.search_indices(s1.bounds, candidates);
 
-			auto i2 = candidates.begin();
-			while (i2 != candidates.end())
+			for (int j : candidates)
 			{
-				auto s2 = *i2;
-				auto dst2 = ((*i2).index == c.size() - 1) ? c.front().point : c[(*i2).index + 1].point;
+				const glm::vec2 dst2 = (j == (int)b.size() - 1) ? b.front().point : b[j + 1].point;
 
 				glm::vec2 result[2];
-				if (s1.intersect(dst1, s2, dst2, result) > 0)
+				if (s1.intersect(dst1, b[j], dst2, result) > 0)
 					return false;
-				i2 = i2 + 1;
 			}
-
-			i1 = i1 + 1;
 		}
 
 		return true;
@@ -768,30 +739,21 @@ Position Curve::relative(Curve& b)
 	if (bounds().outside(b.bounds()))
 		return Position::outside;
 
-	auto c1 = *this;
-	auto c2 = b;
-
-	// we check for first ref_point, if it is inside, then we look for an intersection
-	auto i1 = c1.begin();
-	while (i1 != c1.end())
+	std::vector<int> candidates;
+	for (size_t i1 = 0; i1 < size(); i1++)
 	{
-		auto s1 = *i1;
-		auto dst1 = (i1 == c1.end() - 1) ? c1.front().point : (*(i1 + 1)).point;
-		auto candidates = c2.search(s1.bounds);
+		const Segment& s1 = (*this)[i1];
+		const glm::vec2 dst1 = (i1 == size() - 1) ? front().point : (*this)[i1 + 1].point;
+		b.search_indices(s1.bounds, candidates);
 
-		auto i2 = candidates.begin();
-		while (i2 != candidates.end())
+		for (int j : candidates)
 		{
-			auto s2 = *i2;
-			auto dst2 = ((*i2).index == c2.size() - 1) ? c2.front().point : c2[(*i2).index + 1].point;
+			const glm::vec2 dst2 = (j == (int)b.size() - 1) ? b.front().point : b[j + 1].point;
 
 			glm::vec2 result[2];
-			if (s1.intersect(dst1, s2, dst2, result) > 0)
+			if (s1.intersect(dst1, b[j], dst2, result) > 0)
 				return Position::intersect;
-			i2 = i2 + 1;
 		}
-
-		i1 = i1 + 1;
 	}
 
 	return Position::inside;
@@ -802,27 +764,21 @@ bool Curve::intersect(Curve& b)
 	if (bounds().outside(b.bounds()))
 		return false;
 
-	// we check for first ref_point, if it is inside, then we look for an intersection
-	auto i1 = begin();
-	while (i1 != end())
+	std::vector<int> candidates;
+	for (size_t i1 = 0; i1 < size(); i1++)
 	{
-		auto s1 = *i1;
-		auto dst1 = (i1 == end() - 1) ? front().point : (*(i1 + 1)).point;
-		auto candidates = b.search(s1.bounds);
+		const Segment& s1 = (*this)[i1];
+		const glm::vec2 dst1 = (i1 == size() - 1) ? front().point : (*this)[i1 + 1].point;
+		b.search_indices(s1.bounds, candidates);
 
-		auto i2 = candidates.begin();
-		while (i2 != candidates.end())
+		for (int j : candidates)
 		{
-			auto s2 = *i2;
-			auto dst2 = ((*i2).index == b.size() - 1) ? b.front().point : b[(*i2).index + 1].point;
+			const glm::vec2 dst2 = (j == (int)b.size() - 1) ? b.front().point : b[j + 1].point;
 
 			glm::vec2 result[2];
-			if (s1.intersect(dst1, s2, dst2, result) > 0)
+			if (s1.intersect(dst1, b[j], dst2, result) > 0)
 				return true;
-			i2 = i2 + 1;
 		}
-
-		i1 = i1 + 1;
 	}
 
 	return false;
@@ -1861,12 +1817,13 @@ std::vector<Curve> Curve::split_at_intersections()
 			Segment s1 = a[i];
 			glm::vec dst1 = a[i + 1].point;
 
-			auto candidates = a.search(s1.bounds);
+			std::vector<int> candidates;
+			a.search_indices(s1.bounds, candidates);
 
 			//for (int j = i + 1; j < a.size(); j++)
 			for (int k = 0; k < candidates.size(); k++)
 			{
-				int j = candidates[k].index;
+				int j = candidates[k];
 
 				if (j > i)
 				{
@@ -2364,22 +2321,23 @@ std::vector<Curve> Curve::split_at_intersections(int orientation)
 	// there because the number of intersections can reach the millions.
 	const int max_hits = 4 * n + 64;
 
+	std::vector<int> candidates;
 	for (int i = 0; i < n && hit_count <= max_hits; i++)
 	{
 		if (!real(i))
 			continue;
 
-		Segment s1 = a[i];
+		const Segment& s1 = a[i];
 		glm::vec2 dst1 = dst_of(i);
 
-		auto candidates = a.search(s1.bounds);
+		a.search_indices(s1.bounds, candidates);
 		for (size_t k = 0; k < candidates.size() && hit_count <= max_hits; k++)
 		{
-			int j = candidates[k].index;
+			int j = candidates[k];
 			if (j <= i || !real(j))
 				continue;
 
-			Segment s2 = a[j];
+			const Segment& s2 = a[j];
 			glm::vec2 dst2 = dst_of(j);
 
 			// adjacent line segments only meet at their common point
@@ -2733,22 +2691,33 @@ bool Curve::too_close(Curve& test, float o)
 	// be a few percent nearer (the corners of the trim) without any consequence for the tool
 	auto hr = r * 0.9f;
 	auto hr2 = hr * hr;
+
+	// the middle of each segment of this curve, computed once (a segment is a candidate for many segments of the tested curve)
+	std::vector<glm::vec2> middles(size());
+	for (size_t j = 0; j < size(); j++)
+	{
+		const Segment& s2 = (*this)[j];
+		const glm::vec2 d2 = (*this)[j + 1 < size() ? j + 1 : 0].point;
+		middles[j] = s2.type == SegmentType::Line ? geometry::middle(s2.point, d2) : geometry::arc_middle(s2.point, s2.center, d2, s2.cw);
+	}
+
+	std::vector<int> candidates;
 	for (int i = 0; i < test.size(); i++)
 	{
 		Segment& s1 = test[i];
 		glm::vec2 d1 = test[i < test.size() - 1 ? i + 1 : 0].point;
 		glm::vec2 m1 = s1.type == SegmentType::Line ? geometry::middle(s1.point, d1) : geometry::arc_middle(s1.point, s1.center, d1, s1.cw);
 
-		auto candidates = search(s1.bounds.offset(r));
+		search_indices(s1.bounds.offset(r), candidates);
 
 		for (int k = 0; k < candidates.size(); k++)
 		{
 			counter[0]++;
-			int j = candidates[k].index;
+			int j = candidates[k];
 
-			Segment& s2 = candidates[k]; //original[j];
+			Segment& s2 = (*this)[j];
 			glm::vec2 d2 = (*this)[j < size() - 1 ? j + 1 : 0].point;
-			glm::vec2 m2 = s2.type == SegmentType::Line ? geometry::middle(s2.point, d2) : geometry::arc_middle(s2.point, s2.center, d2, s2.cw);
+			glm::vec2 m2 = middles[j];
 
 			glm::vec2 p, pp[2];
 			float d;
@@ -3042,7 +3011,7 @@ std::vector<Curve> Curve::cut_close(Curve& piece, float o)
 
 	// samples of each segment: true if the tool can not go there
 	std::vector<std::vector<char>> blocked(n);
-	std::vector<std::vector<Segment>> candidates(n);
+	std::vector<std::vector<int>> candidates(n);
 	std::vector<float> lengths(n, 0.0f);
 	bool any_blocked = false, any_free = false;
 	for (int i = 0; i < n; i++)
@@ -3050,7 +3019,7 @@ std::vector<Curve> Curve::cut_close(Curve& piece, float o)
 		lengths[i] = length_of(i);
 		if (lengths[i] < 1e-6f)
 			continue;
-		candidates[i] = search(segments[i].bounds.offset(r));
+		search_indices(segments[i].bounds.offset(r), candidates[i]);
 		int m = (int)glm::ceil(lengths[i] / step);
 		if (m < 1)
 			m = 1;
@@ -3059,9 +3028,10 @@ std::vector<Curve> Curve::cut_close(Curve& piece, float o)
 		{
 			glm::vec2 p = point_at(i, lengths[i] * k / m);
 			float best = (std::numeric_limits<float>::max)();
-			for (Segment& c : candidates[i])
+			for (int ci : candidates[i])
 			{
-				glm::vec2 e = (*this)[c.index + 1 < (int)size() ? c.index + 1 : 0].point;
+				const Segment& c = (*this)[ci];
+				glm::vec2 e = (*this)[ci + 1 < (int)size() ? ci + 1 : 0].point;
 				best = (glm::min)(best, c.type == SegmentType::Line ? distance_to_line(p, c.point, e) : distance_to_arc(p, c, e));
 			}
 			blocked[i][k] = best < limit;
@@ -3086,9 +3056,10 @@ std::vector<Curve> Curve::cut_close(Curve& piece, float o)
 			float t = (t_free + t_blocked) / 2;
 			glm::vec2 p = point_at(i, t);
 			float best = (std::numeric_limits<float>::max)();
-			for (Segment& c : candidates[i])
+			for (int ci : candidates[i])
 			{
-				glm::vec2 e = (*this)[c.index + 1 < (int)size() ? c.index + 1 : 0].point;
+				const Segment& c = (*this)[ci];
+				glm::vec2 e = (*this)[ci + 1 < (int)size() ? ci + 1 : 0].point;
 				best = (glm::min)(best, c.type == SegmentType::Line ? distance_to_line(p, c.point, e) : distance_to_arc(p, c, e));
 			}
 			if (best < limit)
@@ -3254,16 +3225,17 @@ bool Curve::curve_intersect(Curve& test)
 	Curve& a = size() < test.size() ? *this : test;
 	Curve& b = size() < test.size() ? test : *this;
 
+	std::vector<int> candidates;
 	for (int i = 0; i < a.size(); i++)
 	{
-		auto candidates = b.search(a[i].bounds);
+		b.search_indices(a[i].bounds, candidates);
 
 		for (int j = 0; j < candidates.size(); j++)
 		{
 			Segment& s1 = a[i];
 			glm::vec2 d1 = i == a.size() - 1 ? a[0].point : a[i + 1].point;
-			Segment& s2 = candidates[j];
-			glm::vec2 d2 = candidates[j].index == b.size() - 1 ? b[0].point : b[candidates[j].index + 1].point;
+			Segment& s2 = b[candidates[j]];
+			glm::vec2 d2 = candidates[j] == b.size() - 1 ? b[0].point : b[candidates[j] + 1].point;
 
 			if (s1.type == SegmentType::Line && s2.type == SegmentType::Line)
 			{
@@ -3332,15 +3304,27 @@ std::vector<Segment> Curve::search(geometry::rectangle bounds)
 	// then each segment is classified following the 1/4 bounds
 	// a tree of quad bounds is generated
 	// searching will then be a tree branch comparison
+	std::vector<int> found;
+	search_indices(bounds, found);
+
+	std::vector<Segment> result;
+	result.reserve(found.size());
+	for (int i : found)
+		result.push_back((*this)[i]);
+	return result;
+}
+
+void Curve::search_indices(geometry::rectangle bounds, std::vector<int>& result)
+{
 	if (!_tree.created())
 	{
 		// float precision does not allow to divide more, deeper nodes would only be copies of their parents
 		_tree.create(this->bounds(), 0, glm::min<int>(16, (int)size() / 4));
-		for (Segment p : *this)
-			_tree.add(p, p.bounds);
+		for (int i = 0; i < (int)size(); i++)
+			_tree.add(i, (*this)[i].bounds);
 	}
 
-	return _tree.search(bounds);
+	_tree.search(bounds, result);
 }
 
 void Curve::sort_level(std::vector<Curve>& curves)
@@ -3412,22 +3396,23 @@ bool Curve::robust_boolean(Curve& other, bool same_direction, bool outside, std:
 	std::vector<std::vector<Hit>> hits_a(na), hits_b(nb);
 	int hit_count = 0;
 
+	std::vector<int> candidates;
 	for (int i = 0; i < na; i++)
 	{
 		if (!real_a(i))
 			continue;
 
-		Segment s1 = a[i];
+		const Segment& s1 = a[i];
 		glm::vec2 dst1 = dst_a(i);
 
-		auto candidates = b.search(s1.bounds);
+		b.search_indices(s1.bounds, candidates);
 		for (size_t k = 0; k < candidates.size(); k++)
 		{
-			int j = candidates[k].index;
+			int j = candidates[k];
 			if (!real_b(j))
 				continue;
 
-			Segment s2 = b[j];
+			const Segment& s2 = b[j];
 			glm::vec2 dst2 = dst_b(j);
 
 			int count = 0;
@@ -3772,12 +3757,13 @@ std::vector<Curve> Curve::weiler(Curve& b, bool same_direction, bool outside)
 			Segment s1 = a[i];
 			glm::vec dst1 = (i == a.size() - 1)? a[0].point : a[i + 1].point;
 
-			auto candidates = b.search(s1.bounds);
+			std::vector<int> candidates;
+			b.search_indices(s1.bounds, candidates);
 
 			//for (int j = i + 1; j < a.size(); j++)
 			for (int k = 0; k < candidates.size() && tag <= max_tag; k++)
 			{
-				int j = candidates[k].index;
+				int j = candidates[k];
 
 				Segment s2 = b[j];
 				glm::vec2 dst2 = (j == b.size() - 1) ? dst2 = b[0].point : dst2 = b[j + 1].point;

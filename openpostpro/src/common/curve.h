@@ -67,7 +67,7 @@ public:
 	Segment(glm::vec2 point, int tag = -1);
 	Segment(glm::vec2 point, glm::vec2 center, float radius, bool cw, SegmentType type = SegmentType::Arc, int tag = -1, bool excluded=false);
 
-	int intersect(glm::vec2 dst1, Segment s2, glm::vec2 dst2, glm::vec2 result[2]);
+	int intersect(glm::vec2 dst1, const Segment& s2, glm::vec2 dst2, glm::vec2 result[2]) const;
 
 	glm::vec2 coordinates_at(float length, glm::vec2 dst);
 	std::vector<Segment> split_at(float length, glm::vec2 dst);
@@ -113,7 +113,7 @@ private:
 	geometry::rectangle _bounds;
 
 	std::vector<Segment> _sorted;
-	QuadNode<Segment> _tree;
+	QuadNode<int> _tree;		// the indices of the segments, by their bounds
 	int _tag = -1;
 	int _reference = -1;
 	int _index = -1;
@@ -430,6 +430,8 @@ public:
 	bool curve_intersect(Curve& test);
 
 	std::vector<Segment> search(geometry::rectangle bounds);
+	// the indices of the segments whose bounds touch `bounds`, in `result` (cleared first): no copy of the segments, no allocation when the list is reused
+	void search_indices(geometry::rectangle bounds, std::vector<int>& result);
 
 	static void sort_level(std::vector<Curve>& curves);
 
