@@ -734,31 +734,6 @@ bool Curve::outside(Curve& b)
 	return false;
 }
 
-Position Curve::relative(Curve& b)
-{
-	if (bounds().outside(b.bounds()))
-		return Position::outside;
-
-	std::vector<int> candidates;
-	for (size_t i1 = 0; i1 < size(); i1++)
-	{
-		const Segment& s1 = (*this)[i1];
-		const glm::vec2 dst1 = (i1 == size() - 1) ? front().point : (*this)[i1 + 1].point;
-		b.search_indices(s1.bounds, candidates);
-
-		for (int j : candidates)
-		{
-			const glm::vec2 dst2 = (j == (int)b.size() - 1) ? b.front().point : b[j + 1].point;
-
-			glm::vec2 result[2];
-			if (s1.intersect(dst1, b[j], dst2, result) > 0)
-				return Position::intersect;
-		}
-	}
-
-	return Position::inside;
-}
-
 bool Curve::intersect(Curve& b)
 {
 	if (bounds().outside(b.bounds()))
@@ -782,19 +757,6 @@ bool Curve::intersect(Curve& b)
 	}
 
 	return false;
-}
-
-void Curve::rotate(int index)
-{
-	if (index > 0 && index < size())
-	{
-		Curve temp;
-		temp.reserve(size());
-		temp.insert(temp.end(), begin() + index, end());
-		temp.insert(temp.end(), begin(), begin() + index - 1);
-		clear();
-		insert(end(), temp.begin(), temp.end());
-	}
 }
 
 std::vector<glm::vec2> Curve::coordinates()
@@ -825,88 +787,6 @@ std::vector<glm::vec2> Curve::coordinates()
 	points.push_back(from.point);
 
 	return points;
-}
-
-std::vector<Curve> Curve::cut(glm::vec2 point, int index)
-{
-	return cut(point, begin() + index);
-}
-
-std::vector<Curve> Curve::cut(glm::vec2 point, std::vector<Segment>::iterator it)
-{
-	std::vector<Curve> result;
-
-	if (it < end())
-	{
-		Curve left, right;
-
-		if (it != begin())
-			left.insert(left.begin(), begin(), it - 1);
-
-		if ((*it).type == SegmentType::Line)
-		{
-			left.push_back(*it); // we add *it segment start ref_point
-			left.push_back(Segment(point));	// we add new end ref_point
-
-			right.push_back(Segment(point));
-			right.insert(right.end(), it + 1, end());
-		}
-		else if ((*it).type == SegmentType::Arc)
-		{
-			left.push_back(*it);
-			left.push_back(Segment(point));
-			right.push_back(Segment(point, (*it).center, (*it).radius, (*it).cw));
-			right.insert(right.end(), it + 1, end());
-		}
-		else // circle
-		{
-			left.push_back(Segment(point, (*it).center, (*it).radius, (*it).cw));
-			left.push_back(Segment(point));
-		}
-
-		result.push_back(left);
-		if (right.size() > 0)
-			result.push_back(right);
-	}
-	else
-		result.push_back(*this);
-
-	return result;
-}
-
-std::vector<Curve> Curve::merge(Curve& b)
-{
-	std::vector<Curve> result;
-	
-	Curve& a = *this;
-
-	if (a.last() == b.last())
-		b.reverse();
-	else if (a.first() == b.first())
-		a.reverse();
-
-	if (a.last() == b.first())
-	{
-		Curve c;
-		c.insert(c.end(), a.begin(), a.end() - 1);
-		c.insert(c.end(), b.begin(), b.end());
-
-		result.push_back(c);
-	}
-	else if (b.last() == a.first())
-	{
-		Curve c;
-		c.insert(c.end(), b.begin(), b.end() - 1);
-		c.insert(c.end(), a.begin(), a.end());
-
-		result.push_back(c);
-	}
-	else // using XOR algo
-	{
-
-	}
-
-	return result;
 }
 
 void Curve::scale(float factor)
@@ -1306,11 +1186,6 @@ void Curve::middle(glm::vec2& position, float& angle)
 			}
 		}
 	}
-}
-
-std::vector<Curve> Curve::split(float length)
-{
-	return std::vector<Curve>();
 }
 
 void Curve::reduce(float max)
@@ -2749,15 +2624,6 @@ std::vector<Curve> Curve::boolean_intersect(Curve& b)
 	return result;
 }
 
-std::vector<Curve> Curve::boolean_not_intersect(Curve& b)
-{
-	std::vector<Curve> result = weiler(b, false, false);
-	for (Curve& c : result)
-		connect_reversed_arcs(c);
-	result.erase(std::remove_if(result.begin(), result.end(), [](Curve& c) { return c.size() == 0; }), result.end());
-	return result;
-}
-
 bool Curve::too_small(float o)
 {
 	return /*bounds().width() + bounds().height() < glm::abs(o)/2 ||*/ bounds().height() < 0.05 * glm::abs(o) || bounds().width() < 0.05 * glm::abs(o);
@@ -3226,77 +3092,6 @@ std::vector<Curve> Curve::cut_close(Curve& piece, float o)
 			kept.push_back(c);
 	}
 	return kept;
-}
-
-bool Curve::too_close2(Curve& test, float o)
-{
-	auto r = glm::abs(o);
-	auto hr = r * 0.999;
-
-	for (int i = 0; i < test.size(); i++)
-	{
-		Segment& s1 = test[i];
-		glm::vec2 src1 = s1.point, dst1 = test[i < test.size() - 1 ? i + 1 : 0].point;
-
-		auto candidates = search(s1.bounds.offset(r));
-
-		for (int k = 0; k < candidates.size(); k++)
-		{
-			counter[0]++;
-			int j = candidates[k].index;
-			float d = 0;
-
-			Segment& s2 = candidates[k]; //original[j];
-			glm::vec2 src2 = s2.point, dst2 = (*this)[j < size() - 1 ? j + 1 : 0].point;
-
-			if (s1.type == SegmentType::Line && s2.type == SegmentType::Line)
-			{
-				// check all cases :
-				// projection of src1 on [src2,dst2]
-				auto p1 = geometry::projection(src1, src2, dst2);
-				if (geometry::colinear_segment_point(src2, dst2, p1))
-				{
-					if (d = glm::max(d, geometry::distance(p1, src1)) < hr)
-						return true;
-				}
-				// projection of dst1 on [src2,dst2]
-				auto p2 = geometry::projection(dst1, src2, dst2);
-				if (geometry::colinear_segment_point(src2, dst2, p2))
-				{
-					if (d = glm::max(d, geometry::distance(p2,dst1)) < hr)
-						return true;
-				}
-				// projection of src2 on [src1,dst1]
-				auto p3 = geometry::projection(src2, src1, dst1);
-				if (geometry::colinear_segment_point(src1, dst1, p3))
-				{
-					if (d = glm::max(d, geometry::distance(p3, src2)) < hr)
-						return true;
-				}
-				// projection of dst2 on [src1,dst1]
-				auto p4 = geometry::projection(dst2, src1, dst1);
-				if (geometry::colinear_segment_point(src1, dst1, p4))
-				{
-					if (d = glm::max(d, geometry::distance(p4, dst2)) < hr)
-						return true;
-				}
-				// distance of src1 to src2
-				if (d = glm::max(d, geometry::distance(src1, src2)) < hr)
-					return true;
-				// distance of src1 to dst2
-				if (d = glm::max(d, geometry::distance(src1, dst2)) < hr)
-					return true;
-				// distance of dst1 to src2
-				if (d = glm::max(d, geometry::distance(dst1, src2)) < hr)
-					return true;
-				// distance of dst1 to dst2
-				if (d = glm::max(d, geometry::distance(dst1, dst2)) < hr)
-					return true;
-			}
-		}
-	}
-
-	return false;
 }
 
 bool Curve::curve_intersect(Curve& test)

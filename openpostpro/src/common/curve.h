@@ -256,16 +256,6 @@ public:
 	bool outside(Curve& b);
 
 	/// <summary>
-	/// return the relative position of curve against b curve
-	/// inside : curve is inside b
-	/// outside : curve is outside b
-	/// intersect : curve interset b
-	/// </summary>
-	/// <param name="b"></param>
-	/// <returns></returns>
-	Position relative(Curve& b);
-
-	/// <summary>
 	/// return true if curve intersects with b curve
 	/// </summary>
 	/// <param name="b"></param>
@@ -273,39 +263,10 @@ public:
 	bool intersect(Curve& b);
 
 	/// <summary>
-	/// rotate the curve to set the index as the start coordinates
-	/// </summary>
-	/// <param name="index">index to be first segement</param>
-	void rotate(int index);
-
-	/// <summary>
 	/// return coordinates of the curve, arcs are interpolated
 	/// </summary>
 	/// <returns></returns>
 	std::vector<glm::vec2> coordinates();
-
-	/// <summary>
-	/// Cut a curve at the ref_point coordinates. Point is supposed to be part of the segment curve. There is no verification
-	/// </summary>
-	/// <param name="ref_point"></param>
-	/// <param name="index"></param>
-	/// <returns></returns>
-	std::vector<Curve> cut(glm::vec2 point, int index);
-
-	/// <summary>
-	/// Cut a curve at the ref_point coordinates. Point is supposed to be part of the segment curve. There is no verification
-	/// </summary>
-	/// <param name="ref_point"></param>
-	/// <param name="it"></param>
-	/// <returns></returns>
-	std::vector<Curve> cut(glm::vec2 point, std::vector<Segment>::iterator it);
-
-	/// <summary>
-	/// Return a curve which append curve b to current curve 
-	/// </summary>
-	/// <param name="b"></param>
-	/// <returns></returns>
-	std::vector<Curve> merge(Curve& b);
 
 	/// <summary>
 	/// Apply scale factor to the curve
@@ -336,13 +297,6 @@ public:
 
 
 	/// <summary>
-	/// Return a curve that represent the boolean intersection of current curve with b curve
-	/// </summary>
-	/// <param name="b"></param>
-	/// <returns></returns>
-	std::vector<Curve> boolean_not_intersect(Curve& b);
-
-	/// <summary>
 	/// create an offseted curve. if cw && positive offset or !cw && negative offset, outside, else inside
 	/// </summary>
 	/// <param name="o">offset value</param>
@@ -363,13 +317,6 @@ public:
 	/// <param name="position"></param>
 	/// <param name="angle"></param>
 	void middle(glm::vec2& position, float& angle);
-
-	/// <summary>
-	/// split the actual curve at lenth position and return the two resulted curves
-	/// </summary>
-	/// <param name="length"></param>
-	/// <returns></returns>
-	std::vector<Curve> split(float length);
 
 	/// <summary>
 	/// Remove segments less than max
@@ -425,7 +372,6 @@ public:
 	// cuts the offset curve `piece` where it comes closer to this curve than the offset (a narrow neck, which a tool of this radius can not enter):
 	// the pieces which stay are returned (open curves, or the curve itself when nothing is cut), the ones shorter than the offset are dropped
 	std::vector<Curve> cut_close(Curve& piece, float o);
-	bool too_close2(Curve& test, float o);
 
 	bool curve_intersect(Curve& test);
 
