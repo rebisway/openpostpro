@@ -41,7 +41,7 @@ public:
 	/// <summary>
 	/// Log file path
 	/// </summary>
-	static std::string path() { return _path; }
+	static std::string path();
 
 	/// <summary>
 	/// Start logging
@@ -87,12 +87,12 @@ public:
 	/// <summary>
 	/// Static trace string
 	/// </summary>
-	static std::string trace() { return _trace; };
+	static std::string trace();
 
 	/// <summary>
 	/// Set the trace string
 	/// </summary>
-	static void trace(std::string data) { _trace = data; };
+	static void trace(std::string data);
 };
 
 #endif
