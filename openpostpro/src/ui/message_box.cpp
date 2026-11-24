@@ -62,7 +62,7 @@ MessageBoxStatus MessageBox::show()
 		auto textWidth = ImGui::CalcTextSize(_text.c_str()).x;
 		ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
 		ImGui::Text(_text.c_str());
-		ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x - ImGui::CalcItemWidth()) / 2.f);
+		ImGui::SetCursorPosX(((ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x) - ImGui::CalcItemWidth()) / 2.f);
 		if (_input && ImGui::InputText("##INPUT_MESSAGE_BOX", input, 20 * sizeof(char)))
 		{
 			_result = input;

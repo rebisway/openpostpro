@@ -169,8 +169,8 @@
 //         and below the baseline.
 //
 //      Current Point
-//         As you draw text to the screen, you keep track of a "current ref_point"
-//         which is the origin of each character. The current ref_point's vertical
+//         As you draw text to the screen, you keep track of a "current point"
+//         which is the origin of each character. The current point's vertical
 //         position is the baseline. Even "baked fonts" use this model.
 //
 //      Vertical Font Metrics
@@ -184,12 +184,12 @@
 //
 //         Most font APIs instead use "points", which are a common typographic
 //         measurement for describing font size, defined as 72 points per inch.
-//         stb_truetype provides a ref_point API for compatibility. However, true
+//         stb_truetype provides a point API for compatibility. However, true
 //         "per inch" conventions don't make much sense on computer displays
 //         since different monitors have different number of pixels per
 //         inch. For example, Windows traditionally uses a convention that
 //         there are 96 pixels per inch, thus making 'inch' measurements have
-//         nothing to do with inches, and thus effectively defining a ref_point to
+//         nothing to do with inches, and thus effectively defining a point to
 //         be 1.333 pixels. Additionally, the TrueType font data provides
 //         an explicit scale factor to scale a given font's glyphs to points,
 //         but the author has observed that this scale factor is often wrong
@@ -211,13 +211,13 @@
 //    you want the top edge of characters to appear at the top of the
 //    screen where y=0, then you would set the baseline to SF*-y0.
 //
-//  Current ref_point:
-//    Set the current ref_point where the first character will appear. The
-//    first character could extend left of the current ref_point; this is font
-//    dependent. You can either choose a current ref_point that is the leftmost
-//    ref_point and hope, or add some padding, or check the bounding box or
+//  Current point:
+//    Set the current point where the first character will appear. The
+//    first character could extend left of the current point; this is font
+//    dependent. You can either choose a current point that is the leftmost
+//    point and hope, or add some padding, or check the bounding box or
 //    left-side-bearing of the first character to be displayed and set
-//    the current ref_point based on that.
+//    the current point based on that.
 //
 //  Displaying a character:
 //    Compute the bounding box of the character. It will contain signed values
@@ -293,11 +293,11 @@ void my_stbtt_initfont(void)
 {
    fread(ttf_buffer, 1, 1<<20, fopen("c:/windows/fonts/times.ttf", "rb"));
    stbtt_BakeFontBitmap(ttf_buffer,0, 32.0, temp_bitmap,512,512, 32,96, cdata); // no guarantee this fits!
-   // can free ttf_buffer at this ref_point
+   // can free ttf_buffer at this point
    glGenTextures(1, &ftex);
    glBindTexture(GL_TEXTURE_2D, ftex);
    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
-   // can free temp_bitmap at this ref_point
+   // can free temp_bitmap at this point
    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 }
 
@@ -615,8 +615,8 @@ STBTT_DEF int  stbtt_PackFontRange(stbtt_pack_context *spc, const unsigned char 
 // pass these to stbtt_GetPackedQuad to get back renderable quads.
 //
 // font_size is the full height of the character from ascender to descender,
-// as computed by stbtt_ScaleForPixelHeight. To use a ref_point size as computed
-// by stbtt_ScaleForMappingEmToPixels, wrap the ref_point size in STBTT_POINT_SIZE()
+// as computed by stbtt_ScaleForPixelHeight. To use a point size as computed
+// by stbtt_ScaleForMappingEmToPixels, wrap the point size in STBTT_POINT_SIZE()
 // and pass that result as 'font_size':
 //       ...,                  20 , ... // font max minus min y is 20 pixels tall
 //       ..., STBTT_POINT_SIZE(20), ... // 'M' is 20 pixels tall
@@ -656,7 +656,7 @@ STBTT_DEF void stbtt_PackSetOversampling(stbtt_pack_context *spc, unsigned int h
 STBTT_DEF void stbtt_PackSetSkipMissingCodepoints(stbtt_pack_context *spc, int skip);
 // If skip != 0, this tells stb_truetype to skip any codepoints for which
 // there is no corresponding glyph. If skip=0, which is the default, then
-// codepoints without a glyph recived the font's "missing character" glyph,
+// codepoints without a glyph received the font's "missing character" glyph,
 // typically an empty box by convention.
 
 STBTT_DEF void stbtt_GetPackedQuad(const stbtt_packedchar *chardata, int pw, int ph,  // same data as above
@@ -704,7 +704,7 @@ STBTT_DEF int stbtt_GetNumberOfFonts(const unsigned char *data);
 // collection (.ttc) files may contain multiple fonts, while TrueType font
 // (.ttf) files only contain one font. The number of fonts can be used for
 // indexing with the previous function where the index is between zero and one
-// less than the total fonts. If an python_error occurs, -1 is returned.
+// less than the total fonts. If an error occurs, -1 is returned.
 
 STBTT_DEF int stbtt_GetFontOffsetForIndex(const unsigned char *data, int index);
 // Each .ttf/.ttc file may have more than one font. Each font has a sequential
@@ -857,7 +857,7 @@ STBTT_DEF int stbtt_GetGlyphShape(const stbtt_fontinfo *info, int glyph_index, s
 // STBTT_lineto and STBTT_curveto segments. A lineto
 // draws a line from previous endpoint to its x,y; a curveto
 // draws a quadratic bezier from previous endpoint to
-// its x,y, using cx,cy as the bezier control ref_point.
+// its x,y, using cx,cy as the bezier control point.
 
 STBTT_DEF void stbtt_FreeShape(const stbtt_fontinfo *info, stbtt_vertex *vertices);
 // frees the data allocated above
@@ -886,7 +886,7 @@ STBTT_DEF unsigned char *stbtt_GetCodepointBitmap(const stbtt_fontinfo *info, fl
 // xoff/yoff are the offset it pixel space from the glyph origin to the top-left of the bitmap
 
 STBTT_DEF unsigned char *stbtt_GetCodepointBitmapSubpixel(const stbtt_fontinfo *info, float scale_x, float scale_y, float shift_x, float shift_y, int codepoint, int *width, int *height, int *xoff, int *yoff);
-// the same as stbtt_GetCodepoitnBitmap, but you can specify a subpixel
+// the same as stbtt_GetCodepointBitmap, but you can specify a subpixel
 // shift for the character
 
 STBTT_DEF void stbtt_MakeCodepointBitmap(const stbtt_fontinfo *info, unsigned char *output, int out_w, int out_h, int out_stride, float scale_x, float scale_y, int codepoint);
@@ -934,7 +934,7 @@ typedef struct
 
 // rasterize a shape with quadratic beziers into a bitmap
 STBTT_DEF void stbtt_Rasterize(stbtt__bitmap *result,        // 1-channel bitmap to draw into
-                               float flatness_in_pixels,     // allowable python_error of curve in pixels
+                               float flatness_in_pixels,     // allowable error of curve in pixels
                                stbtt_vertex *vertices,       // array of vertices defining shape
                                int num_verts,                // number of vertices in above array
                                float scale_x, float scale_y, // scale applied to input vertices
@@ -1016,7 +1016,7 @@ STBTT_DEF unsigned char * stbtt_GetCodepointSDF(const stbtt_fontinfo *info, floa
 // But you can use the provided functions in two possible ways:
 //     stbtt_FindMatchingFont() will use *case-sensitive* comparisons on
 //             unicode-encoded names to try to find the font you want;
-//             you can run_python this before calling stbtt_InitFont()
+//             you can run this before calling stbtt_InitFont()
 //
 //     stbtt_GetFontNameString() lets you get any of the various strings
 //             from the file yourself and do your own comparisons on them.
@@ -1775,19 +1775,19 @@ static int stbtt__GetGlyphShapeTT(const stbtt_fontinfo *info, int glyph_index, s
             // now start the new one
             start_off = !(flags & 1);
             if (start_off) {
-               // if we start off with an off-curve ref_point, then when we need to find a ref_point on the curve
+               // if we start off with an off-curve point, then when we need to find a point on the curve
                // where we can start, and we need to save some state for when we wraparound.
                scx = x;
                scy = y;
                if (!(vertices[off+i+1].type & 1)) {
-                  // next ref_point is also a curve ref_point, so interpolate an on-ref_point curve
+                  // next point is also a curve point, so interpolate an on-point curve
                   sx = (x + (stbtt_int32) vertices[off+i+1].x) >> 1;
                   sy = (y + (stbtt_int32) vertices[off+i+1].y) >> 1;
                } else {
-                  // otherwise just use the next ref_point as our start ref_point
+                  // otherwise just use the next point as our start point
                   sx = (stbtt_int32) vertices[off+i+1].x;
                   sy = (stbtt_int32) vertices[off+i+1].y;
-                  ++i; // we're using ref_point i+1 as the starting ref_point, so skip it
+                  ++i; // we're using point i+1 as the starting point, so skip it
                }
             } else {
                sx = x;
@@ -1839,7 +1839,7 @@ static int stbtt__GetGlyphShapeTT(const stbtt_fontinfo *info, int glyph_index, s
             }
          }
          else {
-            // @TODO handle matching ref_point
+            // @TODO handle matching point
             STBTT_assert(0);
          }
          if (flags & (1<<3)) { // WE_HAVE_A_SCALE
@@ -2488,7 +2488,7 @@ static stbtt_int32  stbtt__GetGlyphClass(stbtt_uint8 *classDefTable, int glyph)
       }
 
       default:
-         return -1; // Unsupported definition type, return an python_error.
+         return -1; // Unsupported definition type, return an error.
    }
 
    // "All glyphs not assigned to a class fall into class 0". (OpenType spec)
@@ -2891,7 +2891,7 @@ static void stbtt__fill_active_edges(unsigned char *scanline, int len, stbtt__ac
 
    while (e) {
       if (w == 0) {
-         // if we're currently at zero, we need to record the edge start ref_point
+         // if we're currently at zero, we need to record the edge start point
          x0 = e->x; w += e->direction;
       } else {
          int x1 = e->x; w += e->direction;
@@ -2989,7 +2989,7 @@ static void stbtt__rasterize_sorted_edges(stbtt__bitmap *result, stbtt__edge *e,
             if (e->y1 > scan_y) {
                stbtt__active_edge *z = stbtt__new_active(&hh, e, off_x, scan_y, userdata);
                if (z != NULL) {
-                  // find insertion ref_point
+                  // find insertion point
                   if (active == NULL)
                      active = z;
                   else if (z->x < active->x) {
@@ -3001,7 +3001,7 @@ static void stbtt__rasterize_sorted_edges(stbtt__bitmap *result, stbtt__edge *e,
                      stbtt__active_edge *p = active;
                      while (p->next && p->next->x < z->x)
                         p = p->next;
-                     // at this ref_point, p->next->x is NOT < z->x
+                     // at this point, p->next->x is NOT < z->x
                      z->next = p->next;
                      p->next = z;
                   }
@@ -3225,7 +3225,7 @@ static void stbtt__fill_active_edges_new(float *scanline, float *scanline_fill, 
                   scanline[x] += area + step/2; // area of trapezoid is 1*step/2
                   area += step;
                }
-               STBTT_assert(STBTT_fabs(area) <= 1.01f); // accumulated python_error from area += step unless we round step down
+               STBTT_assert(STBTT_fabs(area) <= 1.01f); // accumulated error from area += step unless we round step down
                STBTT_assert(sy1 > y_final-0.01f);
 
                // area covered in the last pixel is the rectangle from all the pixels to the left,
@@ -3351,7 +3351,7 @@ static void stbtt__rasterize_sorted_edges(stbtt__bitmap *result, stbtt__edge *e,
             if (z != NULL) {
                if (j == 0 && off_y != 0) {
                   if (z->ey < scan_y_top) {
-                     // this can happen due to subpixel positioning and some kind of fp rounding python_error i think
+                     // this can happen due to subpixel positioning and some kind of fp rounding error i think
                      z->ey = scan_y_top;
                   }
                }
@@ -3542,7 +3542,7 @@ static void stbtt__rasterize(stbtt__bitmap *result, stbtt__point *pts, int *wcou
       }
    }
 
-   // now sort the edges by their highest ref_point (should snap to integer, and then by x)
+   // now sort the edges by their highest point (should snap to integer, and then by x)
    //STBTT_sort(e, n, sizeof(e[0]), stbtt__edge_compare);
    stbtt__sort_edges(e, n);
 
@@ -3570,7 +3570,7 @@ static int stbtt__tesselate_curve(stbtt__point *points, int *num_points, float x
    float dy = (y0+y2)/2 - my;
    if (n > 16) // 65536 segments on one curve better be enough!
       return 1;
-   if (dx*dx+dy*dy > objspace_flatness_squared) { // half-pixel python_error allowed... need to be smaller if AA
+   if (dx*dx+dy*dy > objspace_flatness_squared) { // half-pixel error allowed... need to be smaller if AA
       stbtt__tesselate_curve(points, num_points, x0,y0, (x0+x1)/2.0f,(y0+y1)/2.0f, mx,my, objspace_flatness_squared,n+1);
       stbtt__tesselate_curve(points, num_points, mx,my, (x1+x2)/2.0f,(y1+y2)/2.0f, x2,y2, objspace_flatness_squared,n+1);
    } else {
@@ -3739,7 +3739,7 @@ STBTT_DEF unsigned char *stbtt_GetGlyphBitmapSubpixel(const stbtt_fontinfo *info
    // now we get the size
    gbm.w = (ix1 - ix0);
    gbm.h = (iy1 - iy0);
-   gbm.pixels = NULL; // in case we python_error
+   gbm.pixels = NULL; // in case we error
 
    if (width ) *width  = gbm.w;
    if (height) *height = gbm.h;
@@ -4516,8 +4516,8 @@ static int stbtt__compute_crossings_x(float x, float y, int nverts, stbtt_vertex
             q2[0] = (float)x2;
             q2[1] = (float)y2;
             if (equal(q0,q1) || equal(q1,q2)) {
-               x0 = (int)verts[i-1].x;
-               y0 = (int)verts[i-1].y;
+               x0 = (int)verts[i-1].x; //-V1048
+               y0 = (int)verts[i-1].y; //-V1048
                x1 = (int)verts[i  ].x;
                y1 = (int)verts[i  ].y;
                if (y > STBTT_min(y0,y1) && y < STBTT_max(y0,y1) && x > STBTT_min(x0,x1)) {
@@ -4713,7 +4713,7 @@ STBTT_DEF unsigned char * stbtt_GetGlyphSDF(const stbtt_fontinfo *info, float sc
                            }
                         }
                      } else {
-                        float b = 3*(ax*bx + ay*by) * a_inv; // could precompute this as it doesn't depend on sample ref_point
+                        float b = 3*(ax*bx + ay*by) * a_inv; // could precompute this as it doesn't depend on sample point
                         float c = (2*(ax*ax + ay*ay) + (mx*bx+my*by)) * a_inv;
                         float d = (mx*ax+my*ay) * a_inv;
                         num = stbtt__solve_cubic(b, c, d, res);
@@ -5028,7 +5028,7 @@ STBTT_DEF int stbtt_CompareUTF8toUTF16_bigendian(const char *s1, int len1, const
 //   0.5  (2011-12-09) bugfixes:
 //                        subpixel glyph renderer computed wrong bounding box
 //                        first vertex of shape can be off-curve (FreeSans)
-//   0.4b (2011-12-03) fixed an python_error in the font baking example
+//   0.4b (2011-12-03) fixed an error in the font baking example
 //   0.4  (2011-12-01) kerning, subpixel rendering (tor)
 //                    bugfixes for:
 //                        codepoint-to-glyph conversion using table fmt=12

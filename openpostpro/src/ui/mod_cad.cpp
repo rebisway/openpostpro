@@ -498,7 +498,7 @@ void ModCad::draw_machine()
 
 	ImVec2 a = screen(low), b = screen(high);
 	list->AddRectFilled(a, b, IM_COL32(255, 255, 255, 12));
-	list->AddRect(a, b, outside ? IM_COL32(255, 70, 60, 230) : IM_COL32(230, 200, 80, 170), 0.0f, 0, 2.0f);
+	list->AddRect(a, b, outside ? IM_COL32(255, 70, 60, 230) : IM_COL32(230, 200, 80, 170), 0.0f, 2.0f);
 	if (outside)
 		list->AddText(ImVec2((std::min)(a.x, b.x) + 6, (std::min)(a.y, b.y) + 4), IM_COL32(255, 90, 80, 255), Lang::l("MACHINE_OUTSIDE"));
 
@@ -2660,7 +2660,7 @@ bool ModCad::set_shortcut(std::string code, ImVec2 size, bool active, bool enabl
 		ImVec4 background = active ? ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive) : ImVec4(0, 0, 0, 1);
 		// a disabled button is dimmed and does not answer (an operation which the tool of the group can not do)
 		ImGui::BeginDisabled(!enabled);
-		bool click = ImGui::ImageButton(code.c_str(), t->id(), size, ImVec2(0, 0), ImVec2(1.0f, 1.0f), background) && enabled;
+		bool click = ImGui::ImageButton(code.c_str(), (ImTextureID)(intptr_t)t->id(), size, ImVec2(0, 0), ImVec2(1.0f, 1.0f), background) && enabled;
 		ImGui::EndDisabled();
 		ImGui::PopStyleVar();
 		if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) && GImGui->HoveredIdTimer > 1)

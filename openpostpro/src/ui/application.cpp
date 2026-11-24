@@ -317,10 +317,7 @@ void Application::initialize()
 	if (std::filesystem::exists(font_path))
 	{
 		_font = io.Fonts->AddFontFromFileTTF(environment::combine_path(environment::combine_path(environment::application_path(), "fonts"), "Roboto-Medium.ttf").c_str(), 16);
-		// the start screen has already built the atlas of the fonts: it is built again with the new font
-		io.Fonts->ClearTexData();
-		ImGui_ImplOpenGL3_DestroyFontsTexture();
-		ImGui_ImplOpenGL3_CreateFontsTexture();
+		// the atlas of the fonts is updated by Dear ImGui itself (the backend uploads its texture when it changes)
 	}
 	else
 	{
@@ -843,7 +840,7 @@ void Application::onRenderFrame()
 
 void Application::onRenderGUI()
 {
-	ImGui::PushFont(_font);
+	ImGui::PushFont(_font, _font != nullptr ? _font->LegacySize : 0.0f);
 
 
 	Window::onRenderGUI();

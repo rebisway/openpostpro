@@ -90,7 +90,8 @@ void ModLog::draw(bool dock)
 	float toggle_width = ImGui::GetFrameHeight() + ImGui::GetStyle().ItemSpacing.x;
 
 	ImGui::SameLine();
-	_filter.Draw(Lang::l("FILTER"), (dock ? -110.0f : -60.0f) - toggle_width);
+	ImGui::SetNextItemWidth((dock ? -110.0f : -60.0f) - toggle_width);
+	_filter.Draw(Lang::l("FILTER"));
 	ImGui::SameLine();
 	if (ImGui::ArrowButton("##LOG_DOCK_TOGGLE", dock ? ImGuiDir_Up : ImGuiDir_Down))
 		_dock_toggle = true;

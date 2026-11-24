@@ -559,12 +559,12 @@ static bool sim_icon(const char* id, SimIcon kind, bool on, const char* tip)
 	case IC_LINE: tri(-9, -8, -9, 8, 0, 0); line(3, -5, 9, -5); line(3, 0, 9, 0); line(3, 5, 9, 5); break;
 	case IC_END: tri(-9, -8, -9, 8, -1, 0); tri(-1, -8, -1, 8, 7, 0); rect(7, -8, 9, 8); break;
 	case IC_MATERIAL: d->AddRectFilled(P(-8, -3), P(8, 8), col); d->AddQuadFilled(P(-8, -3), P(-4, -8), P(12, -8), P(8, -3), light); break;
-	case IC_FEED: d->AddPolyline(std::vector<ImVec2>{ P(-9, 5), P(-4, -5), P(1, 5), P(6, -5), P(9, 0) }.data(), 5, col, 0, 2.0f); break;
+	case IC_FEED: d->AddPolyline(std::vector<ImVec2>{ P(-9, 5), P(-4, -5), P(1, 5), P(6, -5), P(9, 0) }.data(), 5, col, 2.0f); break;
 	case IC_RAPID: line(-9, 0, -5, 0); line(-2, 0, 2, 0); line(5, 0, 9, 0); break;
 	case IC_TOOL: rect(-3, -9, 3, 0); tri(-3, 0, 3, 0, 0, 9); break;
 	case IC_AXES: line(-6, 6, 8, 6); line(-6, 6, -6, -8); line(-6, 6, 4, -2); break;
-	case IC_TOP: d->AddRect(P(-8, -8), P(8, 8), col, 0, 0, 2.0f); rect(-5, -5, 5, 5); break;
-	case IC_FRONT: d->AddRect(P(-8, -6), P(8, 6), col, 0, 0, 2.0f); rect(-8, 2, 8, 6); break;
+	case IC_TOP: d->AddRect(P(-8, -8), P(8, 8), col, 0, 2.0f); rect(-5, -5, 5, 5); break;
+	case IC_FRONT: d->AddRect(P(-8, -6), P(8, 6), col, 0, 2.0f); rect(-8, 2, 8, 6); break;
 	case IC_ISO:
 		d->AddQuadFilled(P(0, -9), P(8, -4), P(0, 1), P(-8, -4), light);
 		d->AddQuad(P(-8, -4), P(0, 1), P(0, 9), P(-8, 4), col, 2.0f);
@@ -727,7 +727,7 @@ void ModSim::draw_cards()
 		const float space = ImGui::GetStyle().ItemSpacing.y;
 		float h = 4.0f + row + lines * (row + space) - space + 10.0f;
 		draw->AddRectFilled(p, ImVec2(p.x + width, p.y + h), fill, 8.0f);
-		draw->AddRect(p, ImVec2(p.x + width, p.y + h), border, 8.0f, 0, 2.0f);
+		draw->AddRect(p, ImVec2(p.x + width, p.y + h), border, 8.0f, 2.0f);
 		ImVec2 t = ImGui::CalcTextSize(title);
 		draw->AddText(ImVec2(p.x + (width - t.x) * 0.5f, p.y + 4.0f), IM_COL32(255, 255, 255, 255), title);
 		ImGui::SetCursorScreenPos(ImVec2(p.x + 10.0f, p.y + 4.0f + ImGui::GetTextLineHeightWithSpacing()));

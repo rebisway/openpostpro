@@ -205,7 +205,7 @@ public:
 					else
 					{
 						const ImVec2 uv0((i % 16) / 16.0f, (i / 16) / 16.0f), uv1((i % 16 + 1) / 16.0f, (i / 16 + 1) / 16.0f);
-						if (ImGui::ImageButton("##glyph", _texture->id(), size, uv0, uv1))
+						if (ImGui::ImageButton("##glyph", (ImTextureID)(intptr_t)_texture->id(), size, uv0, uv1))
 						{
 							picked = _cells[i];
 							chosen = true;

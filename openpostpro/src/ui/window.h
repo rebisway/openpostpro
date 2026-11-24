@@ -216,8 +216,9 @@ public:
 	void hide();
 	void close();
 
-	void push_default_font() { ImGui::PushFont(_default_font); }
-	void push_font(std::string name) { ImGui::PushFont(_fonts[name]); }
+	// a font is pushed at the size it was added with
+	void push_default_font() { ImGui::PushFont(_default_font, _default_font != nullptr ? _default_font->LegacySize : 0.0f); }
+	void push_font(std::string name) { ImFont* font = _fonts[name]; ImGui::PushFont(font, font != nullptr ? font->LegacySize : 0.0f); }
 	void pop_font() { ImGui::PopFont(); }
 
 };
